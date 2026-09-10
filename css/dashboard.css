@@ -283,6 +283,81 @@
   color: var(--text-muted);
 }
 
+/* Action Alert Banner */
+.action-alert-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  background: linear-gradient(90deg, rgba(0, 212, 255, 0.08) 0%, rgba(17, 22, 56, 0.7) 100%);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  transition: all var(--transition-normal);
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.action-alert-banner.banner--buy {
+  background: linear-gradient(90deg, rgba(0, 230, 118, 0.12) 0%, rgba(10, 30, 25, 0.6) 100%);
+  border-bottom: 1px solid rgba(0, 230, 118, 0.3);
+}
+
+.action-alert-banner.banner--sell {
+  background: linear-gradient(90deg, rgba(255, 23, 68, 0.12) 0%, rgba(35, 10, 15, 0.6) 100%);
+  border-bottom: 1px solid rgba(255, 23, 68, 0.3);
+}
+
+.action-alert-banner__content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.action-alert-banner__badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.banner--buy .action-alert-banner__badge {
+  background: var(--bullish);
+  color: #060914;
+}
+
+.banner--sell .action-alert-banner__badge {
+  background: var(--bearish);
+  color: #ffffff;
+}
+
+.action-alert-banner__text {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.action-alert-banner__levels {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.action-alert-banner__level-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+}
+
 /* ── Right Sidebar — Prediction Panel ── */
 .sidebar-right {
   grid-column: 3;
@@ -299,19 +374,27 @@
   padding: var(--space-lg);
   border-bottom: 1px solid var(--border-color);
   text-align: center;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+}
+
+.signal-badge-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: var(--space-xs);
 }
 
 .signal-badge {
   display: inline-flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: 12px 28px;
+  padding: 10px 22px;
   border-radius: var(--radius-full);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: 1px;
   text-transform: uppercase;
-  margin-bottom: var(--space-sm);
 }
 
 .signal-badge--buy {
@@ -334,14 +417,201 @@
   border: 2px solid rgba(255, 215, 64, 0.3);
 }
 
-.signal-confidence {
-  font-size: 0.82rem;
+.action-pill {
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
   color: var(--text-secondary);
 }
 
-.signal-confidence strong {
-  font-size: 1.1rem;
+.action-pill.pill--buy {
+  background: rgba(0, 230, 118, 0.15);
+  color: var(--bullish);
+  border-color: rgba(0, 230, 118, 0.4);
+}
+
+.action-pill.pill--sell {
+  background: rgba(255, 23, 68, 0.15);
+  color: var(--bearish);
+  border-color: rgba(255, 23, 68, 0.4);
+}
+
+.action-headline {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  text-align: left;
+}
+
+/* ── Trade Setup Panel (When to Buy/Sell) ── */
+.trade-setup-panel {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.badge-tag {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  font-weight: 600;
+}
+
+.trade-targets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: var(--space-md);
+}
+
+.target-card {
+  padding: 10px 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: transform var(--transition-fast);
+}
+
+.target-card:hover {
+  transform: translateY(-1px);
+}
+
+.target-card--entry {
+  border-left: 3px solid var(--accent-blue);
+}
+
+.target-card--tp1 {
+  border-left: 3px solid var(--bullish);
+}
+
+.target-card--tp2 {
+  border-left: 3px solid #00b0ff;
+}
+
+.target-card--sl {
+  border-left: 3px solid var(--bearish);
+}
+
+.target-card__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.target-card__price {
+  font-size: 1.05rem;
+  font-weight: 800;
   font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.target-card__sub {
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.risk-reward-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+  font-size: 0.8rem;
+}
+
+.risk-reward-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.risk-reward-value {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--accent-blue);
+}
+
+/* Trade Checklist (When to act) */
+.trade-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checklist-item {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.checklist-item__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.checklist-item__badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.checklist-item.enter .checklist-item__badge {
+  background: rgba(0, 230, 118, 0.2);
+  color: var(--bullish);
+  border: 1px solid rgba(0, 230, 118, 0.4);
+}
+
+.checklist-item.target .checklist-item__badge {
+  background: rgba(0, 212, 255, 0.2);
+  color: var(--accent-blue);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+}
+
+.checklist-item.exit .checklist-item__badge {
+  background: rgba(255, 23, 68, 0.2);
+  color: var(--bearish);
+  border: 1px solid rgba(255, 23, 68, 0.4);
+}
+
+.checklist-item.wait .checklist-item__badge {
+  background: rgba(255, 215, 64, 0.2);
+  color: var(--neutral);
+  border: 1px solid rgba(255, 215, 64, 0.4);
+}
+
+.checklist-item__text {
+  color: var(--text-secondary);
+}
+
+.checklist-item__text strong {
+  color: var(--text-primary);
 }
 
 /* Trend Direction */

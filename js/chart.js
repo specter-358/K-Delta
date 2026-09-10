@@ -233,6 +233,90 @@ const ChartManager = (() => {
     markers = uniqueMarkers;
   }
 
+  let tradePriceLines = [];
+
+  /**
+   * Set visual horizontal trade target levels on the chart
+   * @param {Object} setup - Trade setup object
+   */
+  function setTradeLevels(setup) {
+    if (!candleSeries) return;
+    clearTradeLevels();
+
+    if (!setup || !setup.hasSetup) return;
+
+    try {
+      const isBuy = setup.type === 'BUY';
+
+      // 1. Entry Line (Cyan / Blue)
+      if (setup.entryPrice) {
+        const entryLine = candleSeries.createPriceLine({
+          price: setup.entryPrice,
+          color: '#00e5ff',
+          lineWidth: 2,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: isBuy ? '🎯 BUY ENTRY' : '🎯 SELL ENTRY',
+        });
+        tradePriceLines.push(entryLine);
+      }
+
+      // 2. Take Profit 1 Line (Bullish Green)
+      if (setup.target1) {
+        const tp1Line = candleSeries.createPriceLine({
+          price: setup.target1,
+          color: '#00e676',
+          lineWidth: 2,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `TP1 (${setup.target1Pct || ''})`,
+        });
+        tradePriceLines.push(tp1Line);
+      }
+
+      // 3. Take Profit 2 Line (Cyan Green / Extended Target)
+      if (setup.target2) {
+        const tp2Line = candleSeries.createPriceLine({
+          price: setup.target2,
+          color: '#00b0ff',
+          lineWidth: 1,
+          lineStyle: LightweightCharts.LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: `TP2 (${setup.target2Pct || ''})`,
+        });
+        tradePriceLines.push(tp2Line);
+      }
+
+      // 4. Stop Loss Line (Bearish Red)
+      if (setup.stopLoss) {
+        const slLine = candleSeries.createPriceLine({
+          price: setup.stopLoss,
+          color: '#ff1744',
+          lineWidth: 2,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `STOP LOSS (${setup.stopLossPct || ''})`,
+        });
+        tradePriceLines.push(slLine);
+      }
+    } catch (e) {
+      console.warn('Error creating trade price lines:', e);
+    }
+  }
+
+  /**
+   * Clear all trade level price lines
+   */
+  function clearTradeLevels() {
+    if (!candleSeries) return;
+    tradePriceLines.forEach(line => {
+      try {
+        candleSeries.removePriceLine(line);
+      } catch (e) {}
+    });
+    tradePriceLines = [];
+  }
+
   /**
    * Format time for Lightweight Charts
    * Supports "YYYY-MM-DD" and "YYYY-MM-DD HH:MM:SS" formats
@@ -275,6 +359,7 @@ const ChartManager = (() => {
    */
   function destroy() {
     if (chart) {
+      clearTradeLevels();
       chart.remove();
       chart = null;
       candleSeries = null;
@@ -291,6 +376,8 @@ const ChartManager = (() => {
     removeOverlay,
     clearOverlays,
     setPatternMarkers,
+    setTradeLevels,
+    clearTradeLevels,
     scrollToLatest,
     getChart,
     destroy,

@@ -82,19 +82,38 @@ const Predictions = (() => {
     totalScore += volumeScore.score * 0.10;
     if (volumeScore.reason) reasons.push(volumeScore.reason);
 
-    // ── 5. Determine Signal ──
-    let signal, confidence;
+    // ── 5. Determine Signal & Action ──
+    let signal, action, actionType, confidence;
 
-    if (totalScore > 25) {
+    if (totalScore > 50) {
       signal = 'BUY';
-      confidence = Math.min(95, Math.round(50 + totalScore * 0.45));
-    } else if (totalScore < -25) {
+      action = 'STRONG BUY';
+      actionType = 'strong-buy';
+      confidence = Math.min(96, Math.round(65 + totalScore * 0.35));
+    } else if (totalScore > 20) {
+      signal = 'BUY';
+      action = 'BUY ON PULLBACK';
+      actionType = 'buy';
+      confidence = Math.min(90, Math.round(50 + totalScore * 0.45));
+    } else if (totalScore < -50) {
       signal = 'SELL';
-      confidence = Math.min(95, Math.round(50 + Math.abs(totalScore) * 0.45));
+      action = 'STRONG SELL';
+      actionType = 'strong-sell';
+      confidence = Math.min(96, Math.round(65 + Math.abs(totalScore) * 0.35));
+    } else if (totalScore < -20) {
+      signal = 'SELL';
+      action = 'SELL ON RALLY';
+      actionType = 'sell';
+      confidence = Math.min(90, Math.round(50 + Math.abs(totalScore) * 0.45));
     } else {
       signal = 'HOLD';
+      action = 'WAIT / NO TRADE';
+      actionType = 'hold';
       confidence = Math.round(50 - Math.abs(totalScore) * 0.3);
     }
+
+    // ── 5b. Compute Precise Trade Setup (Entry, Targets, Stop Loss, Timing) ──
+    const tradeSetup = calculateTradeSetup(lastClose, currentATR, signal, action, trend, bbResult, lastIdx);
 
     // ── 6. Build Indicator Summary ──
     const rsiStatusObj = Indicators.rsiStatus(currentRSI);
@@ -149,15 +168,205 @@ const Predictions = (() => {
 
     return {
       signal,
+      action,
+      actionType,
       confidence,
       trend: trend.direction,
       trendStrength: trend.strength,
+      tradeSetup,
       reasons,
       patterns,
       indicators,
       overlays,
       score: totalScore,
     };
+  }
+
+  /**
+   * Calculate precise trade entry, stop loss, take profit targets, and exact timing rules
+   */
+  function calculateTradeSetup(currentPrice, atr, signal, action, trend, bbResult, lastIdx) {
+    const validATR = (atr && atr > 0) ? atr : (currentPrice * 0.015);
+    const bbUpper = bbResult.upper[lastIdx] || (currentPrice + 2 * validATR);
+    const bbLower = bbResult.lower[lastIdx] || (currentPrice - 2 * validATR);
+
+    let entry = currentPrice;
+    let entryMin, entryMax, stopLoss, target1, target2, riskReward, actionHeadline, timingAdvice, checklist;
+
+    if (signal === 'BUY') {
+      const isStrong = action === 'STRONG BUY';
+      entry = currentPrice;
+      entryMin = +(currentPrice - validATR * 0.3).toFixed(2);
+      entryMax = +(currentPrice + validATR * 0.2).toFixed(2);
+
+      // Stop loss 1.5 ATR below entry
+      stopLoss = +(currentPrice - validATR * 1.5).toFixed(2);
+      // Target 1: 2 ATR above or upper BB
+      target1 = +(Math.max(currentPrice + validATR * 2.0, (bbUpper + currentPrice) / 2)).toFixed(2);
+      // Target 2: 3.5 ATR above
+      target2 = +(currentPrice + validATR * 3.5).toFixed(2);
+
+      const risk = entry - stopLoss;
+      const reward = target1 - entry;
+      riskReward = (reward / (risk || 1)).toFixed(1);
+
+      const riskPct = (((stopLoss - entry) / entry) * 100).toFixed(2);
+      const target1Pct = (((target1 - entry) / entry) * 100).toFixed(2);
+      const target2Pct = (((target2 - entry) / entry) * 100).toFixed(2);
+
+      actionHeadline = isStrong
+        ? `🟢 BUY NOW — High conviction bullish setup at $${entry.toFixed(2)}`
+        : `🟢 BUY ON PULLBACK — Accumulate between $${entryMin.toFixed(2)} - $${entryMax.toFixed(2)}`;
+
+      timingAdvice = isStrong
+        ? `Enter market order or limit at $${entry.toFixed(2)}. Bullish patterns and indicator momentum confirm strong upside probability.`
+        : `Place limit buy order between $${entryMin.toFixed(2)} and $${entry.toFixed(2)}. Wait for a slight dip before entering to maximize risk-reward.`;
+
+      checklist = [
+        {
+          type: 'enter',
+          label: 'WHEN TO BUY',
+          text: `Enter long position around **$${entry.toFixed(2)}** (Optimal Zone: $${entryMin.toFixed(2)} – $${entryMax.toFixed(2)}).`,
+        },
+        {
+          type: 'target',
+          label: 'WHEN TO TAKE PROFIT',
+          text: `Sell 50% at **Target 1 ($${target1.toFixed(2)} / +${target1Pct}%)**. Let remaining 50% run to **Target 2 ($${target2.toFixed(2)} / +${target2Pct}%)** while moving stop to breakeven.`,
+        },
+        {
+          type: 'exit',
+          label: 'WHEN TO SELL / CUT LOSS',
+          text: `Exit 100% if candle closes below **Stop Loss ($${stopLoss.toFixed(2)} / ${riskPct}%)** to protect capital.`,
+        },
+      ];
+
+      return {
+        hasSetup: true,
+        type: 'BUY',
+        actionHeadline,
+        timingAdvice,
+        entryPrice: entry,
+        entryZone: `$${entryMin.toFixed(2)} – $${entryMax.toFixed(2)}`,
+        stopLoss,
+        stopLossPct: `${riskPct}%`,
+        target1,
+        target1Pct: `+${target1Pct}%`,
+        target2,
+        target2Pct: `+${target2Pct}%`,
+        riskReward: `1 : ${riskReward}`,
+        timeHorizon: '1 – 5 Days (Swing)',
+        checklist,
+      };
+
+    } else if (signal === 'SELL') {
+      const isStrong = action === 'STRONG SELL';
+      entry = currentPrice;
+      entryMin = +(currentPrice - validATR * 0.2).toFixed(2);
+      entryMax = +(currentPrice + validATR * 0.3).toFixed(2);
+
+      // Stop loss 1.5 ATR above entry
+      stopLoss = +(currentPrice + validATR * 1.5).toFixed(2);
+      // Target 1: 2 ATR below or lower BB
+      target1 = +(Math.min(currentPrice - validATR * 2.0, (bbLower + currentPrice) / 2)).toFixed(2);
+      // Target 2: 3.5 ATR below
+      target2 = +(currentPrice - validATR * 3.5).toFixed(2);
+
+      const risk = stopLoss - entry;
+      const reward = entry - target1;
+      riskReward = (reward / (risk || 1)).toFixed(1);
+
+      const riskPct = (((entry - stopLoss) / entry) * 100).toFixed(2);
+      const target1Pct = (((target1 - entry) / entry) * 100).toFixed(2);
+      const target2Pct = (((target2 - entry) / entry) * 100).toFixed(2);
+
+      actionHeadline = isStrong
+        ? `🔴 SELL / TAKE PROFIT NOW — Heavy bearish pressure at $${entry.toFixed(2)}`
+        : `🔴 SELL ON RALLY — Exit long positions or short into resistance at $${entryMax.toFixed(2)}`;
+
+      timingAdvice = isStrong
+        ? `Close active long positions immediately or consider short entry at $${entry.toFixed(2)}. Technical breakdown is in progress.`
+        : `Sell into current mini-bounces between $${entry.toFixed(2)} - $${entryMax.toFixed(2)}. Avoid holding long positions as overhead supply is high.`;
+
+      checklist = [
+        {
+          type: 'enter',
+          label: 'WHEN TO SELL / SHORT',
+          text: `Liquidate longs or enter short around **$${entry.toFixed(2)}** (Rally Zone: $${entry.toFixed(2)} – $${entryMax.toFixed(2)}).`,
+        },
+        {
+          type: 'target',
+          label: 'WHEN TO BUY BACK (COVER)',
+          text: `Cover 50% short at **Target 1 ($${target1.toFixed(2)} / ${target1Pct}%)**. Take remaining profit at **Target 2 ($${target2.toFixed(2)} / ${target2Pct}%)**.`,
+        },
+        {
+          type: 'exit',
+          label: 'STOP LOSS FOR SHORTS',
+          text: `Exit short if price closes above **Stop Loss ($${stopLoss.toFixed(2)} / +${Math.abs(riskPct)}%)**.`,
+        },
+      ];
+
+      return {
+        hasSetup: true,
+        type: 'SELL',
+        actionHeadline,
+        timingAdvice,
+        entryPrice: entry,
+        entryZone: `$${entryMin.toFixed(2)} – $${entryMax.toFixed(2)}`,
+        stopLoss,
+        stopLossPct: `+${Math.abs(riskPct)}%`,
+        target1,
+        target1Pct: `${target1Pct}%`,
+        target2,
+        target2Pct: `${target2Pct}%`,
+        riskReward: `1 : ${riskReward}`,
+        timeHorizon: '1 – 5 Days (Swing)',
+        checklist,
+      };
+
+    } else {
+      // HOLD / WAIT
+      const breakoutBuy = +(currentPrice + validATR * 1.2).toFixed(2);
+      const breakdownSell = +(currentPrice - validATR * 1.2).toFixed(2);
+
+      actionHeadline = `⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $${currentPrice.toFixed(2)}`;
+      timingAdvice = `Do not take new positions right now. Wait for a clear breakout above $${breakoutBuy.toFixed(2)} (Buy trigger) or breakdown below $${breakdownSell.toFixed(2)} (Sell trigger).`;
+
+      checklist = [
+        {
+          type: 'wait',
+          label: 'WHEN TO BUY (TRIGGER)',
+          text: `Buy only if candle breaks out and closes above **$${breakoutBuy.toFixed(2)}** with rising volume.`,
+        },
+        {
+          type: 'wait',
+          label: 'WHEN TO SELL (TRIGGER)',
+          text: `Sell / Short only if candle breaks down below **$${breakdownSell.toFixed(2)}** support.`,
+        },
+        {
+          type: 'hold',
+          label: 'CURRENT ACTION',
+          text: `Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently.`,
+        },
+      ];
+
+      return {
+        hasSetup: false,
+        type: 'HOLD',
+        actionHeadline,
+        timingAdvice,
+        entryPrice: currentPrice,
+        entryZone: `Consolidation ($${breakdownSell.toFixed(2)} – $${breakoutBuy.toFixed(2)})`,
+        stopLoss: breakdownSell,
+        stopLossPct: 'Trigger',
+        target1: breakoutBuy,
+        target1Pct: 'Trigger',
+        target2: +(breakoutBuy + validATR).toFixed(2),
+        target2Pct: 'Trigger',
+        riskReward: 'N/A',
+        timeHorizon: 'Wait for Breakout',
+        checklist,
+      };
+    }
   }
 
   /**

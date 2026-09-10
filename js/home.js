@@ -181,7 +181,11 @@ async function loadRecentStocks() {
         ? 'badge--bearish'
         : 'badge--neutral';
     const badgeIcon =
-      prediction.signal === 'BUY' ? '🟢' : prediction.signal === 'SELL' ? '🔴' : '🟡';
+      prediction.signal === 'BUY' ? '▲' : prediction.signal === 'SELL' ? '▼' : '■';
+    const actionText = prediction.action || prediction.signal;
+    const targetText = prediction.tradeSetup && prediction.tradeSetup.hasSetup
+      ? `Target: $${prediction.tradeSetup.target1.toFixed(2)} (${prediction.tradeSetup.target1Pct})`
+      : 'Consolidation';
 
     cards.push(`
       <a class="stock-card" href="dashboard.html?symbol=${stock.symbol}" onclick="addRecentStock('${stock.symbol}', '${(quote.name || stock.name || '').replace(/'/g, "\\'")}')">
@@ -194,7 +198,7 @@ async function loadRecentStocks() {
             </div>
           </div>
           <span class="badge ${badgeClass} stock-card__prediction-badge">
-            ${badgeIcon} ${prediction.signal}
+            ${badgeIcon} ${actionText}
           </span>
         </div>
         <div class="stock-card__price-row">
@@ -203,9 +207,12 @@ async function loadRecentStocks() {
             ${formatChange(quote.change)} (${formatPercent(quote.percentChange)})
           </span>
         </div>
+        <div class="stock-card__target-preview" style="font-size:0.75rem; color:var(--text-secondary); margin:6px 0 2px; font-family:var(--font-mono)">
+          🎯 ${targetText}
+        </div>
         <div class="stock-card__footer">
           <span class="stock-card__visit-time">Visited ${timeAgo(stock.timestamp)}</span>
-          <span class="stock-card__action">Analyze →</span>
+          <span class="stock-card__action">Trade Plan →</span>
         </div>
       </a>`);
   }

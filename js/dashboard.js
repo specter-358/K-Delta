@@ -6,7 +6,7 @@ let currentSymbol = 'AAPL';
 let currentInterval = '1day';
 let currentCandles = [];
 let currentPrediction = null;
-let activeOverlays = new Set(['sma20', 'sma50']);
+let activeOverlays = new Set(['targets', 'sma20', 'sma50']);
 let refreshTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -86,13 +86,13 @@ async function loadSymbol(symbol, isRefresh = false) {
     // Set volume
     ChartManager.setVolume(prediction.overlays.volume);
 
-    // Set active overlays
+    // Set active overlays & trade levels
     updateOverlays(prediction);
 
     // Set pattern markers on chart
     ChartManager.setPatternMarkers(prediction.patterns, candles);
 
-    // Update prediction panel
+    // Update prediction panel & trade setup
     updatePredictionPanel(prediction);
 
     // Update watchlist active state
@@ -129,6 +129,13 @@ function updateChartHeader(quote) {
 function updateOverlays(prediction) {
   ChartManager.clearOverlays();
 
+  // Trade Target Lines
+  if (activeOverlays.has('targets') && prediction.tradeSetup) {
+    ChartManager.setTradeLevels(prediction.tradeSetup);
+  } else {
+    ChartManager.clearTradeLevels();
+  }
+
   if (activeOverlays.has('sma20') && prediction.overlays.sma20.length) {
     ChartManager.setOverlay('sma20', prediction.overlays.sma20);
   }
@@ -148,11 +155,16 @@ function updateOverlays(prediction) {
 }
 
 /**
- * Update the prediction sidebar
+ * Update the prediction sidebar and action setup
  */
 function updatePredictionPanel(prediction) {
-  // Signal badge
+  const setup = prediction.tradeSetup || {};
+
+  // 1. Signal badge & Action Pill
   const signalBadge = document.getElementById('signal-badge');
+  const actionPill = document.getElementById('action-pill');
+  const actionHeadline = document.getElementById('action-headline');
+
   if (signalBadge) {
     const signalClass =
       prediction.signal === 'BUY' ? 'signal-badge--buy' :
@@ -164,13 +176,100 @@ function updatePredictionPanel(prediction) {
     signalBadge.innerHTML = `${signalIcon} ${prediction.signal}`;
   }
 
-  // Confidence
+  if (actionPill) {
+    const pillClass =
+      prediction.signal === 'BUY' ? 'pill--buy' :
+      prediction.signal === 'SELL' ? 'pill--sell' : '';
+    actionPill.className = `action-pill ${pillClass}`;
+    actionPill.textContent = prediction.action || prediction.signal;
+  }
+
+  if (actionHeadline) {
+    actionHeadline.innerHTML = setup.actionHeadline || setup.timingAdvice || 'Analyzing market setup...';
+  }
+
+  // 2. Confidence
   const confEl = document.getElementById('signal-confidence');
   if (confEl) {
     confEl.innerHTML = `Confidence: <strong>${prediction.confidence}%</strong>`;
   }
 
-  // Trend
+  // 3. Action Alert Banner (top of chart)
+  const banner = document.getElementById('action-alert-banner');
+  const bannerBadge = document.getElementById('banner-action-badge');
+  const bannerText = document.getElementById('banner-action-text');
+  const bannerLevels = document.getElementById('banner-action-levels');
+
+  if (banner && setup.hasSetup) {
+    banner.className = `action-alert-banner ${prediction.signal === 'BUY' ? 'banner--buy' : 'banner--sell'}`;
+    if (bannerBadge) {
+      bannerBadge.textContent = prediction.action || (prediction.signal === 'BUY' ? 'BUY SETUP' : 'SELL SETUP');
+    }
+    if (bannerText) {
+      bannerText.textContent = setup.timingAdvice || setup.actionHeadline;
+    }
+    if (bannerLevels) {
+      bannerLevels.innerHTML = `
+        <span class="action-alert-banner__level-item">Entry: <strong>$${setup.entryPrice.toFixed(2)}</strong></span>
+        <span class="action-alert-banner__level-item price-up">TP1: <strong>$${setup.target1.toFixed(2)} (${setup.target1Pct})</strong></span>
+        <span class="action-alert-banner__level-item price-down">Stop: <strong>$${setup.stopLoss.toFixed(2)} (${setup.stopLossPct})</strong></span>
+        <span class="action-alert-banner__level-item">R:R <strong>${setup.riskReward}</strong></span>
+      `;
+    }
+  } else if (banner) {
+    banner.className = 'action-alert-banner';
+    if (bannerBadge) bannerBadge.textContent = 'CONSOLIDATION';
+    if (bannerText) bannerText.textContent = setup.timingAdvice || 'Market moving sideways. Wait for clear breakout trigger.';
+    if (bannerLevels) {
+      bannerLevels.innerHTML = `<span class="action-alert-banner__level-item">Range: <strong>${setup.entryZone || '—'}</strong></span>`;
+    }
+  }
+
+  // 4. Trade Setup Panel (When to Buy/Sell)
+  const horizonBadge = document.getElementById('trade-horizon-badge');
+  if (horizonBadge && setup.timeHorizon) {
+    horizonBadge.textContent = setup.timeHorizon;
+  }
+
+  const entryPriceEl = document.getElementById('target-entry-price');
+  const entryZoneEl = document.getElementById('target-entry-zone');
+  const tp1PriceEl = document.getElementById('target-tp1-price');
+  const tp1PctEl = document.getElementById('target-tp1-pct');
+  const tp2PriceEl = document.getElementById('target-tp2-price');
+  const tp2PctEl = document.getElementById('target-tp2-pct');
+  const slPriceEl = document.getElementById('target-sl-price');
+  const slPctEl = document.getElementById('target-sl-pct');
+  const riskRewardEl = document.getElementById('risk-reward-value');
+
+  if (entryPriceEl) entryPriceEl.textContent = setup.entryPrice ? `$${setup.entryPrice.toFixed(2)}` : '—';
+  if (entryZoneEl) entryZoneEl.textContent = setup.entryZone || '—';
+  if (tp1PriceEl) tp1PriceEl.textContent = setup.target1 ? `$${setup.target1.toFixed(2)}` : '—';
+  if (tp1PctEl) tp1PctEl.textContent = setup.target1Pct || '—';
+  if (tp2PriceEl) tp2PriceEl.textContent = setup.target2 ? `$${setup.target2.toFixed(2)}` : '—';
+  if (tp2PctEl) tp2PctEl.textContent = setup.target2Pct || '—';
+  if (slPriceEl) slPriceEl.textContent = setup.stopLoss ? `$${setup.stopLoss.toFixed(2)}` : '—';
+  if (slPctEl) slPctEl.textContent = setup.stopLossPct || '—';
+  if (riskRewardEl) riskRewardEl.textContent = setup.riskReward || '1 : 2.0';
+
+  // 5. Checklist (When to act)
+  const checklistContainer = document.getElementById('trade-checklist');
+  if (checklistContainer && setup.checklist) {
+    checklistContainer.innerHTML = setup.checklist
+      .map(item => {
+        const parsedText = item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        return `
+          <div class="checklist-item ${item.type}">
+            <div class="checklist-item__header">
+              <span class="checklist-item__badge">${item.label}</span>
+            </div>
+            <div class="checklist-item__text">${parsedText}</div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  // 6. Trend
   const trendArrow = document.getElementById('trend-arrow');
   const trendValue = document.getElementById('trend-value');
   if (trendArrow && trendValue) {
@@ -192,7 +291,7 @@ function updatePredictionPanel(prediction) {
     }
   }
 
-  // Detected Patterns
+  // 7. Detected Patterns
   const patternList = document.getElementById('pattern-list');
   if (patternList) {
     if (prediction.patterns.length === 0) {
@@ -215,14 +314,13 @@ function updatePredictionPanel(prediction) {
     }
   }
 
-  // Technical Indicators
+  // 8. Technical Indicators
   updateIndicatorCards(prediction.indicators);
 
-  // Reasoning
+  // 9. Reasoning Summary
   const reasoningEl = document.getElementById('reasoning-text');
   if (reasoningEl) {
     const summary = Predictions.buildSummary(prediction);
-    // Convert markdown bold to HTML
     reasoningEl.innerHTML = summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   }
 }
@@ -322,14 +420,21 @@ function setupIndicatorButtons() {
       btn.classList.toggle('active');
       if (activeOverlays.has(overlay)) {
         activeOverlays.delete(overlay);
-        ChartManager.removeOverlay(overlay);
-        if (overlay === 'bb') {
+        if (overlay === 'targets') {
+          ChartManager.clearTradeLevels();
+        } else if (overlay === 'bb') {
           ChartManager.removeOverlay('bbUpper');
           ChartManager.removeOverlay('bbLower');
+        } else {
+          ChartManager.removeOverlay(overlay);
         }
       } else {
         activeOverlays.add(overlay);
-        if (currentPrediction) {
+        if (overlay === 'targets') {
+          if (currentPrediction && currentPrediction.tradeSetup) {
+            ChartManager.setTradeLevels(currentPrediction.tradeSetup);
+          }
+        } else if (currentPrediction) {
           updateOverlays(currentPrediction);
         }
       }

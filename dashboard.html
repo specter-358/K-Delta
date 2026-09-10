@@ -88,11 +88,23 @@
           </div>
         </div>
         <div class="chart-header__right">
+          <button class="chart-header__indicator-btn active" id="btn-toggle-targets" data-overlay="targets">🎯 Targets</button>
           <button class="chart-header__indicator-btn active" data-overlay="sma20">SMA 20</button>
           <button class="chart-header__indicator-btn active" data-overlay="sma50">SMA 50</button>
           <button class="chart-header__indicator-btn" data-overlay="ema12">EMA 12</button>
           <button class="chart-header__indicator-btn" data-overlay="ema26">EMA 26</button>
           <button class="chart-header__indicator-btn" data-overlay="bb">Bollinger</button>
+        </div>
+      </div>
+
+      <!-- Action Setup Callout Banner -->
+      <div class="action-alert-banner" id="action-alert-banner">
+        <div class="action-alert-banner__content">
+          <span class="action-alert-banner__badge" id="banner-action-badge">ANALYZING</span>
+          <span class="action-alert-banner__text" id="banner-action-text">Calculating optimal entry and exit price targets...</span>
+        </div>
+        <div class="action-alert-banner__levels" id="banner-action-levels">
+          <!-- Populated by JS -->
         </div>
       </div>
 
@@ -111,10 +123,57 @@
     <!-- ── Right Sidebar — Predictions ── -->
     <aside class="sidebar-right">
 
-      <!-- Overall Signal -->
+      <!-- Overall Signal & Action Card -->
       <div class="signal-header">
-        <div class="signal-badge signal-badge--hold" id="signal-badge">■ HOLD</div>
+        <div class="signal-badge-container">
+          <div class="signal-badge signal-badge--hold" id="signal-badge">■ HOLD</div>
+          <div class="action-pill" id="action-pill">WAIT</div>
+        </div>
         <div class="signal-confidence" id="signal-confidence">Confidence: <strong>0%</strong></div>
+        <div class="action-headline" id="action-headline">Analyzing market data...</div>
+      </div>
+
+      <!-- Trade Execution Setup (When to Buy / Sell) -->
+      <div class="panel-section trade-setup-panel">
+        <div class="panel-section__title">
+          <span>⚡ When to Buy & Sell</span>
+          <span class="badge-tag" id="trade-horizon-badge">Swing</span>
+        </div>
+
+        <!-- Price Target Grid -->
+        <div class="trade-targets-grid" id="trade-targets-grid">
+          <div class="target-card target-card--entry">
+            <div class="target-card__label">ENTRY ZONE</div>
+            <div class="target-card__price" id="target-entry-price">—</div>
+            <div class="target-card__sub" id="target-entry-zone">—</div>
+          </div>
+          <div class="target-card target-card--tp1">
+            <div class="target-card__label">TARGET 1 (TP1)</div>
+            <div class="target-card__price" id="target-tp1-price">—</div>
+            <div class="target-card__sub price-up" id="target-tp1-pct">—</div>
+          </div>
+          <div class="target-card target-card--tp2">
+            <div class="target-card__label">TARGET 2 (TP2)</div>
+            <div class="target-card__price" id="target-tp2-price">—</div>
+            <div class="target-card__sub price-up" id="target-tp2-pct">—</div>
+          </div>
+          <div class="target-card target-card--sl">
+            <div class="target-card__label">STOP LOSS</div>
+            <div class="target-card__price" id="target-sl-price">—</div>
+            <div class="target-card__sub price-down" id="target-sl-pct">—</div>
+          </div>
+        </div>
+
+        <!-- Risk / Reward Bar -->
+        <div class="risk-reward-row">
+          <span class="risk-reward-label">Risk/Reward Ratio:</span>
+          <span class="risk-reward-value" id="risk-reward-value">1 : 2.2</span>
+        </div>
+
+        <!-- Step-by-Step Trade Checklist -->
+        <div class="trade-checklist" id="trade-checklist">
+          <!-- Populated by JS -->
+        </div>
       </div>
 
       <!-- Trend Direction -->
