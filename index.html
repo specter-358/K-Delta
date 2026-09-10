@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>K-Delta — Real-Time Indian Stock Market Intelligence Terminal (NSE/BSE)</title>
   <meta name="description" content="Institutional-grade Indian stock market candlestick pattern recognition, multi-indicator confluence scoring, and volatility-adjusted entry/exit execution targets for NSE & BSE.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><path d='M30 70 L30 30 M30 40 L45 40 L45 60 L30 60 M55 80 L55 20 M55 30 L70 30 L70 55 L55 55' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round' fill='%2338bdf8' fill-opacity='0.2'/></svg>">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/home.css">
 </head>
-<body>
+<body class="dark-theme">
 
   <!-- ═══ Top Market Ticker Tape ═══ -->
   <div class="market-ticker-tape" id="market-ticker-tape">
@@ -44,15 +44,6 @@
       <span class="live-feed-badge">
         <span class="status-dot open"></span> Real-Time Feed Active (IST)
       </span>
-      <!-- Theme Switch Slider -->
-      <div class="theme-switch-wrapper" title="Toggle Light / Dark Theme">
-        <span class="theme-icon theme-icon--light">☀️</span>
-        <label class="theme-switch" for="theme-toggle-checkbox">
-          <input type="checkbox" id="theme-toggle-checkbox" onchange="toggleTheme(this.checked)" aria-label="Toggle Theme">
-          <span class="theme-slider"></span>
-        </label>
-        <span class="theme-icon theme-icon--dark">🌙</span>
-      </div>
     </div>
   </nav>
 
@@ -73,9 +64,16 @@
         <p class="hero__subtitle">
           Multi-timeframe candlestick pattern recognition, indicator confluence scoring, and volatility-adjusted entry, stop-loss, and profit targets for NSE & BSE stocks.
         </p>
+
+        <!-- Search Bar -->
         <div class="hero__search">
           <div class="search-box">
-            <span class="search-box__icon">🔍</span>
+            <span class="search-box__icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
             <input
               type="text"
               class="search-box__input"
@@ -100,6 +98,52 @@
             <button class="trending-pill" onclick="navigateToDashboard('SBIN.NS')">SBIN</button>
           </div>
         </div>
+
+        <!-- ═══ Centered Attach Image Feature ═══ -->
+        <div class="attach-image-section">
+          <div class="attach-image-card">
+            <!-- Dropzone -->
+            <div class="attach-image-dropzone" id="attach-image-dropzone">
+              <div class="attach-image-dropzone__icon-wrap">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <div>
+                <div class="attach-image-dropzone__title">Attach Chart Image / Screenshot</div>
+                <div class="attach-image-dropzone__subtitle">
+                  Drop your technical chart image here, click to browse, or press <strong style="color:var(--accent-blue)">Ctrl + V</strong> to paste from clipboard
+                </div>
+              </div>
+              <span class="attach-image-dropzone__badge">Supports PNG, JPG, WEBP</span>
+              <input type="file" id="attach-image-file-input" accept="image/*" style="display:none">
+            </div>
+
+            <!-- Preview Wrapper -->
+            <div class="attach-image-preview-wrap" id="attach-image-preview-wrap">
+              <div class="attach-image-preview-frame">
+                <img id="attach-image-preview-img" class="attach-image-preview-img" alt="Attached Chart Preview">
+              </div>
+              <div class="attach-image-meta">
+                <span id="attach-image-filename" style="font-weight:700;color:var(--text-primary)">chart.png</span>
+                <span id="attach-image-filesize">0 KB</span>
+              </div>
+              <div class="attach-image-actions">
+                <button class="btn btn--primary" id="btn-analyze-attached-image" style="flex:1">
+                  Analyze Chart Patterns
+                </button>
+                <button class="btn btn--ghost" id="btn-clear-attached-image">
+                  Clear
+                </button>
+              </div>
+              <!-- Simulated analysis result card -->
+              <div class="attach-image-analysis-result" id="attach-image-analysis-result"></div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -107,28 +151,52 @@
     <div class="container">
       <div class="capabilities-bar">
         <div class="capability-item">
-          <div class="capability-item__icon">🕯️</div>
+          <div class="capability-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="2" x2="12" y2="22"></line>
+              <rect x="8" y="6" width="8" height="12" rx="1" fill="currentColor" fill-opacity="0.2"></rect>
+            </svg>
+          </div>
           <div>
             <div class="capability-item__title">15+ Pattern Classifiers</div>
             <div class="capability-item__desc">Engulfing, Stars, Harami, Doji & Tweezers</div>
           </div>
         </div>
         <div class="capability-item">
-          <div class="capability-item__icon">📊</div>
+          <div class="capability-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+          </div>
           <div>
             <div class="capability-item__title">Confluence Matrix</div>
             <div class="capability-item__desc">RSI, MACD, Moving Averages & Volume</div>
           </div>
         </div>
         <div class="capability-item">
-          <div class="capability-item__icon">🎯</div>
+          <div class="capability-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="6"></circle>
+              <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+          </div>
           <div>
             <div class="capability-item__title">Volatility Targets (₹)</div>
             <div class="capability-item__desc">Dynamic ATR-based Entry, TP1, TP2 & SL</div>
           </div>
         </div>
         <div class="capability-item">
-          <div class="capability-item__icon">⚡</div>
+          <div class="capability-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </div>
           <div>
             <div class="capability-item__title">Persistent History</div>
             <div class="capability-item__desc">Full audit log of analyzed setups & signals</div>
@@ -201,7 +269,9 @@
         <div class="pattern-cards-grid">
           <div class="guide-pattern-card bullish">
             <div class="guide-pattern-card__header">
-              <span class="guide-pattern-card__name">🟢 Bullish Engulfing</span>
+              <span class="guide-pattern-card__name">
+                <span class="badge-dot bullish"></span> Bullish Engulfing
+              </span>
               <span class="guide-pattern-card__badge">High Reliability (84%)</span>
             </div>
             <div class="guide-pattern-card__desc">A small red candle completely engulfed by a large green candle after a downtrend. Confirms buyer dominance and supply exhaustion.</div>
@@ -213,7 +283,9 @@
 
           <div class="guide-pattern-card bullish">
             <div class="guide-pattern-card__header">
-              <span class="guide-pattern-card__name">🟢 Morning Star</span>
+              <span class="guide-pattern-card__name">
+                <span class="badge-dot bullish"></span> Morning Star
+              </span>
               <span class="guide-pattern-card__badge">High Reliability (88%)</span>
             </div>
             <div class="guide-pattern-card__desc">Three-candle bullish reversal: long red bar, gap-down indecision star/doji, and strong green bar closing well into the first candle's body.</div>
@@ -225,7 +297,9 @@
 
           <div class="guide-pattern-card bearish">
             <div class="guide-pattern-card__header">
-              <span class="guide-pattern-card__name">🔴 Evening Star</span>
+              <span class="guide-pattern-card__name">
+                <span class="badge-dot bearish"></span> Evening Star
+              </span>
               <span class="guide-pattern-card__badge">High Reliability (86%)</span>
             </div>
             <div class="guide-pattern-card__desc">Three-candle bearish reversal at market peaks. Long green candle, gap-up indecision candle, followed by strong red candle closing into the first body.</div>
@@ -237,7 +311,9 @@
 
           <div class="guide-pattern-card bearish">
             <div class="guide-pattern-card__header">
-              <span class="guide-pattern-card__name">🔴 Bearish Engulfing</span>
+              <span class="guide-pattern-card__name">
+                <span class="badge-dot bearish"></span> Bearish Engulfing
+              </span>
               <span class="guide-pattern-card__badge">High Reliability (82%)</span>
             </div>
             <div class="guide-pattern-card__desc">A small green candle completely engulfed by a larger red candle at resistance. Signals aggressive institutional distribution.</div>

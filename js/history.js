@@ -23,7 +23,7 @@ function startLiveClock() {
   const clockEl = document.getElementById('live-ist-clock');
   function update() {
     if (clockEl) {
-      clockEl.textContent = `🇮🇳 ${formatISTTime()}`;
+      clockEl.textContent = `${formatISTTime()}`;
     }
   }
   update();

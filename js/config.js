@@ -237,60 +237,38 @@ function showToast(message, type = 'info') {
 }
 
 /* ═════════════════════════════════════════════════════════════
-   THEME MANAGEMENT (LIGHT / DARK THEME SLIDER)
+   THEME MANAGEMENT (LOCKED DARK INTERFACE)
    ═════════════════════════════════════════════════════════════ */
 
 /**
- * Get saved theme preference
+ * Get saved theme preference - Always Dark Interface
  */
 function getSavedTheme() {
-  return localStorage.getItem('kdelta_theme') || 'light';
+  return 'dark';
 }
 
 /**
- * Apply theme to document and chart
+ * Apply dark theme to document and chart
  */
-function applyTheme(theme) {
-  const isDark = theme === 'dark';
-  if (isDark) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    if (document.body) document.body.classList.add('dark-theme');
-  } else {
-    document.documentElement.setAttribute('data-theme', 'light');
-    if (document.body) document.body.classList.remove('dark-theme');
-  }
-  localStorage.setItem('kdelta_theme', theme);
-
-  // Sync checkbox state
-  const checkbox = document.getElementById('theme-toggle-checkbox');
-  if (checkbox) {
-    checkbox.checked = isDark;
-  }
+function applyTheme(theme = 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  if (document.body) document.body.classList.add('dark-theme');
+  localStorage.setItem('kdelta_theme', 'dark');
 
   // Update chart if initialized
   if (typeof ChartManager !== 'undefined' && ChartManager.updateTheme) {
-    ChartManager.updateTheme(theme);
+    ChartManager.updateTheme('dark');
   }
 }
 
 /**
- * Toggle theme when switch slider is clicked
- */
-function toggleTheme(isDark) {
-  const theme = isDark ? 'dark' : 'light';
-  applyTheme(theme);
-  showToast(isDark ? '🌙 Dark Mode activated' : '☀️ Light Mode activated', 'info');
-}
-
-/**
- * Initialize theme on page load
+ * Initialize dark theme on page load
  */
 function initTheme() {
-  const saved = getSavedTheme();
-  applyTheme(saved);
+  applyTheme('dark');
 }
 
-// Run immediately to prevent flash of wrong theme
+// Run immediately
 initTheme();
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();

@@ -72,11 +72,10 @@ const ChartManager = (() => {
 
     containerEl = container;
 
-    const isDark = (typeof getSavedTheme === 'function' ? getSavedTheme() : 'light') === 'dark';
-    const bgColor = isDark ? '#0d121f' : '#ffffff';
-    const textColor = isDark ? '#94a3b8' : '#334155';
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9';
-    const borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0';
+    const bgColor = '#080b11';
+    const textColor = '#94a3b8';
+    const gridColor = 'rgba(255, 255, 255, 0.04)';
+    const borderColor = 'rgba(255, 255, 255, 0.08)';
 
     chart = LightweightCharts.createChart(container, {
       width: container.clientWidth || 800,
@@ -435,7 +434,7 @@ const ChartManager = (() => {
 
       // 1. Entry Line (Blue)
       if (setup.entryPrice) {
-        const entryTitle = isBuy ? '🎯 BUY ENTRY' : isSell ? '🎯 SELL ENTRY' : '🎯 ENTRY ZONE';
+        const entryTitle = isBuy ? 'BUY ENTRY' : isSell ? 'SELL ENTRY' : 'ENTRY ZONE';
         const entryLine = candleSeries.createPriceLine({
           price: setup.entryPrice,
           color: '#2563eb',
@@ -510,11 +509,10 @@ const ChartManager = (() => {
    */
   function updateTheme(theme) {
     if (!chart) return;
-    const isDark = theme === 'dark';
     chart.applyOptions({
       layout: {
-        background: { type: 'solid', color: isDark ? '#0d121f' : '#ffffff' },
-        textColor: isDark ? '#94a3b8' : '#334155',
+        background: { type: 'solid', color: '#080b11' },
+        textColor: '#94a3b8',
       },
       grid: {
         vertLines: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9' },

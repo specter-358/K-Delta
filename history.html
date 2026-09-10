@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>K-Delta — Analysis & Market Observation History (NSE/BSE)</title>
   <meta name="description" content="Persistent institutional observation and algorithmic trade signal history for Indian equities and indices.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><path d='M30 70 L30 30 M30 40 L45 40 L45 60 L30 60 M55 80 L55 20 M55 30 L70 30 L70 55 L55 55' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round' fill='%2338bdf8' fill-opacity='0.2'/></svg>">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/history.css">
 </head>
-<body>
+<body class="dark-theme">
 
   <!-- ═══ Top Market Ticker Tape ═══ -->
   <div class="market-ticker-tape" id="market-ticker-tape">
@@ -36,15 +36,6 @@
     </div>
     <div class="navbar__market-status">
       <span class="live-clock-badge" id="live-ist-clock">Loading IST...</span>
-      <!-- Theme Switch Slider -->
-      <div class="theme-switch-wrapper" title="Toggle Light / Dark Theme">
-        <span class="theme-icon theme-icon--light">☀️</span>
-        <label class="theme-switch" for="theme-toggle-checkbox">
-          <input type="checkbox" id="theme-toggle-checkbox" onchange="toggleTheme(this.checked)" aria-label="Toggle Theme">
-          <span class="theme-slider"></span>
-        </label>
-        <span class="theme-icon theme-icon--dark">🌙</span>
-      </div>
     </div>
   </nav>
 
@@ -64,10 +55,19 @@
       </div>
       <div class="history-actions">
         <button class="btn btn--ghost btn--sm" onclick="loadHistoryRecords()" title="Refresh records">
-          🔄 Refresh
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Refresh
         </button>
         <button class="btn btn--danger btn--sm" onclick="confirmClearHistory()" id="btn-clear-history">
-          🗑️ Clear All History
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Clear All History
         </button>
       </div>
     </div>
@@ -75,7 +75,12 @@
     <!-- History Filters & Search -->
     <div class="history-controls">
       <div class="history-search-wrap">
-        <span class="search-icon">🔍</span>
+        <span class="search-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </span>
         <input 
           type="text" 
           id="history-search-input" 
@@ -85,9 +90,15 @@
       </div>
       <div class="history-filter-pills">
         <button class="filter-pill active" data-filter="ALL" onclick="filterHistory('ALL')">All Records</button>
-        <button class="filter-pill" data-filter="BUY" onclick="filterHistory('BUY')">🟢 Buy Signals</button>
-        <button class="filter-pill" data-filter="SELL" onclick="filterHistory('SELL')">🔴 Sell Signals</button>
-        <button class="filter-pill" data-filter="HOLD" onclick="filterHistory('HOLD')">⚪ Neutral / Hold</button>
+        <button class="filter-pill" data-filter="BUY" onclick="filterHistory('BUY')">
+          <span class="badge-dot bullish"></span> Buy Signals
+        </button>
+        <button class="filter-pill" data-filter="SELL" onclick="filterHistory('SELL')">
+          <span class="badge-dot bearish"></span> Sell Signals
+        </button>
+        <button class="filter-pill" data-filter="HOLD" onclick="filterHistory('HOLD')">
+          <span class="badge-dot neutral"></span> Neutral / Hold
+        </button>
       </div>
     </div>
 
@@ -114,7 +125,11 @@
 
       <!-- Empty State -->
       <div class="history-empty-state hidden" id="history-empty-state">
-        <div class="empty-icon">📂</div>
+        <div class="empty-icon-wrap">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
         <div class="empty-title">No history available yet</div>
         <div class="empty-desc">
           Start analyzing an Indian stock or index in the Terminal to automatically create persistent quantitative records.

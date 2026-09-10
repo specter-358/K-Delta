@@ -1,6 +1,6 @@
 /* ============================================================
    K-Delta — Terminal Dashboard Styles
-   Clean Light Mode (Zerodha Kite / TradingView / Groww Aesthetic)
+   Dark Interface (NSE / BSE Real-Time Production Terminal)
    ============================================================ */
 
 .dashboard {
@@ -15,7 +15,7 @@
    1. LEFT SIDEBAR (SEARCH, RESOLUTION, WATCHLIST)
    ═════════════════════════════════════════════════════════════ */
 .sidebar-left {
-  background: #ffffff;
+  background: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
   padding: var(--space-md);
   display: flex;
@@ -32,7 +32,7 @@
 .sidebar-left__search .search-box__input {
   padding: 10px 14px 10px 38px;
   font-size: 0.85rem;
-  background: #f8fafc;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
 }
@@ -44,7 +44,7 @@
 
 /* ── Timeframe Resolution Selector ── */
 .timeframe-selector {
-  background: #f8fafc;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 8px 10px;
@@ -71,7 +71,7 @@
   font-weight: 700;
   font-family: var(--font-mono);
   color: var(--text-secondary);
-  background: #ffffff;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xs);
   text-align: center;
@@ -79,15 +79,16 @@
 }
 
 .timeframe-btn:hover {
-  background: #f1f5f9;
+  background: var(--bg-card-hover);
   color: var(--text-primary);
 }
 
 .timeframe-btn.active {
-  background: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
-  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+  background: var(--accent-blue);
+  color: #080b11;
+  border-color: var(--accent-blue);
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgba(56, 189, 248, 0.25);
 }
 
 /* ── Watchlist ── */
@@ -124,7 +125,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  background: #ffffff;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -132,13 +133,13 @@
 }
 
 .watchlist-item:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
 }
 
 .watchlist-item.active {
-  background: #eff6ff;
-  border-color: #93c5fd;
+  background: var(--accent-blue-dim);
+  border-color: var(--accent-blue);
 }
 
 .watchlist-item__symbol {
@@ -180,7 +181,7 @@
 .chart-area {
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--bg-primary);
   border-right: 1px solid var(--border-color);
   position: relative;
   overflow: hidden;
@@ -191,7 +192,7 @@
 /* ── Chart Header ── */
 .chart-header {
   padding: 10px var(--space-md);
-  background: #ffffff;
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -249,28 +250,28 @@
   font-size: 0.74rem;
   font-weight: 700;
   color: var(--text-secondary);
-  background: #f8fafc;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xs);
   transition: all var(--transition-fast);
 }
 
 .chart-header__indicator-btn:hover {
-  background: #f1f5f9;
+  background: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
 .chart-header__indicator-btn.active {
-  background: #eff6ff;
-  color: #2563eb;
-  border-color: #93c5fd;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  box-shadow: 0 1px 2px rgba(56, 189, 248, 0.1);
 }
 
 /* ── Action Alert Callout Banner ── */
 .action-alert-banner {
   padding: 8px var(--space-md);
-  background: #f8fafc;
+  background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -280,13 +281,13 @@
 }
 
 .action-alert-banner.banner--buy {
-  background: rgba(8, 153, 129, 0.08);
-  border-bottom-color: rgba(8, 153, 129, 0.2);
+  background: rgba(16, 185, 129, 0.1);
+  border-bottom-color: rgba(16, 185, 129, 0.25);
 }
 
 .action-alert-banner.banner--sell {
-  background: rgba(242, 54, 69, 0.08);
-  border-bottom-color: rgba(242, 54, 69, 0.2);
+  background: rgba(244, 63, 94, 0.1);
+  border-bottom-color: rgba(244, 63, 94, 0.25);
 }
 
 .action-alert-banner__badge {
@@ -299,12 +300,12 @@
 
 .banner--buy .action-alert-banner__badge {
   background: var(--bullish);
-  color: #fff;
+  color: #080b11;
 }
 
 .banner--sell .action-alert-banner__badge {
   background: var(--bearish);
-  color: #fff;
+  color: #ffffff;
 }
 
 .action-alert-banner__levels {
@@ -326,7 +327,7 @@
   min-height: 560px;
   height: 100%;
   width: 100%;
-  background: #ffffff;
+  background: var(--bg-primary);
 }
 
 .chart-container__canvas, .chart-canvas, #chart-canvas {
@@ -345,7 +346,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(8, 11, 17, 0.85);
   backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
@@ -366,7 +367,7 @@
    3. RIGHT SIDEBAR (TRADE PLAN, ACCURACY, FORECAST, CONFLUENCE)
    ═════════════════════════════════════════════════════════════ */
 .sidebar-right {
-  background: #ffffff;
+  background: var(--bg-secondary);
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
@@ -379,7 +380,7 @@
 .inspector-tabs {
   display: flex;
   align-items: center;
-  background: #f1f5f9;
+  background: var(--bg-tertiary);
   padding: 3px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
@@ -397,14 +398,14 @@
 }
 
 .inspector-tab.active {
-  background: #ffffff;
-  color: #2563eb;
+  background: var(--bg-card);
+  color: var(--accent-blue);
   box-shadow: var(--shadow-sm);
 }
 
 /* ── Signal Header / Hero Card ── */
 .signal-header {
-  background: #f8fafc;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 14px;
@@ -431,40 +432,40 @@
 }
 
 .signal-badge--buy {
-  background: #089981;
-  color: #ffffff;
+  background: var(--bullish);
+  color: #080b11;
 }
 
 .signal-badge--sell {
-  background: #f23645;
+  background: var(--bearish);
   color: #ffffff;
 }
 
 .signal-badge--hold {
-  background: #d97706;
-  color: #ffffff;
+  background: var(--neutral);
+  color: #080b11;
 }
 
 .action-pill {
   padding: 3px 8px;
   font-size: 0.74rem;
   font-weight: 800;
-  background: #e2e8f0;
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   border-radius: var(--radius-xs);
   font-family: var(--font-mono);
 }
 
 .action-pill.pill--buy {
-  background: rgba(8, 153, 129, 0.15);
-  color: #089981;
-  border: 1px solid rgba(8, 153, 129, 0.3);
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--bullish);
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .action-pill.pill--sell {
-  background: rgba(242, 54, 69, 0.15);
-  color: #f23645;
-  border: 1px solid rgba(242, 54, 69, 0.3);
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--bearish);
+  border: 1px solid rgba(244, 63, 94, 0.3);
 }
 
 .signal-confidence {
@@ -488,7 +489,7 @@
 
 /* ── Panel Section Generic ── */
 .panel-section {
-  background: #f8fafc;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 12px;
@@ -513,7 +514,7 @@
   font-weight: 700;
   color: var(--accent-blue);
   background: var(--accent-blue-dim);
-  border: 1px solid rgba(37, 99, 235, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.2);
   padding: 2px 6px;
   border-radius: var(--radius-xs);
   text-transform: uppercase;
@@ -527,7 +528,7 @@
 }
 
 .target-card {
-  background: #ffffff;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
@@ -562,7 +563,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  background: #ffffff;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: 0.78rem;
@@ -580,7 +581,7 @@
 
 .checklist-item {
   padding: 8px 10px;
-  background: #ffffff;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: 0.78rem;
@@ -588,15 +589,15 @@
 }
 
 .checklist-item.entry {
-  border-left: 3px solid #2563eb;
+  border-left: 3px solid var(--accent-blue);
 }
 
 .checklist-item.tp {
-  border-left: 3px solid #089981;
+  border-left: 3px solid var(--bullish);
 }
 
 .checklist-item.sl {
-  border-left: 3px solid #f23645;
+  border-left: 3px solid var(--bearish);
 }
 
 .checklist-item__badge {
@@ -617,7 +618,7 @@
 }
 
 .backtest-metric-card {
-  background: #ffffff;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 10px;
@@ -659,7 +660,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background: #ffffff;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xs);
   font-size: 0.74rem;
@@ -674,18 +675,18 @@
 }
 
 .backtest-outcome-pill.WIN {
-  background: rgba(8, 153, 129, 0.15);
-  color: #089981;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--bullish);
 }
 
 .backtest-outcome-pill.LOSS {
-  background: rgba(242, 54, 69, 0.15);
-  color: #f23645;
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--bearish);
 }
 
 /* ── 5-Bar Forecast Tab ── */
 .forecast-probability-banner {
-  background: #ffffff;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 10px;
@@ -695,7 +696,7 @@
 
 .prob-progress-bar {
   height: 6px;
-  background: rgba(242, 54, 69, 0.2);
+  background: rgba(244, 63, 94, 0.2);
   border-radius: var(--radius-full);
   overflow: hidden;
   position: relative;
@@ -703,7 +704,7 @@
 
 .prob-progress-fill {
   height: 100%;
-  background: #089981;
+  background: var(--bullish);
   border-radius: var(--radius-full);
   transition: width var(--transition-slow);
 }
@@ -717,14 +718,14 @@
   border-collapse: collapse;
   font-size: 0.76rem;
   font-family: var(--font-mono);
-  background: #ffffff;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .forecast-table th {
-  background: #f8fafc;
+  background: var(--bg-tertiary);
   padding: 6px 8px;
   font-size: 0.68rem;
   font-weight: 700;
@@ -745,7 +746,7 @@
 
 /* ── Trend Direction Section ── */
 .trend-section {
-  background: #f8fafc;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 10px 14px;
@@ -766,20 +767,20 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-xs);
-  background: #ffffff;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
 }
 
 .trend-indicator__arrow.up {
-  color: #089981;
+  color: var(--bullish);
 }
 
 .trend-indicator__arrow.down {
-  color: #f23645;
+  color: var(--bearish);
 }
 
 .trend-indicator__arrow.sideways {
-  color: #d97706;
+  color: var(--neutral);
 }
 
 .trend-indicator__label {
@@ -802,7 +803,7 @@
 }
 
 .pattern-item {
-  background: #ffffff;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
@@ -825,10 +826,11 @@
   font-weight: 700;
   padding: 2px 6px;
   border-radius: var(--radius-xs);
-  background: #f1f5f9;
+  background: var(--bg-card);
   color: var(--text-muted);
   text-transform: uppercase;
   font-family: var(--font-mono);
+  border: 1px solid var(--border-color);
 }
 
 .pattern-item__explanation {
@@ -845,7 +847,7 @@
 }
 
 .indicator-card {
-  background: #ffffff;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
@@ -880,7 +882,7 @@
 
 .rsi-gauge__bar {
   height: 6px;
-  background: linear-gradient(90deg, #089981 0%, #d97706 50%, #f23645 100%);
+  background: linear-gradient(90deg, #10b981 0%, #f59e0b 50%, #f43f5e 100%);
   border-radius: var(--radius-full);
   margin: 8px 0 4px;
   position: relative;
@@ -891,11 +893,11 @@
   top: -4px;
   width: 14px;
   height: 14px;
-  background: #0f172a;
-  border: 2px solid #ffffff;
+  background: var(--text-primary);
+  border: 2px solid var(--bg-primary);
   border-radius: 50%;
   transform: translateX(-50%);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   transition: left var(--transition-normal);
 }
 
@@ -909,7 +911,7 @@
 
 /* ── Reasoning Section ── */
 .reasoning-section {
-  background: #f8fafc;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 12px;
@@ -933,7 +935,7 @@
   color: var(--text-muted);
   line-height: 1.4;
   padding: 6px 8px;
-  background: #f8fafc;
+  background: var(--bg-card);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
 }
@@ -943,7 +945,7 @@
    ═════════════════════════════════════════════════════════════ */
 .bottom-bar {
   grid-column: 1 / -1;
-  background: #ffffff;
+  background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   padding: 8px var(--space-md);
   display: flex;

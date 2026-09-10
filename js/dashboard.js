@@ -619,7 +619,7 @@ function setupIndicatorButtons() {
         btn.classList.remove('active');
         if (overlay === 'targets') {
           ChartManager.clearTradeLevels();
-          showToast('🎯 Target price lines hidden', 'info');
+          showToast('Target price lines hidden', 'info');
         } else if (overlay === 'bb') {
           ChartManager.removeOverlay('bbUpper');
           ChartManager.removeOverlay('bbLower');
@@ -634,7 +634,7 @@ function setupIndicatorButtons() {
         if (overlay === 'targets') {
           if (currentPrediction && currentPrediction.tradeSetup) {
             ChartManager.setTradeLevels(currentPrediction.tradeSetup);
-            showToast('🎯 Target levels active (Entry, TP1, TP2, Stop Loss)', 'success');
+            showToast('Target levels active (Entry, TP1, TP2, Stop Loss)', 'success');
           }
         } else if (currentPrediction) {
           updateOverlays(currentPrediction);

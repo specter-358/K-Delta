@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>K-Delta — Live Indian Technical Analysis Terminal (NSE/BSE)</title>
   <meta name="description" content="Institutional candlestick chart with real-time pattern recognition, multi-indicator confluence scoring, and execution targets for Indian equities and indices.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><path d='M30 70 L30 30 M30 40 L45 40 L45 60 L30 60 M55 80 L55 20 M55 30 L70 30 L70 55 L55 55' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round' fill='%2338bdf8' fill-opacity='0.2'/></svg>">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <!-- TradingView Lightweight Charts -->
   <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
-<body>
+<body class="dark-theme">
 
   <!-- ═══ Top Market Ticker Tape ═══ -->
   <div class="market-ticker-tape" id="market-ticker-tape">
@@ -38,15 +38,6 @@
     </div>
     <div class="navbar__market-status">
       <span class="live-clock-badge" id="live-ist-clock">Loading IST...</span>
-      <!-- Theme Switch Slider -->
-      <div class="theme-switch-wrapper" title="Toggle Light / Dark Theme">
-        <span class="theme-icon theme-icon--light">☀️</span>
-        <label class="theme-switch" for="theme-toggle-checkbox">
-          <input type="checkbox" id="theme-toggle-checkbox" onchange="toggleTheme(this.checked)" aria-label="Toggle Theme">
-          <span class="theme-slider"></span>
-        </label>
-        <span class="theme-icon theme-icon--dark">🌙</span>
-      </div>
     </div>
   </nav>
 
@@ -59,7 +50,12 @@
       <!-- Search -->
       <div class="sidebar-left__search">
         <div class="search-box">
-          <span class="search-box__icon">🔍</span>
+          <span class="search-box__icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
           <input
             type="text"
             class="search-box__input"
@@ -115,13 +111,13 @@
           </div>
         </div>
         <div class="chart-header__right">
-          <button class="chart-header__indicator-btn active" id="btn-toggle-targets" data-overlay="targets">🎯 Targets</button>
+          <button class="chart-header__indicator-btn active" id="btn-toggle-targets" data-overlay="targets">Targets</button>
           <button class="chart-header__indicator-btn active" data-overlay="sma20">SMA 20</button>
           <button class="chart-header__indicator-btn active" data-overlay="sma50">SMA 50</button>
           <button class="chart-header__indicator-btn" data-overlay="ema12">EMA 12</button>
           <button class="chart-header__indicator-btn" data-overlay="ema26">EMA 26</button>
           <button class="chart-header__indicator-btn" data-overlay="bb">Bollinger</button>
-          <button class="chart-header__indicator-btn" onclick="copyTradeSetupToClipboard()" title="Copy Trade Setup">📋 Copy Plan</button>
+          <button class="chart-header__indicator-btn" onclick="copyTradeSetupToClipboard()" title="Copy Trade Setup">Copy Plan</button>
         </div>
       </div>
 
@@ -153,15 +149,15 @@
 
       <!-- Inspector Nav Tabs -->
       <div class="inspector-tabs">
-        <button class="inspector-tab active" data-tab="plan" onclick="switchInspectorTab('plan')">⚡ Trade Plan</button>
-        <button class="inspector-tab" data-tab="backtest" onclick="switchInspectorTab('backtest')">📈 Accuracy (Backtest)</button>
-        <button class="inspector-tab" data-tab="forecast" onclick="switchInspectorTab('forecast')">🔮 5-Bar Forecast</button>
+        <button class="inspector-tab active" data-tab="plan" onclick="switchInspectorTab('plan')">Trade Plan</button>
+        <button class="inspector-tab" data-tab="backtest" onclick="switchInspectorTab('backtest')">Accuracy (Backtest)</button>
+        <button class="inspector-tab" data-tab="forecast" onclick="switchInspectorTab('forecast')">5-Bar Forecast</button>
       </div>
 
       <!-- Overall Signal & Action Card -->
       <div class="signal-header">
         <div class="signal-badge-container">
-          <div class="signal-badge signal-badge--hold" id="signal-badge">■ HOLD</div>
+          <div class="signal-badge signal-badge--hold" id="signal-badge">HOLD</div>
           <div class="action-pill" id="action-pill">WAIT</div>
         </div>
         <div class="signal-confidence" id="signal-confidence">Confidence: <strong>0%</strong></div>
@@ -174,7 +170,7 @@
         <!-- Trade Execution Setup -->
         <div class="panel-section trade-setup-panel">
           <div class="panel-section__title">
-            <span>⚡ Execution Targets</span>
+            <span>Execution Targets</span>
             <span class="badge-tag" id="trade-horizon-badge">Swing</span>
           </div>
 
@@ -220,7 +216,7 @@
       <div class="tab-content" id="tab-content-backtest" style="display:none">
         <div class="panel-section">
           <div class="panel-section__title">
-            <span>📈 Historical Win-Rate & Track Record</span>
+            <span>Historical Win-Rate & Track Record</span>
           </div>
 
           <div class="backtest-metrics-grid">
@@ -259,7 +255,7 @@
       <div class="tab-content" id="tab-content-forecast" style="display:none">
         <div class="panel-section">
           <div class="panel-section__title">
-            <span>🔮 5-Bar Forward Price Trajectory</span>
+            <span>5-Bar Forward Price Trajectory</span>
           </div>
 
           <div class="forecast-probability-banner" id="forecast-prob-banner">
@@ -305,7 +301,7 @@
       <!-- Detected Patterns -->
       <div class="panel-section">
         <div class="panel-section__title">
-          🕯️ Detected Patterns
+          Detected Patterns
         </div>
         <div class="pattern-list" id="pattern-list">
           <div class="no-patterns">Analyzing patterns...</div>
@@ -315,7 +311,7 @@
       <!-- Technical Indicators -->
       <div class="panel-section">
         <div class="panel-section__title">
-          📊 Technical Indicators
+          Technical Indicators
         </div>
         <div class="indicators-grid">
 
@@ -369,7 +365,7 @@
       <!-- Prediction Reasoning -->
       <div class="reasoning-section">
         <div class="panel-section__title">
-          🧠 Analysis Summary
+          Analysis Summary
         </div>
         <div class="reasoning-text" id="reasoning-text">
           Analyzing market data...

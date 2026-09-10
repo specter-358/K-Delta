@@ -227,8 +227,8 @@ const Predictions = (() => {
       const target2Pct = (((target2 - entry) / entry) * 100).toFixed(2);
 
       actionHeadline = isStrong
-        ? `🟢 BUY NOW — High conviction bullish setup at $${entry.toFixed(2)}`
-        : `🟢 BUY ON PULLBACK — Accumulate between $${entryMin.toFixed(2)} - $${entryMax.toFixed(2)}`;
+        ? `BUY NOW — High conviction bullish setup at ₹${entry.toFixed(2)}`
+        : `BUY ON PULLBACK — Accumulate between ₹${entryMin.toFixed(2)} - ₹${entryMax.toFixed(2)}`;
 
       timingAdvice = isStrong
         ? `Enter market order or limit at $${entry.toFixed(2)}. Bullish patterns and indicator momentum confirm strong upside probability.`
@@ -292,8 +292,8 @@ const Predictions = (() => {
       const target2Pct = (((target2 - entry) / entry) * 100).toFixed(2);
 
       actionHeadline = isStrong
-        ? `🔴 SELL / TAKE PROFIT NOW — Heavy bearish pressure at $${entry.toFixed(2)}`
-        : `🔴 SELL ON RALLY — Exit long positions or short into resistance at $${entryMax.toFixed(2)}`;
+        ? `SELL / TAKE PROFIT NOW — Heavy bearish pressure at ₹${entry.toFixed(2)}`
+        : `SELL ON RALLY — Exit long positions or short into resistance at ₹${entryMax.toFixed(2)}`;
 
       timingAdvice = isStrong
         ? `Close active long positions immediately or consider short entry at $${entry.toFixed(2)}. Technical breakdown is in progress.`
@@ -340,7 +340,7 @@ const Predictions = (() => {
       const breakoutBuy = +(currentPrice + validATR * 1.2).toFixed(2);
       const breakdownSell = +(currentPrice - validATR * 1.2).toFixed(2);
 
-      actionHeadline = `⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $${currentPrice.toFixed(2)}`;
+      actionHeadline = `WAIT / NO CLEAR SETUP — Market is in consolidation at ₹${currentPrice.toFixed(2)}`;
       timingAdvice = `Do not take new positions right now. Wait for a clear breakout above $${breakoutBuy.toFixed(2)} (Buy trigger) or breakdown below $${breakdownSell.toFixed(2)} (Sell trigger).`;
 
       checklist = [
@@ -776,12 +776,12 @@ const Predictions = (() => {
       const weight = confidenceWeight[p.confidence] || 1;
       if (p.signal === 'bullish') {
         score += 25 * weight;
-        patternNames.push(`🟢 ${p.name}`);
+        patternNames.push(p.name);
       } else if (p.signal === 'bearish') {
         score -= 25 * weight;
-        patternNames.push(`🔴 ${p.name}`);
+        patternNames.push(p.name);
       } else {
-        patternNames.push(`🟡 ${p.name}`);
+        patternNames.push(p.name);
       }
     }
 
