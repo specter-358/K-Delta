@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>K-Delta — Institutional Candlestick Intelligence & Execution Terminal</title>
-  <meta name="description" content="Institutional-grade stock market candlestick pattern recognition, multi-indicator confluence scoring, and volatility-adjusted entry/exit execution targets.">
+  <title>K-Delta — Real-Time Indian Stock Market Intelligence Terminal (NSE/BSE)</title>
+  <meta name="description" content="Institutional-grade Indian stock market candlestick pattern recognition, multi-indicator confluence scoring, and volatility-adjusted entry/exit execution targets for NSE & BSE.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/home.css">
@@ -13,56 +13,16 @@
 
   <!-- ═══ Top Market Ticker Tape ═══ -->
   <div class="market-ticker-tape" id="market-ticker-tape">
-    <div class="ticker-tape__items">
-      <div class="ticker-tape__item" onclick="navigateToDashboard('SPY')">
-        <span class="ticker-tape__symbol">S&P 500</span>
-        <span class="ticker-tape__price">5,842.40</span>
-        <span class="ticker-tape__change price-up">+0.48%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="navigateToDashboard('QQQ')">
-        <span class="ticker-tape__symbol">NASDAQ</span>
-        <span class="ticker-tape__price">20,135.80</span>
-        <span class="ticker-tape__change price-up">+0.82%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="navigateToDashboard('DIA')">
-        <span class="ticker-tape__symbol">DOW JONES</span>
-        <span class="ticker-tape__price">42,018.10</span>
-        <span class="ticker-tape__change price-down">-0.14%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="navigateToDashboard('NVDA')">
-        <span class="ticker-tape__symbol">NVDA</span>
-        <span class="ticker-tape__price">$128.45</span>
-        <span class="ticker-tape__change price-up">+2.40%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="navigateToDashboard('AAPL')">
-        <span class="ticker-tape__symbol">AAPL</span>
-        <span class="ticker-tape__price">$224.30</span>
-        <span class="ticker-tape__change price-up">+0.65%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="navigateToDashboard('TSLA')">
-        <span class="ticker-tape__symbol">TSLA</span>
-        <span class="ticker-tape__price">$248.10</span>
-        <span class="ticker-tape__change price-down">-1.12%</span>
-      </div>
+    <div class="ticker-tape__items" id="ticker-tape-items">
+      <!-- Populated dynamically with real Indian indices & stocks -->
       <div class="ticker-tape__item">
-        <span class="ticker-tape__symbol">US 10Y</span>
-        <span class="ticker-tape__price">4.14%</span>
-        <span class="ticker-tape__change price-down">-2 bps</span>
-      </div>
-      <div class="ticker-tape__item">
-        <span class="ticker-tape__symbol">VIX</span>
-        <span class="ticker-tape__price">13.82</span>
-        <span class="ticker-tape__change price-down">-4.15%</span>
-      </div>
-      <div class="ticker-tape__item">
-        <span class="ticker-tape__symbol">GOLD</span>
-        <span class="ticker-tape__price">$2,684.20</span>
-        <span class="ticker-tape__change price-up">+0.55%</span>
+        <span class="ticker-tape__symbol">NIFTY 50</span>
+        <span class="ticker-tape__price">Loading...</span>
       </div>
     </div>
     <div class="ticker-tape__status">
-      <span class="status-dot open"></span>
-      <span>NYSE / NASDAQ: REGULAR HOURS (EDT)</span>
+      <span class="status-dot" id="market-status-dot"></span>
+      <span id="market-status-text">NSE / BSE — Connecting...</span>
     </div>
   </div>
 
@@ -71,54 +31,21 @@
     <a href="index.html" class="navbar__brand">
       <span class="logo-icon">K</span>
       <span class="logo-k">K-DELTA</span>
-      <span class="logo-sub">TERMINAL</span>
+      <span class="logo-sub">INDIAN MARKETS</span>
     </a>
     <div class="navbar__links">
       <a href="index.html" class="active">Overview</a>
-      <a href="dashboard.html?symbol=NVDA">Terminal & Chart</a>
+      <a href="dashboard.html?symbol=RELIANCE.NS">Terminal & Chart</a>
+      <a href="history.html">Analysis History</a>
       <a href="#setups-section">Live Signals</a>
       <a href="#patterns-guide">Pattern Guide</a>
     </div>
     <div class="navbar__market-status">
-      <button class="btn-api-key-toggle" onclick="toggleApiSetupModal()" title="API Settings">
-        <span style="font-size:0.85rem">🔑</span> <span id="nav-api-status">API Connected</span>
-      </button>
+      <span class="live-feed-badge">
+        <span class="status-dot open"></span> Real-Time Feed Active (IST)
+      </span>
     </div>
   </nav>
-
-  <!-- ═══ API Key Setup Modal ═══ -->
-  <div class="api-modal-backdrop hidden" id="api-modal-backdrop" onclick="toggleApiSetupModal()">
-    <div class="glass-card api-setup" id="api-setup" onclick="event.stopPropagation()">
-      <div class="api-setup__header">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="api-setup__icon">🔑</div>
-          <div>
-            <div class="api-setup__title">Market Data Feed Configuration</div>
-            <div class="api-setup__sub">Twelve Data Live API Integration</div>
-          </div>
-        </div>
-        <button class="modal-close-btn" onclick="toggleApiSetupModal()">✕</button>
-      </div>
-      <div class="api-setup__text">
-        Connect your free <a href="https://twelvedata.com/signup" target="_blank">Twelve Data API key</a> for real-time OHLCV candles and live market quotes. The demo feed operates seamlessly if no key is provided.
-      </div>
-      <div class="api-setup__input-wrap">
-        <input
-          type="text"
-          id="api-key-input"
-          class="api-setup__input"
-          placeholder="Paste Twelve Data API key..."
-          autocomplete="off"
-        >
-        <button class="btn btn--primary" onclick="submitApiKey()">Save & Connect</button>
-      </div>
-      <div class="api-setup__footer">
-        <button class="btn btn--ghost btn--sm" onclick="skipApiSetup()">
-          Use Institutional Demo Data Feed
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- ═══ Main Content ═══ -->
   <main id="main-content">
@@ -128,14 +55,14 @@
       <div class="container">
         <div class="hero__badge">
           <span class="badge-dot"></span>
-          <span>SYSTEM v2.4 • REAL-TIME TECHNICAL CONFLUENCE ENGINE</span>
+          <span>NSE / BSE REAL-TIME CONFLUENCE ENGINE • ASIA/KOLKATA (IST)</span>
         </div>
         <h1 class="hero__title">
-          Institutional Candlestick Intelligence<br>
+          Indian Equities & Candlestick Intelligence<br>
           <span class="gradient-text">& High-Probability Execution</span>
         </h1>
         <p class="hero__subtitle">
-          Multi-timeframe candlestick pattern recognition, indicator confluence matrix, and volatility-adjusted entry, stop-loss, and profit targets.
+          Multi-timeframe candlestick pattern recognition, indicator confluence scoring, and volatility-adjusted entry, stop-loss, and profit targets for NSE & BSE stocks.
         </p>
         <div class="hero__search">
           <div class="search-box">
@@ -144,7 +71,7 @@
               type="text"
               class="search-box__input"
               id="hero-search-input"
-              placeholder="Search symbol or company... (e.g. NVDA, AAPL, TSLA, MSFT, AMD)"
+              placeholder="Search Indian stocks (e.g. RELIANCE, TCS, HDFCBANK, INFY, TATAMOTORS)..."
               autocomplete="off"
             >
             <div class="search-box__hotkey">Ctrl + K</div>
@@ -154,14 +81,14 @@
         
         <!-- Trending Tickers Ribbon -->
         <div class="hero__trending">
-          <span class="trending-label">Trending Now:</span>
+          <span class="trending-label">Active Watchlist:</span>
           <div class="trending-pills">
-            <button class="trending-pill" onclick="navigateToDashboard('NVDA')">NVDA <span class="price-up">+2.4%</span></button>
-            <button class="trending-pill" onclick="navigateToDashboard('AAPL')">AAPL <span class="price-up">+0.6%</span></button>
-            <button class="trending-pill" onclick="navigateToDashboard('TSLA')">TSLA <span class="price-down">-1.1%</span></button>
-            <button class="trending-pill" onclick="navigateToDashboard('MSFT')">MSFT <span class="price-down">-0.3%</span></button>
-            <button class="trending-pill" onclick="navigateToDashboard('AMD')">AMD <span class="price-up">+3.8%</span></button>
-            <button class="trending-pill" onclick="navigateToDashboard('META')">META <span class="price-up">+1.2%</span></button>
+            <button class="trending-pill" onclick="navigateToDashboard('RELIANCE.NS')">RELIANCE</button>
+            <button class="trending-pill" onclick="navigateToDashboard('TCS.NS')">TCS</button>
+            <button class="trending-pill" onclick="navigateToDashboard('HDFCBANK.NS')">HDFCBANK</button>
+            <button class="trending-pill" onclick="navigateToDashboard('INFY.NS')">INFY</button>
+            <button class="trending-pill" onclick="navigateToDashboard('TATAMOTORS.NS')">TATAMOTORS</button>
+            <button class="trending-pill" onclick="navigateToDashboard('SBIN.NS')">SBIN</button>
           </div>
         </div>
       </div>
@@ -187,15 +114,15 @@
         <div class="capability-item">
           <div class="capability-item__icon">🎯</div>
           <div>
-            <div class="capability-item__title">Volatility Targets</div>
+            <div class="capability-item__title">Volatility Targets (₹)</div>
             <div class="capability-item__desc">Dynamic ATR-based Entry, TP1, TP2 & SL</div>
           </div>
         </div>
         <div class="capability-item">
           <div class="capability-item__icon">⚡</div>
           <div>
-            <div class="capability-item__title">Action Checklist</div>
-            <div class="capability-item__desc">Exact buy, take-profit & cut-loss triggers</div>
+            <div class="capability-item__title">Persistent History</div>
+            <div class="capability-item__desc">Full audit log of analyzed setups & signals</div>
           </div>
         </div>
       </div>
@@ -206,18 +133,12 @@
       <div class="container">
         <div class="section-header">
           <div>
-            <div class="section-header__title">Market Pulse & Sector Breadth</div>
-            <div class="section-header__subtitle">Key equity indices and sector performance</div>
-          </div>
-          <div class="sector-pills">
-            <span class="sector-pill price-up">Tech +1.6%</span>
-            <span class="sector-pill price-up">Semis +2.8%</span>
-            <span class="sector-pill price-down">Health -0.4%</span>
-            <span class="sector-pill price-up">Energy +1.1%</span>
+            <div class="section-header__title">Indian Market Pulse & Sector Indices</div>
+            <div class="section-header__subtitle">Real-time benchmark indices across NSE & BSE</div>
           </div>
         </div>
         <div class="market-grid" id="market-grid">
-          <!-- Populated by JS -->
+          <!-- Populated dynamically by JS with real Indian index quotes -->
         </div>
       </div>
     </section>
@@ -228,12 +149,12 @@
         <div class="section-header">
           <div>
             <div class="section-header__title">High-Conviction Technical Setups</div>
-            <div class="section-header__subtitle">Active confluence signals with price targets & risk parameters</div>
+            <div class="section-header__subtitle">Active confluence signals with rupee price targets & risk parameters</div>
           </div>
-          <a href="dashboard.html?symbol=NVDA" class="btn btn--primary btn--sm">Launch Full Terminal →</a>
+          <a href="dashboard.html?symbol=RELIANCE.NS" class="btn btn--primary btn--sm">Launch Full Terminal →</a>
         </div>
         <div class="recent-grid" id="recent-grid">
-          <!-- Populated dynamically by JS -->
+          <!-- Populated dynamically by JS with genuine Indian equity data -->
         </div>
       </div>
     </section>
@@ -243,17 +164,17 @@
       <div class="container">
         <div class="section-header">
           <div>
-            <div class="section-header__title">Market Movers & Volatility Radar</div>
-            <div class="section-header__subtitle">Highest volume velocity and price displacement today</div>
+            <div class="section-header__title">NSE Movers & Volatility Radar</div>
+            <div class="section-header__subtitle">Real-time price displacement and highest percentage change today</div>
           </div>
           <div class="movers-tabs">
-            <button class="movers-tab active" data-filter="all" onclick="switchMoverTab(this)">All Movers</button>
+            <button class="movers-tab active" data-filter="all" onclick="switchMoverTab(this)">All Active</button>
             <button class="movers-tab" data-filter="gainers" onclick="switchMoverTab(this)">Top Gainers</button>
             <button class="movers-tab" data-filter="losers" onclick="switchMoverTab(this)">Top Decliners</button>
           </div>
         </div>
         <div class="movers-list" id="movers-list">
-          <!-- Populated by JS -->
+          <!-- Populated dynamically by JS from real /api/movers -->
         </div>
       </div>
     </section>
@@ -342,9 +263,9 @@
       <div class="footer__left">
         <span class="logo-k" style="font-weight:800">K-DELTA ANALYTICS</span>
         <span class="footer__divider">•</span>
-        <span class="footer__version">v2.4.1 (Production)</span>
+        <span class="footer__version">NSE/BSE Production Terminal</span>
         <span class="footer__divider">•</span>
-        <span class="footer__status"><span class="status-dot open"></span> Feed Active (18ms)</span>
+        <span class="footer__status"><span class="status-dot open"></span> Feed Active (IST)</span>
       </div>
       <div class="footer__right">
         <span>© 2026 K-Delta Research Group. All rights reserved.</span>
@@ -362,4 +283,3 @@
 
 </body>
 </html>
-

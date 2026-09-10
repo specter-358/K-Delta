@@ -1,61 +1,58 @@
-document.addEventListener('DOMContentLoaded', () => {
-  // Check API Key
-  updateNavApiStatus();
-  loadHomeData();
+/* ============================================================
+   K-Delta — Indian Stock Market Home Page Logic
+   100% Real-Time Market Feed, Zero Mock Data
+   ============================================================ */
 
-  // Setup Search & Hotkey
+document.addEventListener('DOMContentLoaded', () => {
+  loadLiveTickerTape();
+  loadHomeData();
   setupSearch();
   setupKeyboardShortcuts();
-
-  // Setup Market Status
   updateMarketStatus();
+
+  // Polling intervals during market hours
+  setInterval(loadLiveTickerTape, 15000);
   setInterval(updateMarketStatus, 30000);
+  setInterval(loadMarketOverview, 30000);
 });
 
 /**
- * Toggle API Key Modal
+ * Load Live Ticker Tape for Indian Market
  */
-function toggleApiSetupModal() {
-  const modal = document.getElementById('api-modal-backdrop');
-  if (!modal) return;
-  modal.classList.toggle('hidden');
-}
+async function loadLiveTickerTape() {
+  const tape = document.getElementById('ticker-tape-items');
+  if (!tape) return;
 
-function updateNavApiStatus() {
-  const statusEl = document.getElementById('nav-api-status');
-  if (!statusEl) return;
-  if (hasApiKey()) {
-    statusEl.textContent = 'API Live Feed';
-  } else {
-    statusEl.textContent = 'Demo Mode (Add Key)';
+  try {
+    const indices = await API.fetchMarketIndices();
+    const stocks = await API.fetchMultipleQuotes([
+      'RELIANCE.NS',
+      'TCS.NS',
+      'HDFCBANK.NS',
+      'INFY.NS',
+      'TATAMOTORS.NS',
+      'ICICIBANK.NS',
+      'SBIN.NS'
+    ]);
+
+    const items = [...indices, ...stocks];
+    if (items.length === 0) return;
+
+    tape.innerHTML = items.map(item => {
+      const isUp = (item.change || item.percentChange) >= 0;
+      const changeClass = isUp ? 'price-up' : 'price-down';
+      const cleanSymbol = (item.displayName || item.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
+      return `
+        <div class="ticker-tape__item" onclick="navigateToDashboard('${item.symbol}')">
+          <span class="ticker-tape__symbol">${cleanSymbol}</span>
+          <span class="ticker-tape__price">${formatPrice(item.price)}</span>
+          <span class="ticker-tape__change ${changeClass}">${formatPercent(item.percentChange)}</span>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Ticker tape error:', err);
   }
-}
-
-/**
- * Handle API key submission
- */
-function submitApiKey() {
-  const input = document.getElementById('api-key-input');
-  const key = input.value.trim();
-  if (!key) {
-    showToast('Please enter a valid Twelve Data API key', 'error');
-    return;
-  }
-  setApiKey(key);
-  toggleApiSetupModal();
-  updateNavApiStatus();
-  loadHomeData();
-  showToast('Twelve Data API connected successfully!', 'success');
-}
-
-/**
- * Skip API setup (use demo data)
- */
-function skipApiSetup() {
-  toggleApiSetupModal();
-  updateNavApiStatus();
-  loadHomeData();
-  showToast('Operating in institutional demo mode.', 'info');
 }
 
 /**
@@ -72,10 +69,6 @@ function setupKeyboardShortcuts() {
       }
     }
     if (e.key === 'Escape') {
-      const modal = document.getElementById('api-modal-backdrop');
-      if (modal && !modal.classList.contains('hidden')) {
-        modal.classList.add('hidden');
-      }
       const results = document.getElementById('hero-search-results');
       if (results) results.classList.remove('active');
     }
@@ -92,60 +85,49 @@ async function loadHomeData() {
 }
 
 /**
- * Load market overview indices
+ * Load market overview indices (NIFTY 50, SENSEX, BANK NIFTY, NIFTY IT, INDIA VIX)
  */
 async function loadMarketOverview() {
   const grid = document.getElementById('market-grid');
   if (!grid) return;
 
-  // Show skeletons
-  grid.innerHTML = CONFIG.MARKET_INDICES.map(
-    () => `
-    <div class="market-card">
-      <div class="market-card__info">
-        <div class="skeleton" style="width:60px;height:14px;margin-bottom:6px"></div>
-        <div class="skeleton" style="width:100px;height:12px"></div>
-      </div>
-      <div class="market-card__change">
-        <div class="skeleton" style="width:80px;height:20px;margin-bottom:4px"></div>
-        <div class="skeleton" style="width:60px;height:14px"></div>
-      </div>
-    </div>`
-  ).join('');
+  try {
+    const indices = await API.fetchMarketIndices();
+    if (!indices || indices.length === 0) {
+      grid.innerHTML = '<div style="color:var(--text-muted);padding:16px">Market indices temporarily unavailable.</div>';
+      return;
+    }
 
-  const symbols = ['AAPL', 'MSFT', 'GOOGL', 'NVDA'];
-  const names = { AAPL: 'Apple Inc.', MSFT: 'Microsoft Corp.', GOOGL: 'Alphabet Inc.', NVDA: 'NVIDIA Corp.' };
-
-  const quotes = [];
-  for (const sym of symbols) {
-    const q = await API.fetchQuote(sym);
-    quotes.push(q);
+    grid.innerHTML = indices
+      .map(
+        q => `
+      <div class="market-card" onclick="navigateToDashboard('${q.symbol}')">
+        <div class="market-card__info">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="market-card__symbol">${q.name}</span>
+            <span class="badge badge--neutral" style="font-size:0.65rem;padding:1px 5px">${q.exchange}</span>
+          </div>
+          <div class="market-card__price">${formatPrice(q.price)}</div>
+        </div>
+        <div class="market-card__change">
+          <div class="market-card__change-value ${priceClass(q.change)}">
+            ${formatChange(q.change)}
+          </div>
+          <div class="market-card__change-percent ${priceClass(q.change)}">
+            ${formatPercent(q.percentChange)}
+          </div>
+        </div>
+      </div>`
+      )
+      .join('');
+  } catch (err) {
+    console.error('loadMarketOverview error:', err);
+    grid.innerHTML = '<div style="color:var(--bearish);padding:16px">Unable to load Indian market indices.</div>';
   }
-
-  grid.innerHTML = quotes
-    .map(
-      q => `
-    <div class="market-card" onclick="navigateToDashboard('${q.symbol}')">
-      <div class="market-card__info">
-        <div class="market-card__symbol">${q.symbol}</div>
-        <div class="market-card__name">${q.name || names[q.symbol] || q.symbol}</div>
-        <div class="market-card__price">${formatPrice(q.price)}</div>
-      </div>
-      <div class="market-card__change">
-        <div class="market-card__change-value ${priceClass(q.change)}">
-          ${formatChange(q.change)}
-        </div>
-        <div class="market-card__change-percent ${priceClass(q.change)}">
-          ${formatPercent(q.percentChange)}
-        </div>
-      </div>
-    </div>`
-    )
-    .join('');
 }
 
 /**
- * Load high-conviction / recently visited stocks
+ * Load high-conviction / recently visited Indian stocks
  */
 async function loadRecentStocks() {
   const grid = document.getElementById('recent-grid');
@@ -153,15 +135,15 @@ async function loadRecentStocks() {
 
   let stocksToLoad = getRecentStocks();
 
-  // If user hasn't visited any stocks yet, show top curated setups!
+  // If user hasn't visited any stocks yet, show active benchmark Indian equities
   if (!stocksToLoad || stocksToLoad.length === 0) {
     stocksToLoad = [
-      { symbol: 'NVDA', name: 'NVIDIA Corp.', timestamp: Date.now() - 3600000 },
-      { symbol: 'AAPL', name: 'Apple Inc.', timestamp: Date.now() - 7200000 },
-      { symbol: 'TSLA', name: 'Tesla Inc.', timestamp: Date.now() - 10800000 },
-      { symbol: 'AMD', name: 'Advanced Micro Devices', timestamp: Date.now() - 14400000 },
-      { symbol: 'MSFT', name: 'Microsoft Corp.', timestamp: Date.now() - 18000000 },
-      { symbol: 'META', name: 'Meta Platforms Inc.', timestamp: Date.now() - 21600000 },
+      { symbol: 'RELIANCE.NS', name: 'Reliance Industries', timestamp: Date.now() - 3600000 },
+      { symbol: 'TCS.NS', name: 'Tata Consultancy Services', timestamp: Date.now() - 7200000 },
+      { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.', timestamp: Date.now() - 10800000 },
+      { symbol: 'INFY.NS', name: 'Infosys Ltd.', timestamp: Date.now() - 14400000 },
+      { symbol: 'TATAMOTORS.NS', name: 'Tata Motors Ltd.', timestamp: Date.now() - 18000000 },
+      { symbol: 'ICICIBANK.NS', name: 'ICICI Bank Ltd.', timestamp: Date.now() - 21600000 },
     ];
   }
 
@@ -184,65 +166,75 @@ async function loadRecentStocks() {
     )
     .join('');
 
-  // Fetch live data for setups
+  // Fetch live quotes & real candle data for analysis
   const cards = [];
   for (const stock of stocksToLoad) {
-    const quote = await API.fetchQuote(stock.symbol);
-    // Quick prediction from recent candles
-    const candles = await API.fetchCandles(stock.symbol, '1day', 60);
-    let prediction = { signal: 'HOLD', confidence: 0 };
-    if (candles.length >= 30) {
-      prediction = Predictions.analyze(candles);
-    }
+    try {
+      const quote = await API.fetchQuote(stock.symbol);
+      const candles = await API.fetchCandles(stock.symbol, '1day', 60);
 
-    const badgeClass =
-      prediction.signal === 'BUY'
-        ? 'badge--bullish'
-        : prediction.signal === 'SELL'
-        ? 'badge--bearish'
-        : 'badge--neutral';
-    const badgeIcon =
-      prediction.signal === 'BUY' ? '▲' : prediction.signal === 'SELL' ? '▼' : '■';
-    const actionText = prediction.action || prediction.signal;
-    const targetText = prediction.tradeSetup && prediction.tradeSetup.hasSetup
-      ? `Target: $${prediction.tradeSetup.target1.toFixed(2)} (${prediction.tradeSetup.target1Pct})`
-      : 'Consolidation';
+      let prediction = { signal: 'HOLD', confidence: 0 };
+      if (candles && candles.length >= 20) {
+        prediction = Predictions.analyze(candles);
+      }
 
-    cards.push(`
-      <a class="stock-card" href="dashboard.html?symbol=${stock.symbol}" onclick="addRecentStock('${stock.symbol}', '${(quote.name || stock.name || '').replace(/'/g, "\\'")}')">
-        <div class="stock-card__header">
-          <div class="stock-card__symbol-wrap">
-            <div class="stock-card__icon">${stock.symbol.charAt(0)}</div>
-            <div>
-              <div class="stock-card__symbol">${stock.symbol}</div>
-              <div class="stock-card__name">${quote.name || stock.name || ''}</div>
+      const badgeClass =
+        prediction.signal === 'BUY'
+          ? 'badge--bullish'
+          : prediction.signal === 'SELL'
+          ? 'badge--bearish'
+          : 'badge--neutral';
+      const badgeIcon =
+        prediction.signal === 'BUY' ? '▲' : prediction.signal === 'SELL' ? '▼' : '■';
+      const actionText = prediction.action || prediction.signal;
+      const targetText = prediction.tradeSetup && prediction.tradeSetup.hasSetup
+        ? `Target: ₹${prediction.tradeSetup.target1.toFixed(2)} (${prediction.tradeSetup.target1Pct})`
+        : 'Consolidation Zone';
+
+      const cleanSymbol = stock.symbol.replace('.NS', '').replace('.BO', '');
+
+      cards.push(`
+        <a class="stock-card" href="dashboard.html?symbol=${encodeURIComponent(stock.symbol)}" onclick="addRecentStock('${stock.symbol}', '${(quote.name || stock.name || '').replace(/'/g, "\\'")}')">
+          <div class="stock-card__header">
+            <div class="stock-card__symbol-wrap">
+              <div class="stock-card__icon">${cleanSymbol.charAt(0)}</div>
+              <div>
+                <div class="stock-card__symbol">${stock.symbol}</div>
+                <div class="stock-card__name">${quote.name || stock.name || ''}</div>
+              </div>
             </div>
+            <span class="badge ${badgeClass} stock-card__prediction-badge">
+              ${badgeIcon} ${actionText}
+            </span>
           </div>
-          <span class="badge ${badgeClass} stock-card__prediction-badge">
-            ${badgeIcon} ${actionText}
-          </span>
-        </div>
-        <div class="stock-card__price-row">
-          <span class="stock-card__price">${formatPrice(quote.price)}</span>
-          <span class="stock-card__change ${priceClass(quote.change)}">
-            ${formatChange(quote.change)} (${formatPercent(quote.percentChange)})
-          </span>
-        </div>
-        <div class="stock-card__target-preview" style="font-size:0.75rem; color:var(--text-secondary); margin:6px 0 2px; font-family:var(--font-mono)">
-          🎯 ${targetText}
-        </div>
-        <div class="stock-card__footer">
-          <span class="stock-card__visit-time">Visited ${timeAgo(stock.timestamp)}</span>
-          <span class="stock-card__action">Trade Plan →</span>
-        </div>
-      </a>`);
+          <div class="stock-card__price-row">
+            <span class="stock-card__price">${formatPrice(quote.price)}</span>
+            <span class="stock-card__change ${priceClass(quote.change)}">
+              ${formatChange(quote.change)} (${formatPercent(quote.percentChange)})
+            </span>
+          </div>
+          <div class="stock-card__target-preview" style="font-size:0.75rem; color:var(--text-secondary); margin:6px 0 2px; font-family:var(--font-mono)">
+            🎯 ${targetText}
+          </div>
+          <div class="stock-card__footer">
+            <span class="stock-card__visit-time">${stock.timestamp ? timeAgo(stock.timestamp) : 'Live Analysis'}</span>
+            <span class="stock-card__action">Trade Plan →</span>
+          </div>
+        </a>`);
+    } catch (e) {
+      console.warn('Error loading stock card for', stock.symbol, e);
+    }
   }
 
-  grid.innerHTML = cards.join('');
+  if (cards.length > 0) {
+    grid.innerHTML = cards.join('');
+  } else {
+    grid.innerHTML = '<div style="color:var(--text-muted);padding:16px">No stock setups available.</div>';
+  }
 }
 
 /**
- * Load top movers
+ * Load top movers from real /api/movers
  */
 async function loadTopMovers() {
   const list = document.getElementById('movers-list');
@@ -269,32 +261,33 @@ async function loadTopMovers() {
     )
     .join('');
 
-  // Fetch quotes for top stocks
-  const movers = [];
-  for (const stock of CONFIG.TOP_STOCKS.slice(0, 8)) {
-    const q = await API.fetchQuote(stock.symbol);
-    movers.push({ ...stock, ...q });
+  try {
+    const data = await API.fetchMovers();
+    window._moversData = data;
+    renderMovers(data);
+  } catch (err) {
+    console.error('loadTopMovers error:', err);
+    list.innerHTML = '<div style="color:var(--bearish);padding:16px">Market movers data unavailable.</div>';
   }
-
-  // Sort by absolute percent change
-  movers.sort((a, b) => Math.abs(b.percentChange) - Math.abs(a.percentChange));
-
-  // Apply current tab filter
-  renderMovers(movers);
 }
 
-function renderMovers(movers) {
+function renderMovers(data) {
   const list = document.getElementById('movers-list');
-  if (!list) return;
+  if (!list || !data) return;
 
   const activeTab = document.querySelector('.movers-tab.active');
   const filter = activeTab ? activeTab.dataset.filter : 'all';
 
-  let filtered = movers;
-  if (filter === 'gainers') filtered = movers.filter(m => m.percentChange > 0);
-  if (filter === 'losers') filtered = movers.filter(m => m.percentChange < 0);
+  let items = data.allMovers || [];
+  if (filter === 'gainers') items = data.gainers || [];
+  if (filter === 'losers') items = data.losers || [];
 
-  list.innerHTML = filtered
+  if (items.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-muted);padding:16px">No movers data available for this category.</div>';
+    return;
+  }
+
+  list.innerHTML = items
     .map(
       (m, i) => `
     <div class="mover-item" onclick="navigateToDashboard('${m.symbol}')">
@@ -314,9 +307,6 @@ function renderMovers(movers) {
     </div>`
     )
     .join('');
-
-  // Store movers for tab switching
-  window._moversData = movers;
 }
 
 /**
@@ -331,7 +321,7 @@ function switchMoverTab(tab) {
 }
 
 /**
- * Setup search functionality
+ * Setup search functionality for Indian stocks (NSE/BSE)
  */
 function setupSearch() {
   const searchInput = document.getElementById('hero-search-input');
@@ -351,12 +341,14 @@ function setupSearch() {
 
     debounceTimer = setTimeout(async () => {
       const results = await API.searchSymbol(query);
-      if (results.length === 0) {
-        searchResults.classList.remove('active');
+      if (!results || results.length === 0) {
+        searchResults.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.8rem">No matching Indian stocks found.</div>';
+        searchResults.classList.add('active');
         return;
       }
 
       searchResults.innerHTML = results
+        .slice(0, 8)
         .map(
           r => `
         <div class="search-result-item" onclick="navigateToDashboard('${r.symbol}', '${(r.name || '').replace(/'/g, "\\'")}')">
@@ -364,13 +356,13 @@ function setupSearch() {
             <div class="search-result-item__symbol">${r.symbol}</div>
             <div class="search-result-item__name">${r.name || ''}</div>
           </div>
-          <span class="search-result-item__exchange">${r.exchange || ''}</span>
+          <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
         </div>`
         )
         .join('');
 
       searchResults.classList.add('active');
-    }, 300);
+    }, 250);
   });
 
   // Close on click outside
@@ -398,14 +390,14 @@ function navigateToDashboard(symbol, name) {
 }
 
 /**
- * Update market open/close status
+ * Update market open/close status from backend
  */
-function updateMarketStatus() {
+async function updateMarketStatus() {
   const dot = document.getElementById('market-status-dot');
   const text = document.getElementById('market-status-text');
   if (!dot || !text) return;
 
-  const open = isMarketOpen();
-  dot.className = `status-dot ${open ? 'open' : ''}`;
-  text.textContent = open ? 'Market Open' : 'Market Closed';
+  const status = await API.fetchMarketStatus();
+  dot.className = `status-dot ${status.isOpen ? 'open' : ''}`;
+  text.textContent = status.statusText || (status.isOpen ? 'NSE / BSE — Market Open' : 'NSE / BSE — Market Closed');
 }

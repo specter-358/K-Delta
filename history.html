@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Delta — Analysis & Market Observation History (NSE/BSE)</title>
+  <meta name="description" content="Persistent institutional observation and algorithmic trade signal history for Indian equities and indices.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/history.css">
+</head>
+<body>
+
+  <!-- ═══ Top Market Ticker Tape ═══ -->
+  <div class="market-ticker-tape" id="market-ticker-tape">
+    <div class="ticker-tape__items" id="ticker-tape-items">
+      <!-- Populated dynamically with real Indian indices & stocks -->
+    </div>
+    <div class="ticker-tape__status">
+      <span class="status-dot" id="market-status-dot"></span>
+      <span id="market-status-text">NSE / BSE — Market Loading...</span>
+    </div>
+  </div>
+
+  <!-- ═══ Navbar ═══ -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="navbar__brand">
+      <span class="logo-icon">K</span>
+      <span class="logo-k">K-DELTA</span>
+      <span class="logo-sub">INDIAN MARKETS</span>
+    </a>
+    <div class="navbar__links">
+      <a href="index.html">Overview</a>
+      <a href="dashboard.html?symbol=RELIANCE.NS">Terminal & Chart</a>
+      <a href="history.html" class="active">Analysis History</a>
+    </div>
+    <div class="navbar__market-status">
+      <span class="live-clock-badge" id="live-ist-clock">Loading IST...</span>
+    </div>
+  </nav>
+
+  <!-- ═══ Main Content ═══ -->
+  <main class="history-main container">
+    
+    <div class="history-header">
+      <div>
+        <div class="hero__badge" style="margin-bottom:8px">
+          <span class="badge-dot"></span>
+          <span>PERSISTENT QUANTITATIVE AUDIT TRAIL</span>
+        </div>
+        <h1 class="history-title">Observation & Analysis History</h1>
+        <p class="history-subtitle">
+          Real-time record of all analyzed Indian equities, algorithmic confluence signals, price levels, and execution recommendations.
+        </p>
+      </div>
+      <div class="history-actions">
+        <button class="btn btn--ghost btn--sm" onclick="loadHistoryRecords()" title="Refresh records">
+          🔄 Refresh
+        </button>
+        <button class="btn btn--danger btn--sm" onclick="confirmClearHistory()" id="btn-clear-history">
+          🗑️ Clear All History
+        </button>
+      </div>
+    </div>
+
+    <!-- History Filters & Search -->
+    <div class="history-controls">
+      <div class="history-search-wrap">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          id="history-search-input" 
+          class="history-search-input" 
+          placeholder="Filter by symbol or company name (e.g. RELIANCE, TCS, NIFTY)..."
+        >
+      </div>
+      <div class="history-filter-pills">
+        <button class="filter-pill active" data-filter="ALL" onclick="filterHistory('ALL')">All Records</button>
+        <button class="filter-pill" data-filter="BUY" onclick="filterHistory('BUY')">🟢 Buy Signals</button>
+        <button class="filter-pill" data-filter="SELL" onclick="filterHistory('SELL')">🔴 Sell Signals</button>
+        <button class="filter-pill" data-filter="HOLD" onclick="filterHistory('HOLD')">⚪ Neutral / Hold</button>
+      </div>
+    </div>
+
+    <!-- History Table Container -->
+    <div class="history-table-container">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Timestamp (IST)</th>
+            <th>Instrument</th>
+            <th>Exchange</th>
+            <th>Observed Price</th>
+            <th>Change</th>
+            <th>Signal & Action</th>
+            <th>Confidence</th>
+            <th>Confluence Summary</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="history-table-body">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <div class="history-empty-state hidden" id="history-empty-state">
+        <div class="empty-icon">📂</div>
+        <div class="empty-title">No history available yet</div>
+        <div class="empty-desc">
+          Start analyzing an Indian stock or index in the Terminal to automatically create persistent quantitative records.
+        </div>
+        <a href="dashboard.html?symbol=RELIANCE.NS" class="btn btn--primary" style="margin-top:16px">
+          Launch Terminal with RELIANCE →
+        </a>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Terminal Footer -->
+  <footer class="footer">
+    <div class="container footer__container">
+      <div class="footer__left">
+        <span class="logo-k" style="font-weight:800">K-DELTA ANALYTICS</span>
+        <span class="footer__divider">•</span>
+        <span class="footer__version">NSE/BSE Real-Time Terminal</span>
+        <span class="footer__divider">•</span>
+        <span class="footer__status"><span class="status-dot open"></span> Feed Connected (IST)</span>
+      </div>
+      <div class="footer__right">
+        <span>© 2026 K-Delta Research Group. Indian Market Operations.</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/history.js"></script>
+
+</body>
+</html>

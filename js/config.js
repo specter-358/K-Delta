@@ -1,37 +1,46 @@
 /* ============================================================
-   K-Delta — Configuration
+   K-Delta — Indian Stock Market Configuration
+   Exchange Hours (NSE/BSE), IST Timezone, Watchlists & Currency
    ============================================================ */
 
 const CONFIG = {
-  // Twelve Data API
-  API_BASE: 'https://api.twelvedata.com',
-  API_KEY: localStorage.getItem('kdelta_api_key') || '',
-  WS_URL: 'wss://ws.twelvedata.com/v1/quotes/price',
+  // Backend API Base URL
+  API_BASE: '', // Relative URL routes to Express backend on the same origin
 
-  // Default stocks for the watchlist
-  DEFAULT_WATCHLIST: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX'],
-
-  // Market indices for overview
-  MARKET_INDICES: [
-    { symbol: 'SPX', name: 'S&P 500', exchange: 'NYSE' },
-    { symbol: 'IXIC', name: 'NASDAQ', exchange: 'NASDAQ' },
-    { symbol: 'DJI', name: 'Dow Jones', exchange: 'NYSE' },
+  // Default Indian stocks for the watchlist
+  DEFAULT_WATCHLIST: [
+    'RELIANCE.NS',
+    'TCS.NS',
+    'HDFCBANK.NS',
+    'INFY.NS',
+    'ICICIBANK.NS',
+    'SBIN.NS',
+    'BHARTIARTL.NS',
+    'TATAMOTORS.NS',
   ],
 
-  // Top stocks for movers (used when API data unavailable)
+  // Indian Market Indices
+  MARKET_INDICES: [
+    { symbol: '^NSEI', name: 'NIFTY 50', exchange: 'NSE' },
+    { symbol: '^BSESN', name: 'SENSEX', exchange: 'BSE' },
+    { symbol: '^NSEBANK', name: 'BANK NIFTY', exchange: 'NSE' },
+    { symbol: '^CNXIT', name: 'NIFTY IT', exchange: 'NSE' },
+  ],
+
+  // Top Indian liquid equities
   TOP_STOCKS: [
-    { symbol: 'AAPL', name: 'Apple Inc.' },
-    { symbol: 'MSFT', name: 'Microsoft Corp.' },
-    { symbol: 'GOOGL', name: 'Alphabet Inc.' },
-    { symbol: 'AMZN', name: 'Amazon.com Inc.' },
-    { symbol: 'TSLA', name: 'Tesla Inc.' },
-    { symbol: 'NVDA', name: 'NVIDIA Corp.' },
-    { symbol: 'META', name: 'Meta Platforms' },
-    { symbol: 'NFLX', name: 'Netflix Inc.' },
-    { symbol: 'JPM', name: 'JPMorgan Chase' },
-    { symbol: 'V', name: 'Visa Inc.' },
-    { symbol: 'WMT', name: 'Walmart Inc.' },
-    { symbol: 'DIS', name: 'Walt Disney Co.' },
+    { symbol: 'RELIANCE.NS', name: 'Reliance Industries' },
+    { symbol: 'TCS.NS', name: 'Tata Consultancy Services' },
+    { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.' },
+    { symbol: 'INFY.NS', name: 'Infosys Ltd.' },
+    { symbol: 'ICICIBANK.NS', name: 'ICICI Bank Ltd.' },
+    { symbol: 'SBIN.NS', name: 'State Bank of India' },
+    { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel Ltd.' },
+    { symbol: 'TATAMOTORS.NS', name: 'Tata Motors Ltd.' },
+    { symbol: 'ITC.NS', name: 'ITC Ltd.' },
+    { symbol: 'LT.NS', name: 'Larsen & Toubro Ltd.' },
+    { symbol: 'MARUTI.NS', name: 'Maruti Suzuki India' },
+    { symbol: 'SUNPHARMA.NS', name: 'Sun Pharmaceutical' },
   ],
 
   // Available timeframes
@@ -48,32 +57,17 @@ const CONFIG = {
   DEFAULT_TIMEFRAME: '1day',
 
   // Cache duration (ms)
-  CACHE_DURATION: 60000, // 1 minute
+  CACHE_DURATION: 15000, // 15 seconds
 
   // Max recent stocks
   MAX_RECENT: 8,
 
-  // US market hours (Eastern Time)
+  // Indian market hours (Asia/Kolkata IST)
   MARKET_OPEN_HOUR: 9,
-  MARKET_OPEN_MIN: 30,
-  MARKET_CLOSE_HOUR: 16,
-  MARKET_CLOSE_MIN: 0,
+  MARKET_OPEN_MIN: 15,
+  MARKET_CLOSE_HOUR: 15,
+  MARKET_CLOSE_MIN: 30,
 };
-
-/**
- * Set and persist the API key
- */
-function setApiKey(key) {
-  CONFIG.API_KEY = key.trim();
-  localStorage.setItem('kdelta_api_key', CONFIG.API_KEY);
-}
-
-/**
- * Check if API key is configured
- */
-function hasApiKey() {
-  return CONFIG.API_KEY && CONFIG.API_KEY.length > 0;
-}
 
 /**
  * Get recently visited stocks from localStorage
@@ -116,34 +110,56 @@ function saveWatchlist(list) {
 }
 
 /**
- * Check if US market is currently open
+ * Check if Indian market (NSE/BSE) is currently open in IST (Asia/Kolkata)
  */
 function isMarketOpen() {
   const now = new Date();
-  // Convert to Eastern Time (approximate — doesn't handle DST perfectly)
-  const utcHour = now.getUTCHours();
-  const utcMin = now.getUTCMinutes();
-  const etHour = (utcHour - 5 + 24) % 24; // EST offset
-  const day = now.getUTCDay();
+  const istFormatter = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour12: false,
+    weekday: 'short',
+    hour: 'numeric',
+    minute: 'numeric',
+  });
 
-  // Weekdays only
-  if (day === 0 || day === 6) return false;
+  const parts = istFormatter.formatToParts(now);
+  const map = {};
+  parts.forEach(p => map[p.type] = p.value);
 
-  const currentMinutes = etHour * 60 + utcMin;
-  const openMinutes = CONFIG.MARKET_OPEN_HOUR * 60 + CONFIG.MARKET_OPEN_MIN;
-  const closeMinutes = CONFIG.MARKET_CLOSE_HOUR * 60 + CONFIG.MARKET_CLOSE_MIN;
+  const weekday = map.weekday;
+  const hour = parseInt(map.hour, 10);
+  const minute = parseInt(map.minute, 10);
+
+  // Closed on weekends
+  if (weekday === 'Sat' || weekday === 'Sun') return false;
+
+  const currentMinutes = hour * 60 + minute;
+  const openMinutes = CONFIG.MARKET_OPEN_HOUR * 60 + CONFIG.MARKET_OPEN_MIN; // 09:15 = 555
+  const closeMinutes = CONFIG.MARKET_CLOSE_HOUR * 60 + CONFIG.MARKET_CLOSE_MIN; // 15:30 = 930
 
   return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
 }
 
 /**
- * Format a number as currency
+ * Format timestamp in IST
+ */
+function formatISTTime(date = new Date()) {
+  return new Date(date).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+    hour12: true,
+  }) + ' IST';
+}
+
+/**
+ * Format a number as Indian Rupee currency (₹)
  */
 function formatPrice(price) {
-  if (price == null || isNaN(price)) return '—';
-  return new Intl.NumberFormat('en-US', {
+  if (price == null || isNaN(price)) return 'Data unavailable';
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(price);

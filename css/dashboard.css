@@ -1082,26 +1082,34 @@
 
 @media (max-width: 1024px) {
   .dashboard {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
+    display: flex;
+    flex-direction: column;
     height: auto;
-    overflow: auto;
+    overflow: visible;
   }
 
   .sidebar-left {
-    display: none;
-  }
-
-  .sidebar-right {
-    order: -1;
-    max-height: none;
+    display: block;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
   }
 
   .chart-area {
-    min-height: 400px;
+    order: 1;
+    min-height: 480px;
+  }
+
+  .sidebar-right {
+    order: 2;
+    max-height: none;
+    overflow-y: visible;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
   }
 
   .bottom-bar {
+    order: 3;
     grid-column: 1;
   }
 }
@@ -1115,14 +1123,20 @@
 
   .chart-header__right {
     flex-wrap: wrap;
+    width: 100%;
   }
 
   .indicators-grid {
     grid-template-columns: 1fr;
   }
 
+  .trade-targets-grid,
+  .backtest-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .signal-badge {
     font-size: 0.95rem;
-    padding: 10px 22px;
+    padding: 8px 16px;
   }
 }

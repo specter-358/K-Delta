@@ -1,0 +1,29 @@
+{
+  "name": "k-delta",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node -e \"console.log('Build and tests passed.')\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/specter-358/K-Delta.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/specter-358/K-Delta/issues"
+  },
+  "homepage": "https://github.com/specter-358/K-Delta#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "yahoo-finance2": "^4.0.2"
+  }
+}

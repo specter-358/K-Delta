@@ -1,8 +1,9 @@
 /* ============================================================
-   K-Delta — Dashboard Page Logic
+   K-Delta — Indian Stock Market Dashboard Page Logic
+   Real-Time Data (NSE/BSE), IST Market Schedule & Persistent History
    ============================================================ */
 
-let currentSymbol = 'AAPL';
+let currentSymbol = 'RELIANCE.NS';
 let currentInterval = '1day';
 let currentCandles = [];
 let currentPrediction = null;
@@ -20,18 +21,33 @@ document.addEventListener('DOMContentLoaded', () => {
   setupTimeframeSelector();
   setupIndicatorButtons();
   setupDashboardSearch();
+  loadLiveTickerTape();
   loadWatchlist();
   updateMarketStatus();
+  startLiveClock();
   loadSymbol(currentSymbol);
 
-  // Auto-refresh every 60 seconds
+  // Auto-refresh during market hours every 30 seconds
   refreshTimer = setInterval(() => {
     loadSymbol(currentSymbol, true);
-  }, 60000);
-
-  // Market status update
-  setInterval(updateMarketStatus, 30000);
+    loadLiveTickerTape();
+    updateMarketStatus();
+  }, 30000);
 });
+
+/**
+ * Start live IST clock in navbar
+ */
+function startLiveClock() {
+  const clockEl = document.getElementById('live-ist-clock');
+  function update() {
+    if (clockEl) {
+      clockEl.textContent = `🇮🇳 ${formatISTTime()}`;
+    }
+  }
+  update();
+  setInterval(update, 1000);
+}
 
 /**
  * Initialize the candlestick chart
@@ -43,6 +59,45 @@ function initChart() {
 }
 
 /**
+ * Load Live Ticker Tape for Indian Market
+ */
+async function loadLiveTickerTape() {
+  const tape = document.getElementById('ticker-tape-items');
+  if (!tape) return;
+
+  try {
+    const indices = await API.fetchMarketIndices();
+    const stocks = await API.fetchMultipleQuotes([
+      'RELIANCE.NS',
+      'TCS.NS',
+      'HDFCBANK.NS',
+      'INFY.NS',
+      'TATAMOTORS.NS',
+      'ICICIBANK.NS',
+      'SBIN.NS'
+    ]);
+
+    const items = [...indices, ...stocks];
+    if (items.length === 0) return;
+
+    tape.innerHTML = items.map(item => {
+      const isUp = (item.change || item.percentChange) >= 0;
+      const changeClass = isUp ? 'price-up' : 'price-down';
+      const cleanSymbol = (item.displayName || item.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
+      return `
+        <div class="ticker-tape__item" onclick="loadSymbol('${item.symbol}')">
+          <span class="ticker-tape__symbol">${cleanSymbol}</span>
+          <span class="ticker-tape__price">${formatPrice(item.price)}</span>
+          <span class="ticker-tape__change ${changeClass}">${formatPercent(item.percentChange)}</span>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Ticker tape error:', err);
+  }
+}
+
+/**
  * Load a symbol into the dashboard
  */
 async function loadSymbol(symbol, isRefresh = false) {
@@ -50,7 +105,7 @@ async function loadSymbol(symbol, isRefresh = false) {
 
   // Update URL
   if (!isRefresh) {
-    history.replaceState(null, '', `dashboard.html?symbol=${currentSymbol}`);
+    history.replaceState(null, '', `dashboard.html?symbol=${encodeURIComponent(currentSymbol)}`);
     addRecentStock(currentSymbol, '');
   }
 
@@ -66,9 +121,10 @@ async function loadSymbol(symbol, isRefresh = false) {
     const candles = await API.fetchCandles(currentSymbol, currentInterval, 120);
     currentCandles = candles;
 
-    if (candles.length === 0) {
-      showToast(`No data found for ${currentSymbol}`, 'error');
+    if (!candles || candles.length === 0) {
+      showToast(`Data unavailable for ${currentSymbol}`, 'error');
       if (loading) loading.classList.add('hidden');
+      renderUnavailableState(currentSymbol);
       return;
     }
 
@@ -93,7 +149,7 @@ async function loadSymbol(symbol, isRefresh = false) {
     ChartManager.setPatternMarkers(prediction.patterns, candles);
 
     // Update prediction panel & trade setup
-    updatePredictionPanel(prediction);
+    updatePredictionPanel(prediction, quote);
 
     // Update watchlist active state
     updateWatchlistActive(currentSymbol);
@@ -101,11 +157,56 @@ async function loadSymbol(symbol, isRefresh = false) {
     // Update bottom bar
     updateBottomBar(quote);
 
+    // Persistently record this observation to backend database
+    if (!isRefresh) {
+      const summaryText = Predictions.buildSummary(prediction);
+      API.saveHistoryRecord({
+        symbol: currentSymbol,
+        name: quote.name || currentSymbol,
+        exchange: quote.exchange || (currentSymbol.endsWith('.BO') ? 'BSE' : 'NSE'),
+        price: quote.price,
+        change: quote.change,
+        percentChange: quote.percentChange,
+        volume: quote.volume,
+        signal: prediction.signal,
+        action: prediction.action,
+        confidence: prediction.confidence,
+        trend: prediction.trend,
+        tradeSetup: prediction.tradeSetup,
+        summary: summaryText.substring(0, 160) + '...',
+        marketStatus: isMarketOpen() ? 'Market Open' : 'Market Closed',
+      });
+    }
+
   } catch (err) {
     console.error('loadSymbol error:', err);
     showToast(`Error loading ${currentSymbol}: ${err.message}`, 'error');
+    renderUnavailableState(currentSymbol);
   } finally {
     if (loading) loading.classList.add('hidden');
+  }
+}
+
+/**
+ * Render unavailable state when symbol data is missing
+ */
+function renderUnavailableState(symbol) {
+  const priceEl = document.getElementById('chart-price');
+  const changeEl = document.getElementById('chart-change');
+  const headlineEl = document.getElementById('action-headline');
+  const signalBadge = document.getElementById('signal-badge');
+  const actionPill = document.getElementById('action-pill');
+
+  if (priceEl) priceEl.textContent = 'Data unavailable';
+  if (changeEl) changeEl.textContent = '—';
+  if (headlineEl) headlineEl.textContent = `Live data is currently unavailable for ${symbol}. Please select a valid NSE/BSE stock.`;
+  if (signalBadge) {
+    signalBadge.className = 'signal-badge signal-badge--hold';
+    signalBadge.innerHTML = '■ UNAVAILABLE';
+  }
+  if (actionPill) {
+    actionPill.className = 'action-pill';
+    actionPill.textContent = 'N/A';
   }
 }
 
@@ -118,12 +219,17 @@ function updateChartHeader(quote) {
   const companyEl = document.getElementById('chart-company');
   const exchangeEl = document.getElementById('chart-exchange');
 
-  if (priceEl) priceEl.textContent = formatPrice(quote.price);
-  if (companyEl) companyEl.textContent = quote.name || `${currentSymbol} Equity`;
-  if (exchangeEl) exchangeEl.textContent = quote.exchange || 'NASDAQ';
+  if (priceEl) priceEl.textContent = quote.price != null ? formatPrice(quote.price) : 'Data unavailable';
+  if (companyEl) companyEl.textContent = quote.name || `${currentSymbol}`;
+  if (exchangeEl) exchangeEl.textContent = quote.exchange || (currentSymbol.endsWith('.BO') ? 'BSE' : 'NSE');
   if (changeEl) {
-    changeEl.textContent = `${formatChange(quote.change)} (${formatPercent(quote.percentChange)})`;
-    changeEl.className = `chart-header__change ${priceClass(quote.change)}`;
+    if (quote.change != null) {
+      changeEl.textContent = `${formatChange(quote.change)} (${formatPercent(quote.percentChange)})`;
+      changeEl.className = `chart-header__change ${priceClass(quote.change)}`;
+    } else {
+      changeEl.textContent = '—';
+      changeEl.className = 'chart-header__change';
+    }
   }
 }
 
@@ -136,14 +242,15 @@ function copyTradeSetupToClipboard() {
     return;
   }
   const s = currentPrediction.tradeSetup;
-  const text = `K-DELTA TRADE PLAN [${currentSymbol}]
+  const text = `K-DELTA INDIAN MARKET TRADE PLAN [${currentSymbol}]
 Action: ${currentPrediction.action || currentPrediction.signal}
-Entry Zone: ${s.entryZone || '$' + s.entryPrice}
-Target 1 (TP1): $${s.target1} (${s.target1Pct})
-Target 2 (TP2): $${s.target2} (${s.target2Pct})
-Stop Loss (SL): $${s.stopLoss} (${s.stopLossPct})
+Entry Zone: ${s.entryZone || '₹' + s.entryPrice}
+Target 1 (TP1): ₹${s.target1} (${s.target1Pct})
+Target 2 (TP2): ₹${s.target2} (${s.target2Pct})
+Stop Loss (SL): ₹${s.stopLoss} (${s.stopLossPct})
 Risk/Reward: ${s.riskReward}
-Horizon: ${s.timeHorizon}`;
+Time Horizon: ${s.timeHorizon}
+Generated: ${formatISTTime()}`;
 
   navigator.clipboard.writeText(text).then(() => {
     showToast(`Copied ${currentSymbol} Trade Plan to clipboard!`, 'success');
@@ -186,7 +293,7 @@ function updateOverlays(prediction) {
 /**
  * Update the prediction sidebar and action setup
  */
-function updatePredictionPanel(prediction) {
+function updatePredictionPanel(prediction, quote = {}) {
   const setup = prediction.tradeSetup || {};
 
   // 1. Signal badge & Action Pill
@@ -214,7 +321,7 @@ function updatePredictionPanel(prediction) {
   }
 
   if (actionHeadline) {
-    actionHeadline.innerHTML = setup.actionHeadline || setup.timingAdvice || 'Analyzing market setup...';
+    actionHeadline.innerHTML = setup.actionHeadline || setup.timingAdvice || 'Analyzing Indian market setup...';
   }
 
   // 2. Confidence
@@ -239,9 +346,9 @@ function updatePredictionPanel(prediction) {
     }
     if (bannerLevels) {
       bannerLevels.innerHTML = `
-        <span class="action-alert-banner__level-item">Entry: <strong>$${setup.entryPrice.toFixed(2)}</strong></span>
-        <span class="action-alert-banner__level-item price-up">TP1: <strong>$${setup.target1.toFixed(2)} (${setup.target1Pct})</strong></span>
-        <span class="action-alert-banner__level-item price-down">Stop: <strong>$${setup.stopLoss.toFixed(2)} (${setup.stopLossPct})</strong></span>
+        <span class="action-alert-banner__level-item">Entry: <strong>₹${setup.entryPrice.toFixed(2)}</strong></span>
+        <span class="action-alert-banner__level-item price-up">TP1: <strong>₹${setup.target1.toFixed(2)} (${setup.target1Pct})</strong></span>
+        <span class="action-alert-banner__level-item price-down">Stop: <strong>₹${setup.stopLoss.toFixed(2)} (${setup.stopLossPct})</strong></span>
         <span class="action-alert-banner__level-item">R:R <strong>${setup.riskReward}</strong></span>
       `;
     }
@@ -270,13 +377,13 @@ function updatePredictionPanel(prediction) {
   const slPctEl = document.getElementById('target-sl-pct');
   const riskRewardEl = document.getElementById('risk-reward-value');
 
-  if (entryPriceEl) entryPriceEl.textContent = setup.entryPrice ? `$${setup.entryPrice.toFixed(2)}` : '—';
-  if (entryZoneEl) entryZoneEl.textContent = setup.entryZone || '—';
-  if (tp1PriceEl) tp1PriceEl.textContent = setup.target1 ? `$${setup.target1.toFixed(2)}` : '—';
+  if (entryPriceEl) entryPriceEl.textContent = setup.entryPrice ? `₹${setup.entryPrice.toFixed(2)}` : '—';
+  if (entryZoneEl) entryZoneEl.textContent = setup.entryZone ? setup.entryZone.replace(/\$/g, '₹') : '—';
+  if (tp1PriceEl) tp1PriceEl.textContent = setup.target1 ? `₹${setup.target1.toFixed(2)}` : '—';
   if (tp1PctEl) tp1PctEl.textContent = setup.target1Pct || '—';
-  if (tp2PriceEl) tp2PriceEl.textContent = setup.target2 ? `$${setup.target2.toFixed(2)}` : '—';
+  if (tp2PriceEl) tp2PriceEl.textContent = setup.target2 ? `₹${setup.target2.toFixed(2)}` : '—';
   if (tp2PctEl) tp2PctEl.textContent = setup.target2Pct || '—';
-  if (slPriceEl) slPriceEl.textContent = setup.stopLoss ? `$${setup.stopLoss.toFixed(2)}` : '—';
+  if (slPriceEl) slPriceEl.textContent = setup.stopLoss ? `₹${setup.stopLoss.toFixed(2)}` : '—';
   if (slPctEl) slPctEl.textContent = setup.stopLossPct || '—';
   if (riskRewardEl) riskRewardEl.textContent = setup.riskReward || '1 : 2.0';
 
@@ -285,7 +392,7 @@ function updatePredictionPanel(prediction) {
   if (checklistContainer && setup.checklist) {
     checklistContainer.innerHTML = setup.checklist
       .map(item => {
-        const parsedText = item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        const parsedText = item.text.replace(/\$/g, '₹').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         return `
           <div class="checklist-item ${item.type}">
             <div class="checklist-item__header">
@@ -324,7 +431,7 @@ function updatePredictionPanel(prediction) {
             <div class="backtest-log-row ${t.outcome}">
               <div style="display:flex;align-items:center;gap:6px">
                 <span class="backtest-outcome-pill ${t.outcome}">${t.outcome}</span>
-                <span style="font-weight:700">${t.type} @ $${t.entryPrice}</span>
+                <span style="font-weight:700">${t.type} @ ₹${t.entryPrice}</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <span class="${pnlClass}">${t.pnlPct >= 0 ? '+' : ''}${t.pnlPct}%</span>
@@ -350,9 +457,9 @@ function updatePredictionPanel(prediction) {
     forecastTbody.innerHTML = fc.trajectory.map(b => `
       <tr>
         <td style="font-weight:700">${b.bar}</td>
-        <td>$${b.expected}</td>
-        <td class="price-up">$${b.upper90}</td>
-        <td class="price-down">$${b.lower90}</td>
+        <td>₹${b.expected}</td>
+        <td class="price-up">₹${b.upper90}</td>
+        <td class="price-down">₹${b.lower90}</td>
         <td class="${b.deltaPct.startsWith('+') ? 'price-up' : 'price-down'}">${b.deltaPct}</td>
       </tr>
     `).join('');
@@ -409,7 +516,7 @@ function updatePredictionPanel(prediction) {
   // 9. Reasoning Summary
   const reasoningEl = document.getElementById('reasoning-text');
   if (reasoningEl) {
-    const summary = Predictions.buildSummary(prediction);
+    const summary = Predictions.buildSummary(prediction).replace(/\$/g, '₹');
     reasoningEl.innerHTML = summary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   }
 }
@@ -455,7 +562,7 @@ function updateIndicatorCards(indicators) {
   // SMA
   const sma20Value = document.getElementById('sma20-value');
   const sma20Status = document.getElementById('sma20-status');
-  if (sma20Value) sma20Value.textContent = indicators.sma20.value;
+  if (sma20Value) sma20Value.textContent = indicators.sma20.value ? `₹${indicators.sma20.value}` : '—';
   if (sma20Status) {
     sma20Status.textContent = indicators.sma20.position;
     sma20Status.className = `indicator-card__status ${indicators.sma20.position === 'Above' ? 'price-up' : 'price-down'}`;
@@ -463,7 +570,7 @@ function updateIndicatorCards(indicators) {
 
   const sma50Value = document.getElementById('sma50-value');
   const sma50Status = document.getElementById('sma50-status');
-  if (sma50Value) sma50Value.textContent = indicators.sma50.value;
+  if (sma50Value) sma50Value.textContent = indicators.sma50.value ? `₹${indicators.sma50.value}` : '—';
   if (sma50Status) {
     sma50Status.textContent = indicators.sma50.position;
     sma50Status.className = `indicator-card__status ${indicators.sma50.position === 'Above' ? 'price-up' : 'price-down'}`;
@@ -532,7 +639,7 @@ function setupIndicatorButtons() {
 }
 
 /**
- * Setup dashboard sidebar search
+ * Setup dashboard sidebar search for Indian equities
  */
 function setupDashboardSearch() {
   const input = document.getElementById('dash-search-input');
@@ -552,8 +659,9 @@ function setupDashboardSearch() {
 
     debounceTimer = setTimeout(async () => {
       const searchResults = await API.searchSymbol(query);
-      if (searchResults.length === 0) {
-        results.classList.remove('active');
+      if (!searchResults || searchResults.length === 0) {
+        results.innerHTML = '<div style="padding:10px;color:var(--text-muted);font-size:0.75rem">No matching stocks found.</div>';
+        results.classList.add('active');
         return;
       }
 
@@ -566,13 +674,13 @@ function setupDashboardSearch() {
             <div class="search-result-item__symbol">${r.symbol}</div>
             <div class="search-result-item__name">${r.name || ''}</div>
           </div>
-          <span class="search-result-item__exchange">${r.exchange || ''}</span>
+          <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
         </div>`
         )
         .join('');
 
       results.classList.add('active');
-    }, 300);
+    }, 250);
   });
 
   input.addEventListener('keydown', e => {
@@ -628,11 +736,7 @@ async function loadWatchlist() {
     .join('');
 
   // Fetch quotes
-  const items = [];
-  for (const symbol of watchlist) {
-    const q = await API.fetchQuote(symbol);
-    items.push(q);
-  }
+  const items = await API.fetchMultipleQuotes(watchlist);
 
   container.innerHTML = items
     .map(
@@ -671,28 +775,28 @@ function updateWatchlistActive(symbol) {
 function updateBottomBar(quote) {
   const lastUpdated = document.getElementById('last-updated');
   if (lastUpdated) {
-    lastUpdated.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+    lastUpdated.textContent = `Live IST: ${formatISTTime()}`;
   }
 }
 
 /**
  * Update market status
  */
-function updateMarketStatus() {
+async function updateMarketStatus() {
   const dot = document.getElementById('market-status-dot');
   const text = document.getElementById('market-status-text');
   if (!dot || !text) return;
 
-  const open = isMarketOpen();
-  dot.className = `status-dot ${open ? 'open' : ''}`;
-  text.textContent = open ? 'Market Open' : 'Market Closed';
+  const status = await API.fetchMarketStatus();
+  dot.className = `status-dot ${status.isOpen ? 'open' : ''}`;
+  text.textContent = status.statusText || (status.isOpen ? 'NSE / BSE — Market Open' : 'NSE / BSE — Market Closed');
 
   // Bottom bar countdown
   const countdown = document.getElementById('market-countdown');
   if (countdown) {
-    countdown.innerHTML = open
-      ? '<span class="status-dot open" style="width:6px;height:6px;display:inline-block;border-radius:50%;background:var(--bullish);animation:pulse-dot 2s infinite;vertical-align:middle;margin-right:4px"></span> Market Open'
-      : 'Market Closed';
+    countdown.innerHTML = status.isOpen
+      ? '<span class="status-dot open" style="width:6px;height:6px;display:inline-block;border-radius:50%;background:var(--bullish);animation:pulse-dot 2s infinite;vertical-align:middle;margin-right:4px"></span> NSE/BSE: Market Open'
+      : '<span class="status-dot" style="width:6px;height:6px;display:inline-block;border-radius:50%;background:var(--text-muted);vertical-align:middle;margin-right:4px"></span> NSE/BSE: Market Closed';
   }
 }
 

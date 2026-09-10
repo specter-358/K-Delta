@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>K-Delta — Live Technical Analysis Terminal</title>
-  <meta name="description" content="Institutional candlestick chart with real-time pattern recognition, multi-indicator confluence scoring, and execution targets.">
+  <title>K-Delta — Live Indian Technical Analysis Terminal (NSE/BSE)</title>
+  <meta name="description" content="Institutional candlestick chart with real-time pattern recognition, multi-indicator confluence scoring, and execution targets for Indian equities and indices.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/dashboard.css">
@@ -15,41 +15,12 @@
 
   <!-- ═══ Top Market Ticker Tape ═══ -->
   <div class="market-ticker-tape" id="market-ticker-tape">
-    <div class="ticker-tape__items">
-      <div class="ticker-tape__item" onclick="loadSymbol('SPY')">
-        <span class="ticker-tape__symbol">S&P 500</span>
-        <span class="ticker-tape__price">5,842.40</span>
-        <span class="ticker-tape__change price-up">+0.48%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="loadSymbol('QQQ')">
-        <span class="ticker-tape__symbol">NASDAQ</span>
-        <span class="ticker-tape__price">20,135.80</span>
-        <span class="ticker-tape__change price-up">+0.82%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="loadSymbol('DIA')">
-        <span class="ticker-tape__symbol">DOW JONES</span>
-        <span class="ticker-tape__price">42,018.10</span>
-        <span class="ticker-tape__change price-down">-0.14%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="loadSymbol('NVDA')">
-        <span class="ticker-tape__symbol">NVDA</span>
-        <span class="ticker-tape__price">$128.45</span>
-        <span class="ticker-tape__change price-up">+2.40%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="loadSymbol('AAPL')">
-        <span class="ticker-tape__symbol">AAPL</span>
-        <span class="ticker-tape__price">$224.30</span>
-        <span class="ticker-tape__change price-up">+0.65%</span>
-      </div>
-      <div class="ticker-tape__item" onclick="loadSymbol('TSLA')">
-        <span class="ticker-tape__symbol">TSLA</span>
-        <span class="ticker-tape__price">$248.10</span>
-        <span class="ticker-tape__change price-down">-1.12%</span>
-      </div>
+    <div class="ticker-tape__items" id="ticker-tape-items">
+      <!-- Populated dynamically with real Indian indices & stocks -->
     </div>
     <div class="ticker-tape__status">
-      <span class="status-dot open"></span>
-      <span>NYSE / NASDAQ: REGULAR HOURS (EDT)</span>
+      <span class="status-dot" id="market-status-dot"></span>
+      <span id="market-status-text">NSE / BSE — Connecting...</span>
     </div>
   </div>
 
@@ -58,15 +29,15 @@
     <a href="index.html" class="navbar__brand">
       <span class="logo-icon">K</span>
       <span class="logo-k">K-DELTA</span>
-      <span class="logo-sub">TERMINAL</span>
+      <span class="logo-sub">INDIAN MARKETS</span>
     </a>
     <div class="navbar__links">
       <a href="index.html">Overview</a>
       <a href="dashboard.html" class="active">Terminal & Chart</a>
+      <a href="history.html">Analysis History</a>
     </div>
     <div class="navbar__market-status">
-      <span class="status-dot" id="market-status-dot"></span>
-      <span id="market-status-text">Market Closed</span>
+      <span class="live-clock-badge" id="live-ist-clock">Loading IST...</span>
     </div>
   </nav>
 
@@ -84,7 +55,7 @@
             type="text"
             class="search-box__input"
             id="dash-search-input"
-            placeholder="Search symbol (e.g. NVDA, AAPL)..."
+            placeholder="Search Indian stock (e.g. RELIANCE, TCS, INFY)..."
             autocomplete="off"
           >
           <div class="search-box__results" id="dash-search-results"></div>
@@ -107,7 +78,7 @@
       <!-- Watchlist -->
       <div class="watchlist">
         <div class="watchlist__header">
-          <span class="watchlist__title">Institutional Watchlist</span>
+          <span class="watchlist__title">Institutional Watchlist (NSE)</span>
         </div>
         <div id="watchlist-items">
           <!-- Populated by JS -->
@@ -124,10 +95,10 @@
         <div class="chart-header__left">
           <div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span class="chart-header__symbol" id="chart-symbol">AAPL</span>
-              <span class="badge badge--neutral" id="chart-exchange" style="font-size:0.68rem;padding:2px 6px">NASDAQ</span>
+              <span class="chart-header__symbol" id="chart-symbol">RELIANCE.NS</span>
+              <span class="badge badge--neutral" id="chart-exchange" style="font-size:0.68rem;padding:2px 6px">NSE</span>
             </div>
-            <div class="chart-header__company" id="chart-company">Apple Inc.</div>
+            <div class="chart-header__company" id="chart-company">Reliance Industries Ltd.</div>
           </div>
           <div class="chart-header__price-info">
             <span class="chart-header__price" id="chart-price">—</span>
@@ -162,7 +133,7 @@
         <!-- Loading overlay -->
         <div class="chart-loading" id="chart-loading">
           <div class="spinner"></div>
-          <div class="chart-loading__text">Loading chart data...</div>
+          <div class="chart-loading__text">Loading live Indian market chart data...</div>
         </div>
       </div>
 
@@ -225,7 +196,7 @@
           <!-- Risk / Reward Bar -->
           <div class="risk-reward-row">
             <span class="risk-reward-label">Risk/Reward Ratio:</span>
-            <span class="risk-reward-value" id="risk-reward-value">1 : 2.2</span>
+            <span class="risk-reward-value" id="risk-reward-value">1 : 2.0</span>
           </div>
 
           <!-- Step-by-Step Trade Checklist -->
@@ -404,7 +375,7 @@
             <line x1="12" y1="9" x2="12" y2="13"/>
             <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
-          <span>For educational purposes only. Not financial advice.</span>
+          <span>For educational & quantitative analysis only. Not SEBI registered financial advice.</span>
         </div>
       </div>
 
@@ -416,7 +387,7 @@
         <!-- Populated dynamically -->
       </div>
       <div class="bottom-bar__info">
-        <span id="market-countdown">Market Closed</span>
+        <span id="market-countdown">NSE / BSE Status</span>
         <span id="last-updated">Updated: —</span>
       </div>
     </div>
