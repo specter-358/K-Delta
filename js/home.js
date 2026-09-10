@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Load Live Ticker Tape for Indian Market
+ * Load Live Ticker Tape for Indian Market (Indices Only: NIFTY 50, SENSEX, BANK NIFTY, NIFTY IT, INDIA VIX)
  */
 async function loadLiveTickerTape() {
   const tape = document.getElementById('ticker-tape-items');
@@ -25,26 +25,15 @@ async function loadLiveTickerTape() {
 
   try {
     const indices = await API.fetchMarketIndices();
-    const stocks = await API.fetchMultipleQuotes([
-      'RELIANCE.NS',
-      'TCS.NS',
-      'HDFCBANK.NS',
-      'INFY.NS',
-      'TATAMOTORS.NS',
-      'ICICIBANK.NS',
-      'SBIN.NS'
-    ]);
+    if (!indices || indices.length === 0) return;
 
-    const items = [...indices, ...stocks];
-    if (items.length === 0) return;
-
-    tape.innerHTML = items.map(item => {
+    tape.innerHTML = indices.map(item => {
       const isUp = (item.change || item.percentChange) >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
-      const cleanSymbol = (item.displayName || item.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
+      const displayName = item.displayName || item.name || item.symbol.replace('^', '');
       return `
         <div class="ticker-tape__item" onclick="navigateToDashboard('${item.symbol}')">
-          <span class="ticker-tape__symbol">${cleanSymbol}</span>
+          <span class="ticker-tape__symbol">${displayName}</span>
           <span class="ticker-tape__price">${formatPrice(item.price)}</span>
           <span class="ticker-tape__change ${changeClass}">${formatPercent(item.percentChange)}</span>
         </div>
