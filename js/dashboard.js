@@ -112,6 +112,12 @@ async function loadSymbol(symbol, isRefresh = false) {
   // Update header
   document.getElementById('chart-symbol').textContent = currentSymbol;
 
+  // Clear previous overlays & trade levels immediately so they don't distort the new stock's scale
+  if (!isRefresh) {
+    ChartManager.clearTradeLevels();
+    ChartManager.clearOverlays();
+  }
+
   // Show loading
   const loading = document.getElementById('chart-loading');
   if (loading && !isRefresh) loading.classList.remove('hidden');
@@ -128,9 +134,9 @@ async function loadSymbol(symbol, isRefresh = false) {
       return;
     }
 
-    // Set chart timeframe & update chart data
+    // Set chart timeframe & update chart data with full auto-fit
     ChartManager.setTimeframe(currentInterval);
-    ChartManager.setData(candles, !isRefresh);
+    ChartManager.setData(candles, true);
 
     // Fetch quote for header
     const quote = await API.fetchQuote(currentSymbol);
@@ -143,7 +149,7 @@ async function loadSymbol(symbol, isRefresh = false) {
     // Set volume
     ChartManager.setVolume(prediction.overlays.volume);
 
-    // Set active overlays & trade levels
+    // Set active overlays & trade levels for the new stock
     updateOverlays(prediction);
 
     // Set pattern markers on chart

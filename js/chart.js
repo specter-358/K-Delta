@@ -1,5 +1,6 @@
 /* ============================================================
    K-Delta — Chart Wrapper
+   Clean Light Mode (Zerodha Kite / TradingView / Groww Aesthetic)
    Wraps TradingView Lightweight Charts library with IST localization
    ============================================================ */
 
@@ -10,14 +11,15 @@ const ChartManager = (() => {
   let overlayLines = {};
   let markers = [];
   let currentIsIntraday = false;
+  let containerEl = null;
 
   const OVERLAY_COLORS = {
-    sma20: { color: '#ffd740', title: 'SMA 20' },
-    sma50: { color: '#ff6d00', title: 'SMA 50' },
-    ema12: { color: '#00e5ff', title: 'EMA 12' },
-    ema26: { color: '#d500f9', title: 'EMA 26' },
-    bbUpper: { color: 'rgba(0, 212, 255, 0.3)', title: 'BB Upper' },
-    bbLower: { color: 'rgba(0, 212, 255, 0.3)', title: 'BB Lower' },
+    sma20: { color: '#d97706', title: 'SMA 20' },
+    sma50: { color: '#2563eb', title: 'SMA 50' },
+    ema12: { color: '#0284c7', title: 'EMA 12' },
+    ema26: { color: '#7c3aed', title: 'EMA 26' },
+    bbUpper: { color: 'rgba(37, 99, 235, 0.35)', title: 'BB Upper' },
+    bbLower: { color: 'rgba(37, 99, 235, 0.35)', title: 'BB Lower' },
   };
 
   /**
@@ -68,14 +70,16 @@ const ChartManager = (() => {
       chart.remove();
     }
 
+    containerEl = container;
+
     chart = LightweightCharts.createChart(container, {
-      width: container.clientWidth,
-      height: container.clientHeight,
+      width: container.clientWidth || 800,
+      height: container.clientHeight || 560,
       layout: {
-        background: { type: 'solid', color: '#060914' },
-        textColor: '#9fa8da',
-        fontSize: 12,
-        fontFamily: "'JetBrains Mono', 'Inter', monospace",
+        background: { type: 'solid', color: '#ffffff' },
+        textColor: '#334155',
+        fontSize: 11,
+        fontFamily: "'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       },
       localization: {
         priceFormatter: price => '₹' + price.toFixed(2),
@@ -98,47 +102,49 @@ const ChartManager = (() => {
         },
       },
       grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
-        horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
+        vertLines: { color: '#f1f5f9' },
+        horzLines: { color: '#f1f5f9' },
       },
       crosshair: {
         mode: LightweightCharts.CrosshairMode.Normal,
         vertLine: {
-          color: 'rgba(0, 212, 255, 0.3)',
+          color: '#94a3b8',
           width: 1,
           style: LightweightCharts.LineStyle.Dashed,
-          labelBackgroundColor: '#111638',
+          labelBackgroundColor: '#0f172a',
         },
         horzLine: {
-          color: 'rgba(0, 212, 255, 0.3)',
+          color: '#94a3b8',
           width: 1,
           style: LightweightCharts.LineStyle.Dashed,
-          labelBackgroundColor: '#111638',
+          labelBackgroundColor: '#0f172a',
         },
       },
       rightPriceScale: {
-        borderColor: 'rgba(255, 255, 255, 0.06)',
-        scaleMargins: { top: 0.1, bottom: 0.25 },
+        borderColor: '#e2e8f0',
+        scaleMargins: { top: 0.08, bottom: 0.22 },
+        alignLabels: true,
+        autoScale: true,
       },
       timeScale: {
-        borderColor: 'rgba(255, 255, 255, 0.06)',
+        borderColor: '#e2e8f0',
         timeVisible: false,
         secondsVisible: false,
       },
       handleScroll: { vertTouchDrag: false },
     });
 
-    // Candlestick series
+    // Candlestick series (Teal/Emerald green & Crimson/Coral red)
     candleSeries = chart.addCandlestickSeries({
-      upColor: '#00e676',
-      downColor: '#ff1744',
-      borderUpColor: '#00e676',
-      borderDownColor: '#ff1744',
-      wickUpColor: '#00e676',
-      wickDownColor: '#ff1744',
+      upColor: '#089981',
+      downColor: '#f23645',
+      borderUpColor: '#089981',
+      borderDownColor: '#f23645',
+      wickUpColor: '#089981',
+      wickDownColor: '#f23645',
     });
 
-    // Volume series (as histogram)
+    // Volume series
     volumeSeries = chart.addHistogramSeries({
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
@@ -150,10 +156,12 @@ const ChartManager = (() => {
 
     // Handle resize
     const resizeObserver = new ResizeObserver(() => {
-      chart.applyOptions({
-        width: container.clientWidth,
-        height: container.clientHeight,
-      });
+      if (container && chart) {
+        chart.applyOptions({
+          width: container.clientWidth,
+          height: container.clientHeight,
+        });
+      }
     });
     resizeObserver.observe(container);
 
@@ -163,6 +171,7 @@ const ChartManager = (() => {
 
   /**
    * Set resolution/timeframe on the chart
+   * Controls whether time/hours are shown on the timescale
    */
   function setTimeframe(interval) {
     if (!chart) return;
@@ -177,14 +186,14 @@ const ChartManager = (() => {
   }
 
   /**
-   * Set candlestick data
-   * @param {Array} candles - Array of {time, open, high, low, close}
-   * @param {boolean} fit - Whether to fit content to screen
+   * Set candlestick data and auto-fit to view
+   * @param {Array} candles - Array of { time, open, high, low, close }
+   * @param {boolean} fit - Whether to fit content
    */
   function setData(candles, fit = true) {
     if (!candleSeries || !Array.isArray(candles) || !candles.length) return;
 
-    // Filter valid OHLC items and format time
+    // Filter valid candles & normalize timestamp format
     const rawFormatted = candles
       .filter(c => c && c.open != null && c.high != null && c.low != null && c.close != null && !isNaN(c.close))
       .map(c => ({
@@ -195,13 +204,14 @@ const ChartManager = (() => {
         close: typeof c.close === 'number' ? c.close : parseFloat(c.close),
       }));
 
-    // Deduplicate by time key and sort ascending for Lightweight Charts requirement
+    // Deduplicate candles by time key
     const candleMap = new Map();
     for (const c of rawFormatted) {
       const key = typeof c.time === 'object' ? `${c.time.year}-${String(c.time.month).padStart(2, '0')}-${String(c.time.day).padStart(2, '0')}` : c.time;
       candleMap.set(key, c);
     }
 
+    // Sort ascending by time
     const formatted = Array.from(candleMap.values()).sort((a, b) => {
       if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
       if (typeof a.time === 'object' && typeof b.time === 'object') {
@@ -215,25 +225,37 @@ const ChartManager = (() => {
     if (formatted.length === 0) return;
 
     candleSeries.setData(formatted);
-    if (fit) {
-      chart.timeScale().fitContent();
+
+    // Reset price scale and fit content to new stock's price range
+    if (chart) {
+      chart.priceScale('right').applyOptions({ autoScale: true });
+      if (fit) {
+        chart.timeScale().fitContent();
+      }
+      // Re-fit on next animation frame in case container size changed
+      requestAnimationFrame(() => {
+        if (chart) {
+          chart.timeScale().fitContent();
+        }
+      });
     }
   }
 
   /**
    * Update the latest live forming candle in real time
-   * @param {Object} candle - {time, open, high, low, close}
+   * @param {Object} candle - { time, open, high, low, close }
    */
   function updateCandle(candle) {
     if (!candleSeries || !candle) return;
     try {
-      candleSeries.update({
+      const formatted = {
         time: formatTime(candle.time),
         open: typeof candle.open === 'number' ? candle.open : parseFloat(candle.open),
         high: typeof candle.high === 'number' ? candle.high : parseFloat(candle.high),
         low: typeof candle.low === 'number' ? candle.low : parseFloat(candle.low),
         close: typeof candle.close === 'number' ? candle.close : parseFloat(candle.close),
-      });
+      };
+      candleSeries.update(formatted);
     } catch (e) {
       console.warn('Error updating candle in real-time:', e);
     }
@@ -241,7 +263,7 @@ const ChartManager = (() => {
 
   /**
    * Set volume data
-   * @param {Array} volumeData - Array of {time, value, color}
+   * @param {Array} volumeData - Array of { time, value, color }
    */
   function setVolume(volumeData) {
     if (!volumeSeries || !Array.isArray(volumeData) || !volumeData.length) return;
@@ -249,10 +271,9 @@ const ChartManager = (() => {
     const rawFormatted = volumeData.map(v => ({
       time: formatTime(v.time),
       value: v.value || 0,
-      color: v.color || 'rgba(0, 212, 255, 0.3)',
+      color: v.color || 'rgba(8, 153, 129, 0.25)',
     }));
 
-    // Deduplicate and sort
     const volMap = new Map();
     for (const v of rawFormatted) {
       const key = typeof v.time === 'object' ? `${v.time.year}-${String(v.time.month).padStart(2, '0')}-${String(v.time.day).padStart(2, '0')}` : v.time;
@@ -273,28 +294,24 @@ const ChartManager = (() => {
   }
 
   /**
-   * Add or update an overlay line series
-   * @param {string} name - Overlay name (e.g., 'sma20')
-   * @param {Array} data - Array of {time, value}
+   * Set an overlay indicator line (e.g. SMA, EMA)
+   * @param {string} id - Identifier ('sma20', 'sma50', 'ema12', 'ema26', 'bbUpper', 'bbLower')
+   * @param {Array} data - Array of { time, value }
    */
-  function setOverlay(name, data) {
+  function setOverlay(id, data) {
     if (!chart || !Array.isArray(data) || !data.length) return;
 
-    const config = OVERLAY_COLORS[name] || { color: '#ffffff', title: name };
+    const config = OVERLAY_COLORS[id] || { color: '#2563eb', title: id };
 
-    // Remove existing if present
-    if (overlayLines[name]) {
-      chart.removeSeries(overlayLines[name]);
+    if (!overlayLines[id]) {
+      overlayLines[id] = chart.addLineSeries({
+        color: config.color,
+        lineWidth: 2,
+        title: config.title,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
     }
-
-    const lineSeries = chart.addLineSeries({
-      color: config.color,
-      lineWidth: name.startsWith('bb') ? 1 : 2,
-      lineStyle: name.startsWith('bb') ? LightweightCharts.LineStyle.Dotted : LightweightCharts.LineStyle.Solid,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: false,
-    });
 
     const rawFormatted = data
       .filter(d => d && d.value != null && !isNaN(d.value))
@@ -303,14 +320,13 @@ const ChartManager = (() => {
         value: typeof d.value === 'number' ? d.value : parseFloat(d.value),
       }));
 
-    // Deduplicate and sort
-    const lineMap = new Map();
+    const dataMap = new Map();
     for (const d of rawFormatted) {
       const key = typeof d.time === 'object' ? `${d.time.year}-${String(d.time.month).padStart(2, '0')}-${String(d.time.day).padStart(2, '0')}` : d.time;
-      lineMap.set(key, d);
+      dataMap.set(key, d);
     }
 
-    const formatted = Array.from(lineMap.values()).sort((a, b) => {
+    const formatted = Array.from(dataMap.values()).sort((a, b) => {
       if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
       if (typeof a.time === 'object' && typeof b.time === 'object') {
         const da = new Date(a.time.year, a.time.month - 1, a.time.day).getTime();
@@ -320,17 +336,19 @@ const ChartManager = (() => {
       return 0;
     });
 
-    lineSeries.setData(formatted);
-    overlayLines[name] = lineSeries;
+    if (formatted.length) {
+      overlayLines[id].setData(formatted);
+    }
   }
 
   /**
-   * Remove an overlay
+   * Remove an overlay line
+   * @param {string} id
    */
-  function removeOverlay(name) {
-    if (overlayLines[name]) {
-      chart.removeSeries(overlayLines[name]);
-      delete overlayLines[name];
+  function removeOverlay(id) {
+    if (overlayLines[id]) {
+      chart.removeSeries(overlayLines[id]);
+      delete overlayLines[id];
     }
   }
 
@@ -338,45 +356,47 @@ const ChartManager = (() => {
    * Clear all overlays
    */
   function clearOverlays() {
-    Object.keys(overlayLines).forEach(name => {
-      chart.removeSeries(overlayLines[name]);
+    Object.keys(overlayLines).forEach(id => {
+      chart.removeSeries(overlayLines[id]);
     });
     overlayLines = {};
   }
 
   /**
-   * Add pattern markers to the chart
-   * @param {Array} patterns - Detected patterns with index
-   * @param {Array} candles - Original candle data (to get time)
+   * Set pattern markers on candlestick bars
+   * @param {Array} patterns - Detected patterns
+   * @param {Array} candles - Candle data
    */
   function setPatternMarkers(patterns, candles) {
     if (!candleSeries || !Array.isArray(patterns) || !Array.isArray(candles)) return;
 
-    const markerData = patterns
-      .filter(p => p.index < candles.length)
-      .map(p => {
-        const candle = candles[p.index];
-        const isBullish = p.signal === 'bullish';
-        return {
-          time: formatTime(candle.time),
-          position: isBullish ? 'belowBar' : 'aboveBar',
-          color: isBullish ? '#00e676' : '#ff1744',
-          shape: isBullish ? 'arrowUp' : 'arrowDown',
-          text: p.name,
-        };
-      });
+    const newMarkers = [];
 
-    // Deduplicate by time key
-    const uniqueMarkers = [];
-    const seenTimes = new Set();
-    for (const m of markerData) {
-      const key = typeof m.time === 'object' ? `${m.time.year}-${m.time.month}-${m.time.day}` : m.time;
-      if (!seenTimes.has(key)) {
-        seenTimes.add(key);
-        uniqueMarkers.push(m);
+    patterns.forEach(pattern => {
+      if (pattern.candleIndex != null && candles[pattern.candleIndex]) {
+        const targetCandle = candles[pattern.candleIndex];
+        const isBullish = pattern.signal === 'bullish';
+        const isBearish = pattern.signal === 'bearish';
+
+        newMarkers.push({
+          time: formatTime(targetCandle.time),
+          position: isBullish ? 'belowBar' : isBearish ? 'aboveBar' : 'aboveBar',
+          color: isBullish ? '#089981' : isBearish ? '#f23645' : '#d97706',
+          shape: isBullish ? 'arrowUp' : isBearish ? 'arrowDown' : 'circle',
+          text: pattern.name.length > 14 ? pattern.name.substring(0, 12) + '..' : pattern.name,
+        });
       }
-    }
+    });
 
+    const markerMap = new Map();
+    newMarkers.forEach(m => {
+      const key = typeof m.time === 'object' ? `${m.time.year}-${m.time.month}-${m.time.day}` : m.time;
+      if (!markerMap.has(key)) {
+        markerMap.set(key, m);
+      }
+    });
+
+    const uniqueMarkers = Array.from(markerMap.values());
     uniqueMarkers.sort((a, b) => {
       if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
       if (typeof a.time === 'object' && typeof b.time === 'object') {
@@ -406,11 +426,11 @@ const ChartManager = (() => {
     try {
       const isBuy = setup.type === 'BUY';
 
-      // 1. Entry Line (Cyan / Blue)
+      // 1. Entry Line (Blue)
       if (setup.entryPrice) {
         const entryLine = candleSeries.createPriceLine({
           price: setup.entryPrice,
-          color: '#00e5ff',
+          color: '#2563eb',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
@@ -423,7 +443,7 @@ const ChartManager = (() => {
       if (setup.target1) {
         const tp1Line = candleSeries.createPriceLine({
           price: setup.target1,
-          color: '#00e676',
+          color: '#089981',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
@@ -432,11 +452,11 @@ const ChartManager = (() => {
         tradePriceLines.push(tp1Line);
       }
 
-      // 3. Take Profit 2 Line (Cyan Green / Extended Target)
+      // 3. Take Profit 2 Line (Emerald Green)
       if (setup.target2) {
         const tp2Line = candleSeries.createPriceLine({
           price: setup.target2,
-          color: '#00b0ff',
+          color: '#059669',
           lineWidth: 1,
           lineStyle: LightweightCharts.LineStyle.Dotted,
           axisLabelVisible: true,
@@ -445,69 +465,50 @@ const ChartManager = (() => {
         tradePriceLines.push(tp2Line);
       }
 
-      // 4. Stop Loss Line (Bearish Red)
+      // 4. Stop Loss Line (Crimson Red)
       if (setup.stopLoss) {
         const slLine = candleSeries.createPriceLine({
           price: setup.stopLoss,
-          color: '#ff1744',
+          color: '#f23645',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `STOP LOSS (${setup.stopLossPct || ''})`,
+          title: `STOP (${setup.stopLossPct || ''})`,
         });
         tradePriceLines.push(slLine);
       }
     } catch (e) {
-      console.warn('Error creating trade price lines:', e);
+      console.warn('Error setting trade target lines:', e);
     }
   }
 
   /**
-   * Clear all trade level price lines
+   * Clear all trade target lines from chart
    */
   function clearTradeLevels() {
-    if (!candleSeries) return;
-    tradePriceLines.forEach(line => {
-      try {
+    if (!candleSeries || !tradePriceLines.length) return;
+    try {
+      tradePriceLines.forEach(line => {
         candleSeries.removePriceLine(line);
-      } catch (e) {}
-    });
+      });
+    } catch (e) {
+      console.warn('Error clearing trade levels:', e);
+    }
     tradePriceLines = [];
   }
 
   /**
-   * Scroll to the latest data
+   * Reset & fit chart view to container
    */
-  function scrollToLatest() {
+  function fitToView() {
     if (chart) {
-      chart.timeScale().scrollToRealTime();
-    }
-  }
-
-  /**
-   * Get the chart instance
-   */
-  function getChart() {
-    return chart;
-  }
-
-  /**
-   * Destroy the chart
-   */
-  function destroy() {
-    if (chart) {
-      clearTradeLevels();
-      chart.remove();
-      chart = null;
-      candleSeries = null;
-      volumeSeries = null;
-      overlayLines = {};
+      chart.priceScale('right').applyOptions({ autoScale: true });
+      chart.timeScale().fitContent();
     }
   }
 
   return {
     init,
-    setTimeframe,
     setData,
     updateCandle,
     setVolume,
@@ -517,9 +518,8 @@ const ChartManager = (() => {
     setPatternMarkers,
     setTradeLevels,
     clearTradeLevels,
-    formatTime,
-    scrollToLatest,
-    getChart,
-    destroy,
+    setTimeframe,
+    fitToView,
+    getChart: () => chart,
   };
 })();
