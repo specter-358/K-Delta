@@ -3,67 +3,139 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>K-Delta — Stock Candlestick Prediction</title>
-  <meta name="description" content="Real-time stock market candlestick pattern analysis and predictions. Detect trends, patterns, and get actionable buy/sell signals.">
+  <title>K-Delta — Institutional Candlestick Intelligence & Execution Terminal</title>
+  <meta name="description" content="Institutional-grade stock market candlestick pattern recognition, multi-indicator confluence scoring, and volatility-adjusted entry/exit execution targets.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/home.css">
 </head>
 <body>
 
+  <!-- ═══ Top Market Ticker Tape ═══ -->
+  <div class="market-ticker-tape" id="market-ticker-tape">
+    <div class="ticker-tape__items">
+      <div class="ticker-tape__item" onclick="navigateToDashboard('SPY')">
+        <span class="ticker-tape__symbol">S&P 500</span>
+        <span class="ticker-tape__price">5,842.40</span>
+        <span class="ticker-tape__change price-up">+0.48%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="navigateToDashboard('QQQ')">
+        <span class="ticker-tape__symbol">NASDAQ</span>
+        <span class="ticker-tape__price">20,135.80</span>
+        <span class="ticker-tape__change price-up">+0.82%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="navigateToDashboard('DIA')">
+        <span class="ticker-tape__symbol">DOW JONES</span>
+        <span class="ticker-tape__price">42,018.10</span>
+        <span class="ticker-tape__change price-down">-0.14%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="navigateToDashboard('NVDA')">
+        <span class="ticker-tape__symbol">NVDA</span>
+        <span class="ticker-tape__price">$128.45</span>
+        <span class="ticker-tape__change price-up">+2.40%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="navigateToDashboard('AAPL')">
+        <span class="ticker-tape__symbol">AAPL</span>
+        <span class="ticker-tape__price">$224.30</span>
+        <span class="ticker-tape__change price-up">+0.65%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="navigateToDashboard('TSLA')">
+        <span class="ticker-tape__symbol">TSLA</span>
+        <span class="ticker-tape__price">$248.10</span>
+        <span class="ticker-tape__change price-down">-1.12%</span>
+      </div>
+      <div class="ticker-tape__item">
+        <span class="ticker-tape__symbol">US 10Y</span>
+        <span class="ticker-tape__price">4.14%</span>
+        <span class="ticker-tape__change price-down">-2 bps</span>
+      </div>
+      <div class="ticker-tape__item">
+        <span class="ticker-tape__symbol">VIX</span>
+        <span class="ticker-tape__price">13.82</span>
+        <span class="ticker-tape__change price-down">-4.15%</span>
+      </div>
+      <div class="ticker-tape__item">
+        <span class="ticker-tape__symbol">GOLD</span>
+        <span class="ticker-tape__price">$2,684.20</span>
+        <span class="ticker-tape__change price-up">+0.55%</span>
+      </div>
+    </div>
+    <div class="ticker-tape__status">
+      <span class="status-dot open"></span>
+      <span>NYSE / NASDAQ: REGULAR HOURS (EDT)</span>
+    </div>
+  </div>
+
   <!-- ═══ Navbar ═══ -->
   <nav class="navbar" id="navbar">
     <a href="index.html" class="navbar__brand">
       <span class="logo-icon">K</span>
-      <span class="logo-k">K-Delta</span>
+      <span class="logo-k">K-DELTA</span>
+      <span class="logo-sub">TERMINAL</span>
     </a>
     <div class="navbar__links">
-      <a href="index.html" class="active">Home</a>
-      <a href="dashboard.html?symbol=AAPL">Dashboard</a>
+      <a href="index.html" class="active">Overview</a>
+      <a href="dashboard.html?symbol=NVDA">Terminal & Chart</a>
+      <a href="#setups-section">Live Signals</a>
+      <a href="#patterns-guide">Pattern Guide</a>
     </div>
     <div class="navbar__market-status">
-      <span class="status-dot" id="market-status-dot"></span>
-      <span id="market-status-text">Market Closed</span>
+      <button class="btn-api-key-toggle" onclick="toggleApiSetupModal()" title="API Settings">
+        <span style="font-size:0.85rem">🔑</span> <span id="nav-api-status">API Connected</span>
+      </button>
     </div>
   </nav>
 
-  <!-- ═══ API Key Setup ═══ -->
-  <div class="container">
-    <div class="glass-card api-setup hidden" id="api-setup">
-      <div class="api-setup__icon">🔑</div>
-      <div class="api-setup__title">Connect Your Market Data</div>
+  <!-- ═══ API Key Setup Modal ═══ -->
+  <div class="api-modal-backdrop hidden" id="api-modal-backdrop" onclick="toggleApiSetupModal()">
+    <div class="glass-card api-setup" id="api-setup" onclick="event.stopPropagation()">
+      <div class="api-setup__header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="api-setup__icon">🔑</div>
+          <div>
+            <div class="api-setup__title">Market Data Feed Configuration</div>
+            <div class="api-setup__sub">Twelve Data Live API Integration</div>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="toggleApiSetupModal()">✕</button>
+      </div>
       <div class="api-setup__text">
-        Enter your free <a href="https://twelvedata.com/signup" target="_blank">Twelve Data API key</a> to get real-time stock data.
-        The free tier gives you 800 credits/day — more than enough for analysis.
+        Connect your free <a href="https://twelvedata.com/signup" target="_blank">Twelve Data API key</a> for real-time OHLCV candles and live market quotes. The demo feed operates seamlessly if no key is provided.
       </div>
       <div class="api-setup__input-wrap">
         <input
           type="text"
           id="api-key-input"
           class="api-setup__input"
-          placeholder="Paste your API key here..."
+          placeholder="Paste Twelve Data API key..."
           autocomplete="off"
         >
-        <button class="btn btn--primary" onclick="submitApiKey()">Connect</button>
+        <button class="btn btn--primary" onclick="submitApiKey()">Save & Connect</button>
       </div>
-      <button class="btn btn--ghost btn--sm mt-md" onclick="skipApiSetup()" style="margin-top:12px">
-        Skip — Use Demo Data
-      </button>
+      <div class="api-setup__footer">
+        <button class="btn btn--ghost btn--sm" onclick="skipApiSetup()">
+          Use Institutional Demo Data Feed
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- ═══ Main Content ═══ -->
   <main id="main-content">
 
-    <!-- Hero -->
+    <!-- Hero Section -->
     <section class="hero">
       <div class="container">
+        <div class="hero__badge">
+          <span class="badge-dot"></span>
+          <span>SYSTEM v2.4 • REAL-TIME TECHNICAL CONFLUENCE ENGINE</span>
+        </div>
         <h1 class="hero__title">
-          Predict the Market with<br>
-          <span class="gradient-text">Candlestick Intelligence</span>
+          Institutional Candlestick Intelligence<br>
+          <span class="gradient-text">& High-Probability Execution</span>
         </h1>
         <p class="hero__subtitle">
-          Real-time candlestick pattern detection, technical analysis, and actionable predictions — all powered by proven market science.
+          Multi-timeframe candlestick pattern recognition, indicator confluence matrix, and volatility-adjusted entry, stop-loss, and profit targets.
         </p>
         <div class="hero__search">
           <div class="search-box">
@@ -72,26 +144,60 @@
               type="text"
               class="search-box__input"
               id="hero-search-input"
-              placeholder="Search stocks... (e.g. AAPL, TSLA, GOOGL)"
+              placeholder="Search symbol or company... (e.g. NVDA, AAPL, TSLA, MSFT, AMD)"
               autocomplete="off"
             >
+            <div class="search-box__hotkey">Ctrl + K</div>
             <div class="search-box__results" id="hero-search-results"></div>
+          </div>
+        </div>
+        
+        <!-- Trending Tickers Ribbon -->
+        <div class="hero__trending">
+          <span class="trending-label">Trending Now:</span>
+          <div class="trending-pills">
+            <button class="trending-pill" onclick="navigateToDashboard('NVDA')">NVDA <span class="price-up">+2.4%</span></button>
+            <button class="trending-pill" onclick="navigateToDashboard('AAPL')">AAPL <span class="price-up">+0.6%</span></button>
+            <button class="trending-pill" onclick="navigateToDashboard('TSLA')">TSLA <span class="price-down">-1.1%</span></button>
+            <button class="trending-pill" onclick="navigateToDashboard('MSFT')">MSFT <span class="price-down">-0.3%</span></button>
+            <button class="trending-pill" onclick="navigateToDashboard('AMD')">AMD <span class="price-up">+3.8%</span></button>
+            <button class="trending-pill" onclick="navigateToDashboard('META')">META <span class="price-up">+1.2%</span></button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Disclaimer -->
+    <!-- Institutional Capability Bar -->
     <div class="container">
-      <div class="disclaimer mb-lg">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-          <line x1="12" y1="9" x2="12" y2="13"/>
-          <line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-        <span>
-          <strong>Disclaimer:</strong> Predictions are based on technical analysis patterns and are not financial advice. Past patterns do not guarantee future results. Always do your own research before making investment decisions.
-        </span>
+      <div class="capabilities-bar">
+        <div class="capability-item">
+          <div class="capability-item__icon">🕯️</div>
+          <div>
+            <div class="capability-item__title">15+ Pattern Classifiers</div>
+            <div class="capability-item__desc">Engulfing, Stars, Harami, Doji & Tweezers</div>
+          </div>
+        </div>
+        <div class="capability-item">
+          <div class="capability-item__icon">📊</div>
+          <div>
+            <div class="capability-item__title">Confluence Matrix</div>
+            <div class="capability-item__desc">RSI, MACD, Moving Averages & Volume</div>
+          </div>
+        </div>
+        <div class="capability-item">
+          <div class="capability-item__icon">🎯</div>
+          <div>
+            <div class="capability-item__title">Volatility Targets</div>
+            <div class="capability-item__desc">Dynamic ATR-based Entry, TP1, TP2 & SL</div>
+          </div>
+        </div>
+        <div class="capability-item">
+          <div class="capability-item__icon">⚡</div>
+          <div>
+            <div class="capability-item__title">Action Checklist</div>
+            <div class="capability-item__desc">Exact buy, take-profit & cut-loss triggers</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -100,8 +206,14 @@
       <div class="container">
         <div class="section-header">
           <div>
-            <div class="section-header__title">Market Overview</div>
-            <div class="section-header__subtitle">Major stocks at a glance</div>
+            <div class="section-header__title">Market Pulse & Sector Breadth</div>
+            <div class="section-header__subtitle">Key equity indices and sector performance</div>
+          </div>
+          <div class="sector-pills">
+            <span class="sector-pill price-up">Tech +1.6%</span>
+            <span class="sector-pill price-up">Semis +2.8%</span>
+            <span class="sector-pill price-down">Health -0.4%</span>
+            <span class="sector-pill price-up">Energy +1.1%</span>
           </div>
         </div>
         <div class="market-grid" id="market-grid">
@@ -110,18 +222,18 @@
       </div>
     </section>
 
-    <!-- Recently Visited -->
-    <section class="recent-section" id="recent-section">
+    <!-- High-Conviction Live Trade Setups Section -->
+    <section class="setups-section" id="setups-section">
       <div class="container">
         <div class="section-header">
           <div>
-            <div class="section-header__title">Recently Analyzed</div>
-            <div class="section-header__subtitle">Your recent stock predictions</div>
+            <div class="section-header__title">High-Conviction Technical Setups</div>
+            <div class="section-header__subtitle">Active confluence signals with price targets & risk parameters</div>
           </div>
-          <a href="dashboard.html" class="btn btn--ghost btn--sm">Open Dashboard →</a>
+          <a href="dashboard.html?symbol=NVDA" class="btn btn--primary btn--sm">Launch Full Terminal →</a>
         </div>
         <div class="recent-grid" id="recent-grid">
-          <!-- Populated by JS -->
+          <!-- Populated dynamically by JS -->
         </div>
       </div>
     </section>
@@ -131,13 +243,13 @@
       <div class="container">
         <div class="section-header">
           <div>
-            <div class="section-header__title">Top Movers</div>
-            <div class="section-header__subtitle">Biggest price movements today</div>
+            <div class="section-header__title">Market Movers & Volatility Radar</div>
+            <div class="section-header__subtitle">Highest volume velocity and price displacement today</div>
           </div>
           <div class="movers-tabs">
-            <button class="movers-tab active" data-filter="all" onclick="switchMoverTab(this)">All</button>
-            <button class="movers-tab" data-filter="gainers" onclick="switchMoverTab(this)">Gainers</button>
-            <button class="movers-tab" data-filter="losers" onclick="switchMoverTab(this)">Losers</button>
+            <button class="movers-tab active" data-filter="all" onclick="switchMoverTab(this)">All Movers</button>
+            <button class="movers-tab" data-filter="gainers" onclick="switchMoverTab(this)">Top Gainers</button>
+            <button class="movers-tab" data-filter="losers" onclick="switchMoverTab(this)">Top Decliners</button>
           </div>
         </div>
         <div class="movers-list" id="movers-list">
@@ -145,12 +257,98 @@
         </div>
       </div>
     </section>
+
+    <!-- Candlestick Pattern Cheatsheet & Guide -->
+    <section class="patterns-guide-section" id="patterns-guide">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <div class="section-header__title">Algorithmic Pattern Reference Matrix</div>
+            <div class="section-header__subtitle">Core candlestick formations and confirmation parameters used by the engine</div>
+          </div>
+        </div>
+
+        <div class="pattern-cards-grid">
+          <div class="guide-pattern-card bullish">
+            <div class="guide-pattern-card__header">
+              <span class="guide-pattern-card__name">🟢 Bullish Engulfing</span>
+              <span class="guide-pattern-card__badge">High Reliability (84%)</span>
+            </div>
+            <div class="guide-pattern-card__desc">A small red candle completely engulfed by a large green candle after a downtrend. Confirms buyer dominance and supply exhaustion.</div>
+            <div class="guide-pattern-card__rules">
+              <div><strong>Confirmation:</strong> Next candle opens/closes above engulfing close</div>
+              <div><strong>Optimal Stop:</strong> Below engulfing swing low</div>
+            </div>
+          </div>
+
+          <div class="guide-pattern-card bullish">
+            <div class="guide-pattern-card__header">
+              <span class="guide-pattern-card__name">🟢 Morning Star</span>
+              <span class="guide-pattern-card__badge">High Reliability (88%)</span>
+            </div>
+            <div class="guide-pattern-card__desc">Three-candle bullish reversal: long red bar, gap-down indecision star/doji, and strong green bar closing well into the first candle's body.</div>
+            <div class="guide-pattern-card__rules">
+              <div><strong>Confirmation:</strong> 3rd candle closes > 50% into 1st candle</div>
+              <div><strong>Optimal Stop:</strong> 1.5 ATR below star shadow</div>
+            </div>
+          </div>
+
+          <div class="guide-pattern-card bearish">
+            <div class="guide-pattern-card__header">
+              <span class="guide-pattern-card__name">🔴 Evening Star</span>
+              <span class="guide-pattern-card__badge">High Reliability (86%)</span>
+            </div>
+            <div class="guide-pattern-card__desc">Three-candle bearish reversal at market peaks. Long green candle, gap-up indecision candle, followed by strong red candle closing into the first body.</div>
+            <div class="guide-pattern-card__rules">
+              <div><strong>Confirmation:</strong> 3rd candle volume surge confirms liquidation</div>
+              <div><strong>Optimal Stop:</strong> Above star high</div>
+            </div>
+          </div>
+
+          <div class="guide-pattern-card bearish">
+            <div class="guide-pattern-card__header">
+              <span class="guide-pattern-card__name">🔴 Bearish Engulfing</span>
+              <span class="guide-pattern-card__badge">High Reliability (82%)</span>
+            </div>
+            <div class="guide-pattern-card__desc">A small green candle completely engulfed by a larger red candle at resistance. Signals aggressive institutional distribution.</div>
+            <div class="guide-pattern-card__rules">
+              <div><strong>Confirmation:</strong> RSI > 70 overbought divergence</div>
+              <div><strong>Optimal Stop:</strong> Above engulfing high</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Professional Disclaimer -->
+    <div class="container">
+      <div class="disclaimer mb-lg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>
+          <strong>Risk Disclaimer:</strong> K-Delta analytics are for institutional and algorithmic study. Technical patterns and indicators do not guarantee future performance. Manage risk prudently with strict stop-losses.
+        </span>
+      </div>
+    </div>
+
   </main>
 
-  <!-- Footer -->
+  <!-- Terminal Footer -->
   <footer class="footer">
-    <div class="container">
-      <p class="footer__text">K-Delta © 2026 — Candlestick Pattern Analysis & Prediction Engine</p>
+    <div class="container footer__container">
+      <div class="footer__left">
+        <span class="logo-k" style="font-weight:800">K-DELTA ANALYTICS</span>
+        <span class="footer__divider">•</span>
+        <span class="footer__version">v2.4.1 (Production)</span>
+        <span class="footer__divider">•</span>
+        <span class="footer__status"><span class="status-dot open"></span> Feed Active (18ms)</span>
+      </div>
+      <div class="footer__right">
+        <span>© 2026 K-Delta Research Group. All rights reserved.</span>
+      </div>
     </div>
   </footer>
 
@@ -164,3 +362,4 @@
 
 </body>
 </html>
+

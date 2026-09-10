@@ -115,12 +115,41 @@ async function loadSymbol(symbol, isRefresh = false) {
 function updateChartHeader(quote) {
   const priceEl = document.getElementById('chart-price');
   const changeEl = document.getElementById('chart-change');
+  const companyEl = document.getElementById('chart-company');
+  const exchangeEl = document.getElementById('chart-exchange');
 
   if (priceEl) priceEl.textContent = formatPrice(quote.price);
+  if (companyEl) companyEl.textContent = quote.name || `${currentSymbol} Equity`;
+  if (exchangeEl) exchangeEl.textContent = quote.exchange || 'NASDAQ';
   if (changeEl) {
     changeEl.textContent = `${formatChange(quote.change)} (${formatPercent(quote.percentChange)})`;
     changeEl.className = `chart-header__change ${priceClass(quote.change)}`;
   }
+}
+
+/**
+ * Copy trade setup to clipboard for active trader execution
+ */
+function copyTradeSetupToClipboard() {
+  if (!currentPrediction || !currentPrediction.tradeSetup) {
+    showToast('No active trade setup to copy', 'error');
+    return;
+  }
+  const s = currentPrediction.tradeSetup;
+  const text = `K-DELTA TRADE PLAN [${currentSymbol}]
+Action: ${currentPrediction.action || currentPrediction.signal}
+Entry Zone: ${s.entryZone || '$' + s.entryPrice}
+Target 1 (TP1): $${s.target1} (${s.target1Pct})
+Target 2 (TP2): $${s.target2} (${s.target2Pct})
+Stop Loss (SL): $${s.stopLoss} (${s.stopLossPct})
+Risk/Reward: ${s.riskReward}
+Horizon: ${s.timeHorizon}`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`Copied ${currentSymbol} Trade Plan to clipboard!`, 'success');
+  }).catch(() => {
+    showToast('Failed to copy to clipboard', 'error');
+  });
 }
 
 /**

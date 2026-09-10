@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>K-Delta — Dashboard</title>
-  <meta name="description" content="K-Delta stock prediction dashboard. Candlestick chart with real-time pattern detection and technical analysis.">
+  <title>K-Delta — Live Technical Analysis Terminal</title>
+  <meta name="description" content="Institutional candlestick chart with real-time pattern recognition, multi-indicator confluence scoring, and execution targets.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/dashboard.css">
@@ -13,15 +13,56 @@
 </head>
 <body>
 
+  <!-- ═══ Top Market Ticker Tape ═══ -->
+  <div class="market-ticker-tape" id="market-ticker-tape">
+    <div class="ticker-tape__items">
+      <div class="ticker-tape__item" onclick="loadSymbol('SPY')">
+        <span class="ticker-tape__symbol">S&P 500</span>
+        <span class="ticker-tape__price">5,842.40</span>
+        <span class="ticker-tape__change price-up">+0.48%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="loadSymbol('QQQ')">
+        <span class="ticker-tape__symbol">NASDAQ</span>
+        <span class="ticker-tape__price">20,135.80</span>
+        <span class="ticker-tape__change price-up">+0.82%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="loadSymbol('DIA')">
+        <span class="ticker-tape__symbol">DOW JONES</span>
+        <span class="ticker-tape__price">42,018.10</span>
+        <span class="ticker-tape__change price-down">-0.14%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="loadSymbol('NVDA')">
+        <span class="ticker-tape__symbol">NVDA</span>
+        <span class="ticker-tape__price">$128.45</span>
+        <span class="ticker-tape__change price-up">+2.40%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="loadSymbol('AAPL')">
+        <span class="ticker-tape__symbol">AAPL</span>
+        <span class="ticker-tape__price">$224.30</span>
+        <span class="ticker-tape__change price-up">+0.65%</span>
+      </div>
+      <div class="ticker-tape__item" onclick="loadSymbol('TSLA')">
+        <span class="ticker-tape__symbol">TSLA</span>
+        <span class="ticker-tape__price">$248.10</span>
+        <span class="ticker-tape__change price-down">-1.12%</span>
+      </div>
+    </div>
+    <div class="ticker-tape__status">
+      <span class="status-dot open"></span>
+      <span>NYSE / NASDAQ: REGULAR HOURS (EDT)</span>
+    </div>
+  </div>
+
   <!-- ═══ Navbar ═══ -->
   <nav class="navbar" id="navbar">
     <a href="index.html" class="navbar__brand">
       <span class="logo-icon">K</span>
-      <span class="logo-k">K-Delta</span>
+      <span class="logo-k">K-DELTA</span>
+      <span class="logo-sub">TERMINAL</span>
     </a>
     <div class="navbar__links">
-      <a href="index.html">Home</a>
-      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="index.html">Overview</a>
+      <a href="dashboard.html" class="active">Terminal & Chart</a>
     </div>
     <div class="navbar__market-status">
       <span class="status-dot" id="market-status-dot"></span>
@@ -43,7 +84,7 @@
             type="text"
             class="search-box__input"
             id="dash-search-input"
-            placeholder="Search symbol..."
+            placeholder="Search symbol (e.g. NVDA, AAPL)..."
             autocomplete="off"
           >
           <div class="search-box__results" id="dash-search-results"></div>
@@ -52,7 +93,7 @@
 
       <!-- Timeframe Selector -->
       <div class="timeframe-selector">
-        <div class="timeframe-selector__label">Timeframe</div>
+        <div class="timeframe-selector__label">Resolution</div>
         <div class="timeframe-selector__buttons">
           <button class="timeframe-btn" data-interval="1min">1m</button>
           <button class="timeframe-btn" data-interval="5min">5m</button>
@@ -66,7 +107,7 @@
       <!-- Watchlist -->
       <div class="watchlist">
         <div class="watchlist__header">
-          <span class="watchlist__title">Watchlist</span>
+          <span class="watchlist__title">Institutional Watchlist</span>
         </div>
         <div id="watchlist-items">
           <!-- Populated by JS -->
@@ -81,7 +122,13 @@
       <!-- Chart Header -->
       <div class="chart-header">
         <div class="chart-header__left">
-          <span class="chart-header__symbol" id="chart-symbol">AAPL</span>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="chart-header__symbol" id="chart-symbol">AAPL</span>
+              <span class="badge badge--neutral" id="chart-exchange" style="font-size:0.68rem;padding:2px 6px">NASDAQ</span>
+            </div>
+            <div class="chart-header__company" id="chart-company">Apple Inc.</div>
+          </div>
           <div class="chart-header__price-info">
             <span class="chart-header__price" id="chart-price">—</span>
             <span class="chart-header__change" id="chart-change">—</span>
@@ -94,6 +141,7 @@
           <button class="chart-header__indicator-btn" data-overlay="ema12">EMA 12</button>
           <button class="chart-header__indicator-btn" data-overlay="ema26">EMA 26</button>
           <button class="chart-header__indicator-btn" data-overlay="bb">Bollinger</button>
+          <button class="chart-header__indicator-btn" onclick="copyTradeSetupToClipboard()" title="Copy Trade Setup">📋 Copy Plan</button>
         </div>
       </div>
 

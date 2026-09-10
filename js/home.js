@@ -1,39 +1,34 @@
-/* ============================================================
-   K-Delta — Home Page Logic
-   ============================================================ */
-
 document.addEventListener('DOMContentLoaded', () => {
-  // ── Check API Key ──
-  if (!hasApiKey()) {
-    showApiSetup();
-  } else {
-    hideApiSetup();
-    loadHomeData();
-  }
+  // Check API Key
+  updateNavApiStatus();
+  loadHomeData();
 
-  // ── Setup Search ──
+  // Setup Search & Hotkey
   setupSearch();
+  setupKeyboardShortcuts();
 
-  // ── Setup Market Status ──
+  // Setup Market Status
   updateMarketStatus();
   setInterval(updateMarketStatus, 30000);
 });
 
 /**
- * Show API key setup card
+ * Toggle API Key Modal
  */
-function showApiSetup() {
-  const setupEl = document.getElementById('api-setup');
-  if (setupEl) setupEl.classList.remove('hidden');
-  const mainContent = document.getElementById('main-content');
-  if (mainContent) mainContent.classList.add('hidden');
+function toggleApiSetupModal() {
+  const modal = document.getElementById('api-modal-backdrop');
+  if (!modal) return;
+  modal.classList.toggle('hidden');
 }
 
-function hideApiSetup() {
-  const setupEl = document.getElementById('api-setup');
-  if (setupEl) setupEl.classList.add('hidden');
-  const mainContent = document.getElementById('main-content');
-  if (mainContent) mainContent.classList.remove('hidden');
+function updateNavApiStatus() {
+  const statusEl = document.getElementById('nav-api-status');
+  if (!statusEl) return;
+  if (hasApiKey()) {
+    statusEl.textContent = 'API Live Feed';
+  } else {
+    statusEl.textContent = 'Demo Mode (Add Key)';
+  }
 }
 
 /**
@@ -43,22 +38,48 @@ function submitApiKey() {
   const input = document.getElementById('api-key-input');
   const key = input.value.trim();
   if (!key) {
-    showToast('Please enter a valid API key', 'error');
+    showToast('Please enter a valid Twelve Data API key', 'error');
     return;
   }
   setApiKey(key);
-  hideApiSetup();
+  toggleApiSetupModal();
+  updateNavApiStatus();
   loadHomeData();
-  showToast('API key saved successfully!', 'success');
+  showToast('Twelve Data API connected successfully!', 'success');
 }
 
 /**
- * Skip API setup (use mock data)
+ * Skip API setup (use demo data)
  */
 function skipApiSetup() {
-  hideApiSetup();
+  toggleApiSetupModal();
+  updateNavApiStatus();
   loadHomeData();
-  showToast('Using demo data. Add API key anytime in settings.', 'info');
+  showToast('Operating in institutional demo mode.', 'info');
+}
+
+/**
+ * Setup Global Keyboard Shortcuts (Ctrl+K, Esc)
+ */
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      const searchInput = document.getElementById('hero-search-input');
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+    }
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('api-modal-backdrop');
+      if (modal && !modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+      }
+      const results = document.getElementById('hero-search-results');
+      if (results) results.classList.remove('active');
+    }
+  });
 }
 
 /**
@@ -92,9 +113,8 @@ async function loadMarketOverview() {
     </div>`
   ).join('');
 
-  // Fetch data for top stocks (indices often need special access)
-  const symbols = ['AAPL', 'MSFT', 'GOOGL'];
-  const names = { AAPL: 'Apple Inc.', MSFT: 'Microsoft Corp.', GOOGL: 'Alphabet Inc.' };
+  const symbols = ['AAPL', 'MSFT', 'GOOGL', 'NVDA'];
+  const names = { AAPL: 'Apple Inc.', MSFT: 'Microsoft Corp.', GOOGL: 'Alphabet Inc.', NVDA: 'NVIDIA Corp.' };
 
   const quotes = [];
   for (const sym of symbols) {
@@ -125,47 +145,48 @@ async function loadMarketOverview() {
 }
 
 /**
- * Load recently visited stocks
+ * Load high-conviction / recently visited stocks
  */
 async function loadRecentStocks() {
   const grid = document.getElementById('recent-grid');
-  const section = document.getElementById('recent-section');
   if (!grid) return;
 
-  const recentStocks = getRecentStocks();
+  let stocksToLoad = getRecentStocks();
 
-  if (recentStocks.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1">
-        <div class="empty-state__icon">📊</div>
-        <div class="empty-state__title">No Recent Stocks</div>
-        <div class="empty-state__text">Search for a stock above to start analyzing candlestick patterns and predictions.</div>
-      </div>`;
-    return;
+  // If user hasn't visited any stocks yet, show top curated setups!
+  if (!stocksToLoad || stocksToLoad.length === 0) {
+    stocksToLoad = [
+      { symbol: 'NVDA', name: 'NVIDIA Corp.', timestamp: Date.now() - 3600000 },
+      { symbol: 'AAPL', name: 'Apple Inc.', timestamp: Date.now() - 7200000 },
+      { symbol: 'TSLA', name: 'Tesla Inc.', timestamp: Date.now() - 10800000 },
+      { symbol: 'AMD', name: 'Advanced Micro Devices', timestamp: Date.now() - 14400000 },
+      { symbol: 'MSFT', name: 'Microsoft Corp.', timestamp: Date.now() - 18000000 },
+      { symbol: 'META', name: 'Meta Platforms Inc.', timestamp: Date.now() - 21600000 },
+    ];
   }
 
   // Show skeletons
-  grid.innerHTML = recentStocks
+  grid.innerHTML = stocksToLoad
     .map(
       () => `
     <div class="stock-card">
       <div class="stock-card__header">
         <div class="stock-card__symbol-wrap">
-          <div class="skeleton" style="width:36px;height:36px;border-radius:6px"></div>
+          <div class="skeleton" style="width:32px;height:32px;border-radius:4px"></div>
           <div>
             <div class="skeleton" style="width:60px;height:16px;margin-bottom:4px"></div>
             <div class="skeleton" style="width:100px;height:11px"></div>
           </div>
         </div>
       </div>
-      <div class="skeleton" style="width:100%;height:40px;margin-top:12px"></div>
+      <div class="skeleton" style="width:100%;height:35px;margin-top:10px"></div>
     </div>`
     )
     .join('');
 
-  // Fetch live data for recent stocks
+  // Fetch live data for setups
   const cards = [];
-  for (const stock of recentStocks) {
+  for (const stock of stocksToLoad) {
     const quote = await API.fetchQuote(stock.symbol);
     // Quick prediction from recent candles
     const candles = await API.fetchCandles(stock.symbol, '1day', 60);
