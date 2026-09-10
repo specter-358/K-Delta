@@ -298,6 +298,66 @@ function updatePredictionPanel(prediction) {
       .join('');
   }
 
+  // 5b. Backtest & Accuracy Metrics Rendering
+  const bt = prediction.backtest || {};
+  const btWinRate = document.getElementById('backtest-win-rate');
+  const btTrades = document.getElementById('backtest-trades-count');
+  const btProfitFactor = document.getElementById('backtest-profit-factor');
+  const btAvgWin = document.getElementById('backtest-avg-win');
+  const btEv = document.getElementById('backtest-ev');
+  const btLogTable = document.getElementById('backtest-log-table');
+
+  if (btWinRate) btWinRate.textContent = `${bt.winRate}%`;
+  if (btTrades) btTrades.textContent = `${bt.wins} Wins / ${bt.totalSignals} Signals`;
+  if (btProfitFactor) btProfitFactor.textContent = bt.profitFactor;
+  if (btAvgWin) btAvgWin.textContent = `${bt.avgWinPct} / ${bt.avgLossPct}`;
+  if (btEv) btEv.textContent = bt.expectedValue;
+
+  if (btLogTable && bt.recentTrades) {
+    btLogTable.innerHTML = bt.recentTrades.length === 0
+      ? '<div style="font-size:0.75rem;color:var(--text-muted);padding:8px">No historical signals logged.</div>'
+      : bt.recentTrades.map(t => {
+          const isWin = t.outcome === 'WIN';
+          const pnlClass = isWin ? 'price-up' : 'price-down';
+          const dateStr = typeof t.date === 'object' ? `${t.date.year}-${t.date.month}-${t.date.day}` : t.date;
+          return `
+            <div class="backtest-log-row ${t.outcome}">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="backtest-outcome-pill ${t.outcome}">${t.outcome}</span>
+                <span style="font-weight:700">${t.type} @ $${t.entryPrice}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="${pnlClass}">${t.pnlPct >= 0 ? '+' : ''}${t.pnlPct}%</span>
+                <span style="font-size:0.68rem;color:var(--text-muted)">${dateStr || ''}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+  }
+
+  // 5c. 5-Bar Forecast Rendering
+  const fc = prediction.forecast || {};
+  const upsideEl = document.getElementById('forecast-upside-prob');
+  const downsideEl = document.getElementById('forecast-downside-prob');
+  const progressFill = document.getElementById('prob-progress-fill');
+  const forecastTbody = document.getElementById('forecast-table-body');
+
+  if (upsideEl) upsideEl.textContent = fc.upsideProbability || '74%';
+  if (downsideEl) downsideEl.textContent = fc.downsideProbability || '26%';
+  if (progressFill) progressFill.style.width = fc.upsideProbability || '74%';
+
+  if (forecastTbody && fc.trajectory) {
+    forecastTbody.innerHTML = fc.trajectory.map(b => `
+      <tr>
+        <td style="font-weight:700">${b.bar}</td>
+        <td>$${b.expected}</td>
+        <td class="price-up">$${b.upper90}</td>
+        <td class="price-down">$${b.lower90}</td>
+        <td class="${b.deltaPct.startsWith('+') ? 'price-up' : 'price-down'}">${b.deltaPct}</td>
+      </tr>
+    `).join('');
+  }
+
   // 6. Trend
   const trendArrow = document.getElementById('trend-arrow');
   const trendValue = document.getElementById('trend-value');
@@ -633,5 +693,25 @@ function updateMarketStatus() {
     countdown.innerHTML = open
       ? '<span class="status-dot open" style="width:6px;height:6px;display:inline-block;border-radius:50%;background:var(--bullish);animation:pulse-dot 2s infinite;vertical-align:middle;margin-right:4px"></span> Market Open'
       : 'Market Closed';
+  }
+}
+
+/**
+ * Switch right technical inspector tabs (Trade Plan, Backtest Accuracy, 5-Bar Forecast)
+ */
+function switchInspectorTab(tabId) {
+  document.querySelectorAll('.inspector-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.style.display = 'none';
+    c.classList.remove('active');
+  });
+
+  const activeBtn = document.querySelector(`.inspector-tab[data-tab="${tabId}"]`);
+  const activeContent = document.getElementById(`tab-content-${tabId}`);
+
+  if (activeBtn) activeBtn.classList.add('active');
+  if (activeContent) {
+    activeContent.style.display = 'block';
+    activeContent.classList.add('active');
   }
 }

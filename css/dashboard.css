@@ -365,7 +365,7 @@
   border: 1px solid var(--border-color);
 }
 
-/* ── Right Sidebar — Prediction Panel ── */
+/* ── Right Sidebar — Technical Inspector ── */
 .sidebar-right {
   grid-column: 3;
   grid-row: 1 / -1;
@@ -376,9 +376,43 @@
   overflow-y: auto;
 }
 
+/* Inspector Tabs */
+.inspector-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 2px;
+  padding: 6px 8px;
+  background: #06080d;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.inspector-tab {
+  padding: 6px 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-radius: var(--radius-xs);
+  text-align: center;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inspector-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-glass);
+}
+
+.inspector-tab.active {
+  background: #1e293b;
+  color: var(--accent-blue);
+  box-shadow: var(--shadow-sm);
+}
+
 /* Signal Header */
 .signal-header {
-  padding: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--border-color);
   text-align: center;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
@@ -562,6 +596,138 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* ── Backtest Metrics & Log Table ── */
+.backtest-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: var(--space-md);
+}
+
+.backtest-metric-card {
+  padding: 10px 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.backtest-metric__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.backtest-metric__val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.backtest-metric__sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.backtest-log-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.backtest-log-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.backtest-log-row.WIN {
+  border-left: 3px solid var(--bullish);
+}
+
+.backtest-log-row.LOSS {
+  border-left: 3px solid var(--bearish);
+}
+
+.backtest-outcome-pill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.backtest-outcome-pill.WIN {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--bullish);
+}
+
+.backtest-outcome-pill.LOSS {
+  background: rgba(244, 63, 94, 0.2);
+  color: var(--bearish);
+}
+
+/* ── 5-Bar Forecast Styles ── */
+.forecast-probability-banner {
+  padding: 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+}
+
+.prob-progress-bar {
+  height: 6px;
+  background: rgba(244, 63, 94, 0.3);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.prob-progress-fill {
+  height: 100%;
+  background: var(--bullish);
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease;
+}
+
+.forecast-table-container {
+  overflow-x: auto;
+}
+
+.forecast-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.forecast-table th {
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+}
+
+.forecast-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
 }
 
 .checklist-item {

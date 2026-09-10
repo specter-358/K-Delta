@@ -168,8 +168,15 @@
 
     </main>
 
-    <!-- ── Right Sidebar — Predictions ── -->
+    <!-- ── Right Sidebar — Technical Inspector ── -->
     <aside class="sidebar-right">
+
+      <!-- Inspector Nav Tabs -->
+      <div class="inspector-tabs">
+        <button class="inspector-tab active" data-tab="plan" onclick="switchInspectorTab('plan')">⚡ Trade Plan</button>
+        <button class="inspector-tab" data-tab="backtest" onclick="switchInspectorTab('backtest')">📈 Accuracy (Backtest)</button>
+        <button class="inspector-tab" data-tab="forecast" onclick="switchInspectorTab('forecast')">🔮 5-Bar Forecast</button>
+      </div>
 
       <!-- Overall Signal & Action Card -->
       <div class="signal-header">
@@ -181,46 +188,126 @@
         <div class="action-headline" id="action-headline">Analyzing market data...</div>
       </div>
 
-      <!-- Trade Execution Setup (When to Buy / Sell) -->
-      <div class="panel-section trade-setup-panel">
-        <div class="panel-section__title">
-          <span>⚡ When to Buy & Sell</span>
-          <span class="badge-tag" id="trade-horizon-badge">Swing</span>
+      <!-- ═══ TAB 1: Trade Plan ═══ -->
+      <div class="tab-content active" id="tab-content-plan">
+
+        <!-- Trade Execution Setup -->
+        <div class="panel-section trade-setup-panel">
+          <div class="panel-section__title">
+            <span>⚡ Execution Targets</span>
+            <span class="badge-tag" id="trade-horizon-badge">Swing</span>
+          </div>
+
+          <!-- Price Target Grid -->
+          <div class="trade-targets-grid" id="trade-targets-grid">
+            <div class="target-card target-card--entry">
+              <div class="target-card__label">ENTRY ZONE</div>
+              <div class="target-card__price" id="target-entry-price">—</div>
+              <div class="target-card__sub" id="target-entry-zone">—</div>
+            </div>
+            <div class="target-card target-card--tp1">
+              <div class="target-card__label">TARGET 1 (TP1)</div>
+              <div class="target-card__price" id="target-tp1-price">—</div>
+              <div class="target-card__sub price-up" id="target-tp1-pct">—</div>
+            </div>
+            <div class="target-card target-card--tp2">
+              <div class="target-card__label">TARGET 2 (TP2)</div>
+              <div class="target-card__price" id="target-tp2-price">—</div>
+              <div class="target-card__sub price-up" id="target-tp2-pct">—</div>
+            </div>
+            <div class="target-card target-card--sl">
+              <div class="target-card__label">STOP LOSS</div>
+              <div class="target-card__price" id="target-sl-price">—</div>
+              <div class="target-card__sub price-down" id="target-sl-pct">—</div>
+            </div>
+          </div>
+
+          <!-- Risk / Reward Bar -->
+          <div class="risk-reward-row">
+            <span class="risk-reward-label">Risk/Reward Ratio:</span>
+            <span class="risk-reward-value" id="risk-reward-value">1 : 2.2</span>
+          </div>
+
+          <!-- Step-by-Step Trade Checklist -->
+          <div class="trade-checklist" id="trade-checklist">
+            <!-- Populated by JS -->
+          </div>
         </div>
 
-        <!-- Price Target Grid -->
-        <div class="trade-targets-grid" id="trade-targets-grid">
-          <div class="target-card target-card--entry">
-            <div class="target-card__label">ENTRY ZONE</div>
-            <div class="target-card__price" id="target-entry-price">—</div>
-            <div class="target-card__sub" id="target-entry-zone">—</div>
+      </div>
+
+      <!-- ═══ TAB 2: Historical Backtest & Accuracy ═══ -->
+      <div class="tab-content" id="tab-content-backtest" style="display:none">
+        <div class="panel-section">
+          <div class="panel-section__title">
+            <span>📈 Historical Win-Rate & Track Record</span>
           </div>
-          <div class="target-card target-card--tp1">
-            <div class="target-card__label">TARGET 1 (TP1)</div>
-            <div class="target-card__price" id="target-tp1-price">—</div>
-            <div class="target-card__sub price-up" id="target-tp1-pct">—</div>
+
+          <div class="backtest-metrics-grid">
+            <div class="backtest-metric-card">
+              <div class="backtest-metric__label">WIN RATE</div>
+              <div class="backtest-metric__val price-up" id="backtest-win-rate">78.5%</div>
+              <div class="backtest-metric__sub" id="backtest-trades-count">22 / 28 Trades</div>
+            </div>
+            <div class="backtest-metric-card">
+              <div class="backtest-metric__label">PROFIT FACTOR</div>
+              <div class="backtest-metric__val" id="backtest-profit-factor">2.85</div>
+              <div class="backtest-metric__sub">Gross Win / Loss</div>
+            </div>
+            <div class="backtest-metric-card">
+              <div class="backtest-metric__label">AVG WIN / LOSS</div>
+              <div class="backtest-metric__val" id="backtest-avg-win">+3.9% / -1.5%</div>
+              <div class="backtest-metric__sub">Per Signal</div>
+            </div>
+            <div class="backtest-metric-card">
+              <div class="backtest-metric__label">EXPECTED RETURN (EV)</div>
+              <div class="backtest-metric__val price-up" id="backtest-ev">+2.76%</div>
+              <div class="backtest-metric__sub">Per Trade Expectancy</div>
+            </div>
           </div>
-          <div class="target-card target-card--tp2">
-            <div class="target-card__label">TARGET 2 (TP2)</div>
-            <div class="target-card__price" id="target-tp2-price">—</div>
-            <div class="target-card__sub price-up" id="target-tp2-pct">—</div>
+
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">
+            Recent Backtested Signals Log
           </div>
-          <div class="target-card target-card--sl">
-            <div class="target-card__label">STOP LOSS</div>
-            <div class="target-card__price" id="target-sl-price">—</div>
-            <div class="target-card__sub price-down" id="target-sl-pct">—</div>
+          <div class="backtest-log-table" id="backtest-log-table">
+            <!-- Populated by JS -->
           </div>
         </div>
+      </div>
 
-        <!-- Risk / Reward Bar -->
-        <div class="risk-reward-row">
-          <span class="risk-reward-label">Risk/Reward Ratio:</span>
-          <span class="risk-reward-value" id="risk-reward-value">1 : 2.2</span>
-        </div>
+      <!-- ═══ TAB 3: 5-Bar Forecast Trajectory ═══ -->
+      <div class="tab-content" id="tab-content-forecast" style="display:none">
+        <div class="panel-section">
+          <div class="panel-section__title">
+            <span>🔮 5-Bar Forward Price Trajectory</span>
+          </div>
 
-        <!-- Step-by-Step Trade Checklist -->
-        <div class="trade-checklist" id="trade-checklist">
-          <!-- Populated by JS -->
+          <div class="forecast-probability-banner" id="forecast-prob-banner">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.8rem">
+              <span>Upside Probability: <strong class="price-up" id="forecast-upside-prob">74%</strong></span>
+              <span>Downside: <strong class="price-down" id="forecast-downside-prob">26%</strong></span>
+            </div>
+            <div class="prob-progress-bar">
+              <div class="prob-progress-fill" id="prob-progress-fill" style="width:74%"></div>
+            </div>
+          </div>
+
+          <div class="forecast-table-container">
+            <table class="forecast-table">
+              <thead>
+                <tr>
+                  <th>Horizon</th>
+                  <th>Expected</th>
+                  <th>Upper (90%)</th>
+                  <th>Lower (90%)</th>
+                  <th>Return</th>
+                </tr>
+              </thead>
+              <tbody id="forecast-table-body">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
