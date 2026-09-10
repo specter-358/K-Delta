@@ -16,7 +16,7 @@ const CONFIG = {
     'ICICIBANK.NS',
     'SBIN.NS',
     'BHARTIARTL.NS',
-    'TATAMOTORS.NS',
+    'TATASTEEL.NS',
   ],
 
   // Indian Market Indices
@@ -47,8 +47,10 @@ const CONFIG = {
   // Available timeframes
   TIMEFRAMES: [
     { label: '1m', value: '1min' },
+    { label: '3m', value: '3min' },
     { label: '5m', value: '5min' },
     { label: '15m', value: '15min' },
+    { label: '30m', value: '30min' },
     { label: '1h', value: '1h' },
     { label: '1D', value: '1day' },
     { label: '1W', value: '1week' },
@@ -58,7 +60,7 @@ const CONFIG = {
   DEFAULT_TIMEFRAME: '1day',
 
   // Cache duration (ms)
-  CACHE_DURATION: 15000, // 15 seconds
+  CACHE_DURATION: 2000, // 2 seconds for fresh market data
 
   // Max recent stocks
   MAX_RECENT: 8,

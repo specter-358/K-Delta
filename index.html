@@ -37,8 +37,6 @@
       <a href="index.html" class="active">Overview</a>
       <a href="dashboard.html?symbol=RELIANCE.NS">Terminal & Chart</a>
       <a href="history.html">Analysis History</a>
-      <a href="#setups-section">Live Signals</a>
-      <a href="#patterns-guide">Pattern Guide</a>
     </div>
     <div class="navbar__market-status">
       <span class="live-feed-badge">
@@ -94,53 +92,8 @@
             <button class="trending-pill" onclick="navigateToDashboard('TCS.NS')">TCS</button>
             <button class="trending-pill" onclick="navigateToDashboard('HDFCBANK.NS')">HDFCBANK</button>
             <button class="trending-pill" onclick="navigateToDashboard('INFY.NS')">INFY</button>
-            <button class="trending-pill" onclick="navigateToDashboard('TATAMOTORS.NS')">TATAMOTORS</button>
+            <button class="trending-pill" onclick="navigateToDashboard('TATASTEEL.NS')">TATASTEEL</button>
             <button class="trending-pill" onclick="navigateToDashboard('SBIN.NS')">SBIN</button>
-          </div>
-        </div>
-
-        <!-- ═══ Centered Attach Image Feature ═══ -->
-        <div class="attach-image-section">
-          <div class="attach-image-card">
-            <!-- Dropzone -->
-            <div class="attach-image-dropzone" id="attach-image-dropzone">
-              <div class="attach-image-dropzone__icon-wrap">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-              </div>
-              <div>
-                <div class="attach-image-dropzone__title">Attach Chart Image / Screenshot</div>
-                <div class="attach-image-dropzone__subtitle">
-                  Drop your technical chart image here, click to browse, or press <strong style="color:var(--accent-blue)">Ctrl + V</strong> to paste from clipboard
-                </div>
-              </div>
-              <span class="attach-image-dropzone__badge">Supports PNG, JPG, WEBP</span>
-              <input type="file" id="attach-image-file-input" accept="image/*" style="display:none">
-            </div>
-
-            <!-- Preview Wrapper -->
-            <div class="attach-image-preview-wrap" id="attach-image-preview-wrap">
-              <div class="attach-image-preview-frame">
-                <img id="attach-image-preview-img" class="attach-image-preview-img" alt="Attached Chart Preview">
-              </div>
-              <div class="attach-image-meta">
-                <span id="attach-image-filename" style="font-weight:700;color:var(--text-primary)">chart.png</span>
-                <span id="attach-image-filesize">0 KB</span>
-              </div>
-              <div class="attach-image-actions">
-                <button class="btn btn--primary" id="btn-analyze-attached-image" style="flex:1">
-                  Analyze Chart Patterns
-                </button>
-                <button class="btn btn--ghost" id="btn-clear-attached-image">
-                  Clear
-                </button>
-              </div>
-              <!-- Simulated analysis result card -->
-              <div class="attach-image-analysis-result" id="attach-image-analysis-result"></div>
-            </div>
           </div>
         </div>
 

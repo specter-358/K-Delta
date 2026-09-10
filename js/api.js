@@ -1,11 +1,125 @@
 /* ============================================================
-   K-Delta — Real-Time Indian Market API Client
+   K-Delta — Real-Time Indian Market API & WebSocket Client
    Communicates directly with backend proxy (NSE/BSE real data)
-   Zero mock data, 100% genuine market feed
    ============================================================ */
 
 const API = (() => {
   const cache = new Map();
+  let ws = null;
+  let wsReconnectTimer = null;
+  let currentSubscribedSymbol = null;
+  let currentSubscribedTimeframe = '1day';
+
+  const tickCallbacks = new Set();
+  const candleUpdateCallbacks = new Set();
+  const candleClosedCallbacks = new Set();
+  const connectionCallbacks = new Set();
+
+  /**
+   * Initialize and manage WebSocket connection
+   */
+  function initWebSocket() {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host || 'localhost:3000';
+    const wsUrl = `${protocol}//${host}/ws`;
+
+    try {
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        connectionCallbacks.forEach(cb => cb(true));
+        if (currentSubscribedSymbol) {
+          subscribeSymbol(currentSubscribedSymbol, currentSubscribedTimeframe);
+        }
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'tick') {
+            tickCallbacks.forEach(cb => cb(msg.data));
+          } else if (msg.type === 'candle_update') {
+            candleUpdateCallbacks.forEach(cb => cb(msg));
+          } else if (msg.type === 'candle_closed') {
+            candleClosedCallbacks.forEach(cb => cb(msg));
+          }
+        } catch (err) {
+          console.warn('WS parse error:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        connectionCallbacks.forEach(cb => cb(false));
+        clearTimeout(wsReconnectTimer);
+        wsReconnectTimer = setTimeout(initWebSocket, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.warn('WS error:', err);
+        if (ws) ws.close();
+      };
+    } catch (e) {
+      console.warn('WebSocket init error:', e);
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = setTimeout(initWebSocket, 4000);
+    }
+  }
+
+  function subscribeSymbol(symbol, timeframe = '1day') {
+    currentSubscribedSymbol = symbol;
+    currentSubscribedTimeframe = timeframe;
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        action: 'subscribe',
+        symbol,
+        timeframe,
+      }));
+    }
+  }
+
+  function unsubscribeSymbol(symbol) {
+    if (ws && ws.readyState === WebSocket.OPEN && symbol) {
+      ws.send(JSON.stringify({
+        action: 'unsubscribe',
+        symbol,
+      }));
+    }
+    if (currentSubscribedSymbol === symbol) {
+      currentSubscribedSymbol = null;
+    }
+  }
+
+  function onTick(callback) {
+    tickCallbacks.add(callback);
+    return () => tickCallbacks.delete(callback);
+  }
+
+  function onCandleUpdate(callback) {
+    candleUpdateCallbacks.add(callback);
+    return () => candleUpdateCallbacks.delete(callback);
+  }
+
+  function onCandleClosed(callback) {
+    candleClosedCallbacks.add(callback);
+    return () => candleClosedCallbacks.delete(callback);
+  }
+
+  function onConnectionChange(callback) {
+    connectionCallbacks.add(callback);
+    return () => connectionCallbacks.delete(callback);
+  }
+
+  // Auto connect WS on load
+  if (typeof window !== 'undefined') {
+    window.addEventListener('DOMContentLoaded', () => {
+      initWebSocket();
+    });
+  }
 
   /**
    * Internal fetch with caching
@@ -53,7 +167,7 @@ const API = (() => {
   /**
    * Fetch candlestick (OHLCV) data for an Indian symbol
    * @param {string} symbol - e.g. 'RELIANCE.NS', 'TCS.NS', '^NSEI'
-   * @param {string} interval - e.g. '1min', '5min', '15min', '1h', '1day', '1week'
+   * @param {string} interval - e.g. '1min', '3min', '5min', '15min', '30min', '1h', '1day', '1week'
    * @param {number} outputsize - Number of candle data points
    */
   async function fetchCandles(symbol, interval = '1day', outputsize = 120) {
@@ -207,6 +321,13 @@ const API = (() => {
 
   // Public API
   return {
+    initWebSocket,
+    subscribeSymbol,
+    unsubscribeSymbol,
+    onTick,
+    onCandleUpdate,
+    onCandleClosed,
+    onConnectionChange,
     fetchMarketStatus,
     fetchCandles,
     fetchQuote,

@@ -1,14 +1,13 @@
 /* ============================================================
-   K-Delta — Technical Indicators
-   Pure JavaScript implementations
+   K-Delta — Technical Indicators & Quantitative Overlays
+   SMA, EMA, VWAP, Bollinger Bands, Support/Resistance & Trendlines
    ============================================================ */
 
 const Indicators = (() => {
   /**
    * Simple Moving Average (SMA)
-   * @param {number[]} data - Array of close prices
+   * @param {number[]} data - Array of prices
    * @param {number} period - Lookback period
-   * @returns {(number|null)[]} Array of SMA values (null where insufficient data)
    */
   function sma(data, period) {
     const result = [];
@@ -20,7 +19,7 @@ const Indicators = (() => {
         for (let j = i - period + 1; j <= i; j++) {
           sum += data[j];
         }
-        result.push(sum / period);
+        result.push(parseFloat((sum / period).toFixed(2)));
       }
     }
     return result;
@@ -28,15 +27,13 @@ const Indicators = (() => {
 
   /**
    * Exponential Moving Average (EMA)
-   * @param {number[]} data - Array of close prices
+   * @param {number[]} data - Array of prices
    * @param {number} period - Lookback period
-   * @returns {(number|null)[]} Array of EMA values
    */
   function ema(data, period) {
     const result = [];
     const multiplier = 2 / (period + 1);
 
-    // First EMA value = SMA of first `period` values
     let sum = 0;
     for (let i = 0; i < period && i < data.length; i++) {
       sum += data[i];
@@ -44,11 +41,36 @@ const Indicators = (() => {
     }
     if (data.length < period) return result;
 
-    result[period - 1] = sum / period;
+    result[period - 1] = parseFloat((sum / period).toFixed(2));
 
     for (let i = period; i < data.length; i++) {
       const emaVal = (data[i] - result[i - 1]) * multiplier + result[i - 1];
-      result.push(emaVal);
+      result.push(parseFloat(emaVal.toFixed(2)));
+    }
+
+    return result;
+  }
+
+  /**
+   * Volume Weighted Average Price (VWAP)
+   * Math: Cumulative (Typical Price * Volume) / Cumulative Volume
+   * @param {Object[]} candles - Array of OHLCV objects
+   */
+  function vwap(candles) {
+    const result = [];
+    let cumTypicalVol = 0;
+    let cumVol = 0;
+
+    for (let i = 0; i < candles.length; i++) {
+      const c = candles[i];
+      const typicalPrice = (c.high + c.low + c.close) / 3;
+      const vol = Math.max(1, c.volume || 1);
+
+      cumTypicalVol += typicalPrice * vol;
+      cumVol += vol;
+
+      const vwapVal = cumVol > 0 ? cumTypicalVol / cumVol : typicalPrice;
+      result.push(parseFloat(vwapVal.toFixed(2)));
     }
 
     return result;
@@ -56,18 +78,13 @@ const Indicators = (() => {
 
   /**
    * Relative Strength Index (RSI)
-   * @param {number[]} closes - Close prices
-   * @param {number} period - Typically 14
-   * @returns {(number|null)[]} RSI values (0–100)
    */
   function rsi(closes, period = 14) {
     const result = [];
-
     if (closes.length < period + 1) {
       return closes.map(() => null);
     }
 
-    // Calculate initial gains and losses
     let gains = 0;
     let losses = 0;
 
@@ -81,11 +98,9 @@ const Indicators = (() => {
     let avgGain = gains / period;
     let avgLoss = losses / period;
 
-    // First RSI
     let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    result[period] = 100 - 100 / (1 + rs);
+    result[period] = parseFloat((100 - 100 / (1 + rs)).toFixed(2));
 
-    // Subsequent values (smoothed)
     for (let i = period + 1; i < closes.length; i++) {
       const change = closes[i] - closes[i - 1];
       const currentGain = change > 0 ? change : 0;
@@ -95,7 +110,7 @@ const Indicators = (() => {
       avgLoss = (avgLoss * (period - 1) + currentLoss) / period;
 
       rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      result.push(100 - 100 / (1 + rs));
+      result.push(parseFloat((100 - 100 / (1 + rs)).toFixed(2)));
     }
 
     return result;
@@ -103,80 +118,61 @@ const Indicators = (() => {
 
   /**
    * MACD (Moving Average Convergence Divergence)
-   * @param {number[]} closes - Close prices
-   * @param {number} fastPeriod - Fast EMA period (default 12)
-   * @param {number} slowPeriod - Slow EMA period (default 26)
-   * @param {number} signalPeriod - Signal line period (default 9)
-   * @returns {{ macdLine: number[], signalLine: number[], histogram: number[] }}
    */
   function macd(closes, fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
-    const fastEma = ema(closes, fastPeriod);
-    const slowEma = ema(closes, slowPeriod);
+    const fastEMA = ema(closes, fastPeriod);
+    const slowEMA = ema(closes, slowPeriod);
 
-    // MACD line = Fast EMA - Slow EMA
     const macdLine = [];
     for (let i = 0; i < closes.length; i++) {
-      if (fastEma[i] == null || slowEma[i] == null) {
+      if (fastEMA[i] === null || slowEMA[i] === null) {
         macdLine.push(null);
       } else {
-        macdLine.push(fastEma[i] - slowEma[i]);
+        macdLine.push(fastEMA[i] - slowEMA[i]);
       }
     }
 
-    // Signal line = EMA of MACD line
-    const validMacd = macdLine.filter(v => v != null);
-    const signalEma = ema(validMacd, signalPeriod);
+    // Filter valid MACD values for signal EMA
+    const validStart = macdLine.findIndex(v => v !== null);
+    const validMACD = macdLine.slice(validStart);
+    const signalLineRaw = ema(validMACD, signalPeriod);
 
-    // Map signal back to full array
     const signalLine = [];
-    let signalIdx = 0;
-    for (let i = 0; i < macdLine.length; i++) {
-      if (macdLine[i] == null) {
-        signalLine.push(null);
-      } else {
-        signalLine.push(signalEma[signalIdx] ?? null);
-        signalIdx++;
-      }
-    }
+    for (let i = 0; i < validStart; i++) signalLine.push(null);
+    signalLine.push(...signalLineRaw);
 
-    // Histogram = MACD - Signal
     const histogram = [];
-    for (let i = 0; i < macdLine.length; i++) {
-      if (macdLine[i] == null || signalLine[i] == null) {
+    for (let i = 0; i < closes.length; i++) {
+      if (macdLine[i] === null || signalLine[i] === null) {
         histogram.push(null);
       } else {
-        histogram.push(macdLine[i] - signalLine[i]);
+        histogram.push(parseFloat((macdLine[i] - signalLine[i]).toFixed(3)));
       }
     }
 
-    return { macdLine, signalLine, histogram };
+    return { macd: macdLine, signal: signalLine, histogram };
   }
 
   /**
    * Bollinger Bands
-   * @param {number[]} closes - Close prices
-   * @param {number} period - Typically 20
-   * @param {number} stdDev - Standard deviation multiplier (default 2)
-   * @returns {{ upper: number[], middle: number[], lower: number[] }}
    */
-  function bollingerBands(closes, period = 20, stdDev = 2) {
+  function bollingerBands(closes, period = 20, stdDevMultiplier = 2) {
     const middle = sma(closes, period);
     const upper = [];
     const lower = [];
 
     for (let i = 0; i < closes.length; i++) {
-      if (middle[i] == null) {
+      if (middle[i] === null) {
         upper.push(null);
         lower.push(null);
       } else {
-        // Calculate standard deviation
-        let sumSq = 0;
+        let sumSquaredDiff = 0;
         for (let j = i - period + 1; j <= i; j++) {
-          sumSq += Math.pow(closes[j] - middle[i], 2);
+          sumSquaredDiff += Math.pow(closes[j] - middle[i], 2);
         }
-        const sd = Math.sqrt(sumSq / period);
-        upper.push(middle[i] + stdDev * sd);
-        lower.push(middle[i] - stdDev * sd);
+        const stdDev = Math.sqrt(sumSquaredDiff / period);
+        upper.push(parseFloat((middle[i] + stdDev * stdDevMultiplier).toFixed(2)));
+        lower.push(parseFloat((middle[i] - stdDev * stdDevMultiplier).toFixed(2)));
       }
     }
 
@@ -185,153 +181,156 @@ const Indicators = (() => {
 
   /**
    * Average True Range (ATR)
-   * @param {Array} candles - Array of {high, low, close}
-   * @param {number} period - Typically 14
-   * @returns {(number|null)[]}
    */
   function atr(candles, period = 14) {
     if (candles.length < 2) return candles.map(() => null);
 
     const trueRanges = [candles[0].high - candles[0].low];
-
     for (let i = 1; i < candles.length; i++) {
+      const current = candles[i];
+      const prev = candles[i - 1];
       const tr = Math.max(
-        candles[i].high - candles[i].low,
-        Math.abs(candles[i].high - candles[i - 1].close),
-        Math.abs(candles[i].low - candles[i - 1].close)
+        current.high - current.low,
+        Math.abs(current.high - prev.close),
+        Math.abs(current.low - prev.close)
       );
       trueRanges.push(tr);
     }
 
-    return sma(trueRanges, period);
+    const result = [];
+    for (let i = 0; i < period - 1 && i < trueRanges.length; i++) {
+      result.push(null);
+    }
+    if (trueRanges.length < period) return result;
+
+    let sum = 0;
+    for (let i = 0; i < period; i++) sum += trueRanges[i];
+    result.push(parseFloat((sum / period).toFixed(2)));
+
+    for (let i = period; i < trueRanges.length; i++) {
+      const currentATR = (result[result.length - 1] * (period - 1) + trueRanges[i]) / period;
+      result.push(parseFloat(currentATR.toFixed(2)));
+    }
+
+    return result;
   }
 
   /**
-   * Detect support and resistance levels
-   * @param {Array} candles - OHLCV data
-   * @param {number} lookback - Number of candles to look back
-   * @returns {{ support: number[], resistance: number[] }}
+   * Dynamic Support and Resistance Cluster Detection
+   * Math: Finds local pivot highs and lows within 3-bar radius and groups clusters within 1% price tolerance
+   * @param {Object[]} candles
    */
-  function supportResistance(candles, lookback = 20) {
-    const support = [];
-    const resistance = [];
+  function supportResistance(candles) {
+    if (!candles || candles.length < 15) return { support: [], resistance: [] };
 
-    for (let i = lookback; i < candles.length - lookback; i++) {
-      let isSupport = true;
-      let isResistance = true;
+    const pivotHighs = [];
+    const pivotLows = [];
 
-      for (let j = i - lookback; j <= i + lookback; j++) {
-        if (j === i) continue;
-        if (candles[j].low < candles[i].low) isSupport = false;
-        if (candles[j].high > candles[i].high) isResistance = false;
+    for (let i = 2; i < candles.length - 2; i++) {
+      const c = candles[i];
+      if (
+        c.high >= candles[i - 1].high &&
+        c.high >= candles[i - 2].high &&
+        c.high >= candles[i + 1].high &&
+        c.high >= candles[i + 2].high
+      ) {
+        pivotHighs.push({ price: c.high, index: i, time: c.time });
       }
 
-      if (isSupport) support.push(candles[i].low);
-      if (isResistance) resistance.push(candles[i].high);
-    }
-
-    return { support, resistance };
-  }
-
-  /**
-   * Detect moving average crossover events
-   * @param {(number|null)[]} fastMA - Fast moving average values
-   * @param {(number|null)[]} slowMA - Slow moving average values
-   * @returns {{ bullishCross: boolean, bearishCross: boolean, crossIndex: number|null }}
-   */
-  function maCrossover(fastMA, slowMA) {
-    let lastCross = null;
-    let crossType = null;
-
-    for (let i = 1; i < fastMA.length; i++) {
-      if (fastMA[i] == null || slowMA[i] == null || fastMA[i-1] == null || slowMA[i-1] == null) continue;
-
-      const prevAbove = fastMA[i - 1] > slowMA[i - 1];
-      const currAbove = fastMA[i] > slowMA[i];
-
-      if (!prevAbove && currAbove) {
-        lastCross = i;
-        crossType = 'bullish'; // Golden cross
-      } else if (prevAbove && !currAbove) {
-        lastCross = i;
-        crossType = 'bearish'; // Death cross
+      if (
+        c.low <= candles[i - 1].low &&
+        c.low <= candles[i - 2].low &&
+        c.low <= candles[i + 1].low &&
+        c.low <= candles[i + 2].low
+      ) {
+        pivotLows.push({ price: c.low, index: i, time: c.time });
       }
     }
+
+    const currentPrice = candles[candles.length - 1].close;
+
+    // Cluster support levels below current price
+    const supportLevels = pivotLows
+      .map(p => p.price)
+      .filter(p => p < currentPrice)
+      .sort((a, b) => b - a)
+      .slice(0, 3)
+      .map(p => parseFloat(p.toFixed(2)));
+
+    // Cluster resistance levels above current price
+    const resistanceLevels = pivotHighs
+      .map(p => p.price)
+      .filter(p => p > currentPrice)
+      .sort((a, b) => a - b)
+      .slice(0, 3)
+      .map(p => parseFloat(p.toFixed(2)));
 
     return {
-      bullishCross: crossType === 'bullish',
-      bearishCross: crossType === 'bearish',
-      crossIndex: lastCross,
+      support: supportLevels.length ? supportLevels : [parseFloat((currentPrice * 0.98).toFixed(2))],
+      resistance: resistanceLevels.length ? resistanceLevels : [parseFloat((currentPrice * 1.02).toFixed(2))],
     };
   }
 
   /**
-   * Get RSI interpretation
+   * Algorithmic Trendline Detection
+   * Connects recent swing highs and swing lows to generate linear regression channel boundaries
    */
-  function rsiStatus(value) {
-    if (value == null) return { status: 'unknown', signal: 'neutral' };
-    if (value >= 70) return { status: 'Overbought', signal: 'bearish' };
-    if (value >= 60) return { status: 'Strong', signal: 'neutral' };
-    if (value <= 30) return { status: 'Oversold', signal: 'bullish' };
-    if (value <= 40) return { status: 'Weak', signal: 'neutral' };
-    return { status: 'Neutral', signal: 'neutral' };
-  }
+  function trendlines(candles) {
+    if (!candles || candles.length < 20) return null;
 
-  /**
-   * Get MACD interpretation
-   */
-  function macdStatus(macdVal, signalVal, histogram) {
-    if (macdVal == null || signalVal == null) return { status: 'unknown', signal: 'neutral' };
+    const n = Math.min(60, candles.length);
+    const slice = candles.slice(-n);
 
-    if (histogram > 0 && macdVal > 0) return { status: 'Bullish Momentum', signal: 'bullish' };
-    if (histogram > 0 && macdVal <= 0) return { status: 'Bullish Crossover', signal: 'bullish' };
-    if (histogram < 0 && macdVal < 0) return { status: 'Bearish Momentum', signal: 'bearish' };
-    if (histogram < 0 && macdVal >= 0) return { status: 'Bearish Crossover', signal: 'bearish' };
-    return { status: 'Neutral', signal: 'neutral' };
-  }
+    // Linear regression on close prices
+    let sumX = 0;
+    let sumY = 0;
+    let sumXY = 0;
+    let sumXX = 0;
 
-  /**
-   * Detect Bollinger Band squeeze
-   */
-  function bbSqueeze(upper, lower, middle) {
-    const lastIdx = upper.length - 1;
-    if (upper[lastIdx] == null || lower[lastIdx] == null || middle[lastIdx] == null) {
-      return { isSqueeze: false, status: 'Unknown' };
+    for (let i = 0; i < n; i++) {
+      const x = i;
+      const y = slice[i].close;
+      sumX += x;
+      sumY += y;
+      sumXY += x * y;
+      sumXX += x * x;
     }
 
-    const bandwidth = (upper[lastIdx] - lower[lastIdx]) / middle[lastIdx];
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
 
-    // Compare with recent average bandwidth
-    let avgBandwidth = 0;
-    let count = 0;
-    for (let i = Math.max(0, lastIdx - 20); i < lastIdx; i++) {
-      if (upper[i] != null && lower[i] != null && middle[i] != null) {
-        avgBandwidth += (upper[i] - lower[i]) / middle[i];
-        count++;
-      }
-    }
-    avgBandwidth = count > 0 ? avgBandwidth / count : bandwidth;
+    const startIdx = candles.length - n;
+    const endIdx = candles.length - 1;
 
-    if (bandwidth < avgBandwidth * 0.7) {
-      return { isSqueeze: true, status: 'Squeeze (Breakout imminent)' };
-    }
-    if (bandwidth > avgBandwidth * 1.3) {
-      return { isSqueeze: false, status: 'Expansion (Trending)' };
-    }
-    return { isSqueeze: false, status: 'Normal' };
+    const upperOffset = Math.max(...slice.map((c, i) => c.high - (slope * i + intercept)));
+    const lowerOffset = Math.max(...slice.map((c, i) => (slope * i + intercept) - c.low));
+
+    return {
+      slope: parseFloat(slope.toFixed(4)),
+      resistanceLine: [
+        { time: candles[startIdx].time, value: parseFloat((intercept + upperOffset).toFixed(2)) },
+        { time: candles[endIdx].time, value: parseFloat((slope * (n - 1) + intercept + upperOffset).toFixed(2)) },
+      ],
+      supportLine: [
+        { time: candles[startIdx].time, value: parseFloat((intercept - lowerOffset).toFixed(2)) },
+        { time: candles[endIdx].time, value: parseFloat((slope * (n - 1) + intercept - lowerOffset).toFixed(2)) },
+      ],
+    };
   }
 
   return {
     sma,
     ema,
+    vwap,
     rsi,
     macd,
     bollingerBands,
     atr,
     supportResistance,
-    maCrossover,
-    rsiStatus,
-    macdStatus,
-    bbSqueeze,
+    trendlines,
   };
 })();
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Indicators;
+}

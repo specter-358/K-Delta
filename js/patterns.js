@@ -1,77 +1,79 @@
 /* ============================================================
-   K-Delta — Candlestick Pattern Detection Engine
-   Detects 15+ patterns with explanations
+   K-Delta — Mathematical Candlestick Pattern Recognition Engine
+   Institutional Classifiers with Strict OHLC Geometry & Confidence
    ============================================================ */
 
 const Patterns = (() => {
   /**
-   * Helper: Calculate candle body size
+   * Helper: Calculate absolute candle body size
    */
   function bodySize(candle) {
     return Math.abs(candle.close - candle.open);
   }
 
   /**
-   * Helper: Full candle range (high - low)
+   * Helper: Full candle range (High - Low)
    */
   function candleRange(candle) {
-    return candle.high - candle.low;
+    return Math.max(0.001, candle.high - candle.low);
   }
 
   /**
-   * Helper: Is the candle bullish?
+   * Helper: Is candle bullish?
    */
   function isBullish(candle) {
     return candle.close > candle.open;
   }
 
   /**
-   * Helper: Is the candle bearish?
+   * Helper: Is candle bearish?
    */
   function isBearish(candle) {
     return candle.close < candle.open;
   }
 
   /**
-   * Helper: Upper shadow size
+   * Helper: Upper shadow / wick length
    */
   function upperShadow(candle) {
-    return candle.high - Math.max(candle.open, candle.close);
+    return Math.max(0, candle.high - Math.max(candle.open, candle.close));
   }
 
   /**
-   * Helper: Lower shadow size
+   * Helper: Lower shadow / wick length
    */
   function lowerShadow(candle) {
-    return Math.min(candle.open, candle.close) - candle.low;
+    return Math.max(0, Math.min(candle.open, candle.close) - candle.low);
   }
 
   /**
-   * Helper: Is there a prior downtrend? (last N candles)
+   * Helper: Check prior downtrend (at least 60% bearish closes over lookback)
    */
-  function isPriorDowntrend(candles, index, lookback = 5) {
+  function isPriorDowntrend(candles, index, lookback = 4) {
     if (index < lookback) return false;
     let downCount = 0;
     for (let i = index - lookback; i < index; i++) {
       if (candles[i].close < candles[i].open) downCount++;
     }
-    return downCount >= Math.ceil(lookback * 0.6);
+    const netDrop = candles[index - 1].close < candles[index - lookback].open;
+    return downCount >= Math.ceil(lookback * 0.5) || netDrop;
   }
 
   /**
-   * Helper: Is there a prior uptrend?
+   * Helper: Check prior uptrend (at least 60% bullish closes over lookback)
    */
-  function isPriorUptrend(candles, index, lookback = 5) {
+  function isPriorUptrend(candles, index, lookback = 4) {
     if (index < lookback) return false;
     let upCount = 0;
     for (let i = index - lookback; i < index; i++) {
       if (candles[i].close > candles[i].open) upCount++;
     }
-    return upCount >= Math.ceil(lookback * 0.6);
+    const netRise = candles[index - 1].close > candles[index - lookback].open;
+    return upCount >= Math.ceil(lookback * 0.5) || netRise;
   }
 
   /**
-   * Helper: Average body size of recent candles
+   * Helper: Average body size of preceding candles
    */
   function avgBodySize(candles, endIndex, lookback = 10) {
     let sum = 0;
@@ -80,145 +82,244 @@ const Patterns = (() => {
       sum += bodySize(candles[i]);
       count++;
     }
-    return count > 0 ? sum / count : 0;
+    return count > 0 ? sum / count : 0.1;
   }
 
-  // ────────────────────────────────────────────
-  // SINGLE-CANDLE PATTERNS
-  // ────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════
+  // 1. SINGLE-CANDLE PATTERNS
+  // ════════════════════════════════════════════════════════════
 
   /**
-   * Doji — Open ≈ Close
+   * Doji Classifiers (Standard, Dragonfly, Gravestone, Long-Legged)
+   * Math: Body <= 10% of total candle range
    */
   function detectDoji(candles, index) {
     const c = candles[index];
     const body = bodySize(c);
     const range = candleRange(c);
+    const uShadow = upperShadow(c);
+    const lShadow = lowerShadow(c);
 
-    if (range === 0) return null;
-    if (body / range > 0.1) return null; // Body must be ≤10% of total range
+    if (body / range > 0.10) return null;
+
+    let subType = 'Standard Doji';
+    let signal = 'neutral';
+    let confidence = 70;
+    let desc = 'Open and close are virtually identical, reflecting supply-demand equilibrium and market indecision.';
+
+    if (uShadow / range <= 0.08 && lShadow / range >= 0.70) {
+      subType = 'Dragonfly Doji';
+      signal = isPriorDowntrend(candles, index) ? 'bullish' : 'neutral';
+      confidence = 78;
+      desc = 'Long lower shadow with open/close near the absolute high indicates heavy intraday rejection of lower prices.';
+    } else if (lShadow / range <= 0.08 && uShadow / range >= 0.70) {
+      subType = 'Gravestone Doji';
+      signal = isPriorUptrend(candles, index) ? 'bearish' : 'neutral';
+      confidence = 78;
+      desc = 'Long upper shadow with open/close near the absolute low indicates heavy intraday rejection of higher prices.';
+    } else if (uShadow / range >= 0.35 && lShadow / range >= 0.35) {
+      subType = 'Long-Legged Doji';
+      confidence = 72;
+      desc = 'Extensive upper and lower shadows indicate severe two-sided volatility and sudden trend exhaustion.';
+    }
 
     return {
-      name: 'Doji',
-      type: 'reversal',
-      signal: 'neutral',
-      confidence: 'medium',
+      name: subType,
+      type: 'single',
+      signal,
+      confidence,
+      timestamp: c.time,
       index,
-      explanation:
-        'A Doji candle forms when the opening and closing prices are nearly equal, creating a cross-like shape. This signals market indecision — neither buyers nor sellers have gained control. Often appears at the end of trends and can signal a potential reversal. Watch the next few candles for confirmation.',
+      price: c.close,
+      explanation: desc,
+      rulesMatched: [
+        'Body <= 10% of total candle range',
+        `Upper shadow: ${(uShadow/range*100).toFixed(1)}%, Lower shadow: ${(lShadow/range*100).toFixed(1)}%`,
+      ],
     };
   }
 
   /**
-   * Hammer — Small body at top, long lower shadow (bullish reversal)
+   * Hammer
+   * Math: Downtrend + Small body at top (<= 35% range) + Lower shadow >= 2x body + Upper shadow <= 10% range
    */
   function detectHammer(candles, index) {
     const c = candles[index];
     const body = bodySize(c);
     const range = candleRange(c);
-    const lower = lowerShadow(c);
-    const upper = upperShadow(c);
+    const uShadow = upperShadow(c);
+    const lShadow = lowerShadow(c);
 
-    if (range === 0) return null;
-    if (lower < body * 2) return null; // Lower shadow ≥ 2x body
-    if (upper > body * 0.5) return null; // Little to no upper shadow
     if (!isPriorDowntrend(candles, index)) return null;
+    if (body === 0 || body / range > 0.35) return null;
+    if (lShadow < 2.0 * body) return null;
+    if (uShadow / range > 0.12) return null;
+
+    const isGreen = isBullish(c);
+    const confidence = isGreen ? 84 : 76;
 
     return {
       name: 'Hammer',
-      type: 'bullish_reversal',
+      type: 'single',
       signal: 'bullish',
-      confidence: 'high',
+      confidence,
+      timestamp: c.time,
       index,
-      explanation:
-        'A Hammer pattern appears after a downtrend. The long lower shadow shows that sellers pushed prices down significantly during the session, but buyers stepped in and pushed the price back up near the open. This rejection of lower prices suggests selling pressure is exhausting and a bullish reversal may follow.',
+      price: c.close,
+      explanation: `Bullish reversal formation after downtrend. Bears attempted a severe breakdown, but buyers aggressively absorbed all volume, driving price back near highs.`,
+      rulesMatched: [
+        'Confirmed prior downtrend',
+        'Small body located in upper 35% of range',
+        `Lower shadow (${lShadow.toFixed(2)}) >= 2.0x body (${body.toFixed(2)})`,
+        'Minimal upper shadow (<= 12% of range)',
+      ],
     };
   }
 
   /**
-   * Inverted Hammer — Small body at bottom, long upper shadow (bullish reversal)
+   * Inverted Hammer
+   * Math: Downtrend + Small body at bottom (<= 35% range) + Upper shadow >= 2x body + Lower shadow <= 10% range
    */
   function detectInvertedHammer(candles, index) {
     const c = candles[index];
     const body = bodySize(c);
     const range = candleRange(c);
-    const lower = lowerShadow(c);
-    const upper = upperShadow(c);
+    const uShadow = upperShadow(c);
+    const lShadow = lowerShadow(c);
 
-    if (range === 0) return null;
-    if (upper < body * 2) return null;
-    if (lower > body * 0.5) return null;
     if (!isPriorDowntrend(candles, index)) return null;
+    if (body === 0 || body / range > 0.35) return null;
+    if (uShadow < 2.0 * body) return null;
+    if (lShadow / range > 0.12) return null;
 
     return {
       name: 'Inverted Hammer',
-      type: 'bullish_reversal',
+      type: 'single',
       signal: 'bullish',
-      confidence: 'medium',
+      confidence: 76,
+      timestamp: c.time,
       index,
-      explanation:
-        'An Inverted Hammer appears after a downtrend with a long upper shadow. It shows buyers attempted to push prices higher during the session. While sellers brought it back down, the buying interest signals potential bullish reversal — especially if confirmed by a strong bullish candle next.',
+      price: c.close,
+      explanation: `Bullish reversal attempt after downtrend. Buyers stepped in aggressively during the session to test overhead supply; confirms impending buyer takeover on next bar confirmation.`,
+      rulesMatched: [
+        'Confirmed prior downtrend',
+        'Small body located in lower 35% of range',
+        `Upper shadow (${uShadow.toFixed(2)}) >= 2.0x body (${body.toFixed(2)})`,
+        'Minimal lower shadow (<= 12% of range)',
+      ],
     };
   }
 
   /**
-   * Hanging Man — Like hammer but after an uptrend (bearish reversal)
-   */
-  function detectHangingMan(candles, index) {
-    const c = candles[index];
-    const body = bodySize(c);
-    const range = candleRange(c);
-    const lower = lowerShadow(c);
-    const upper = upperShadow(c);
-
-    if (range === 0) return null;
-    if (lower < body * 2) return null;
-    if (upper > body * 0.5) return null;
-    if (!isPriorUptrend(candles, index)) return null;
-
-    return {
-      name: 'Hanging Man',
-      type: 'bearish_reversal',
-      signal: 'bearish',
-      confidence: 'high',
-      index,
-      explanation:
-        'A Hanging Man appears at the top of an uptrend and looks like a Hammer. The long lower shadow indicates that selling pressure is increasing — sellers were able to push prices down significantly during the session. This warns that the uptrend may be losing strength and a bearish reversal could follow.',
-    };
-  }
-
-  /**
-   * Shooting Star — Long upper shadow after uptrend (bearish reversal)
+   * Shooting Star
+   * Math: Uptrend + Small body at bottom (<= 35% range) + Upper shadow >= 2x body + Lower shadow <= 10% range
    */
   function detectShootingStar(candles, index) {
     const c = candles[index];
     const body = bodySize(c);
     const range = candleRange(c);
-    const lower = lowerShadow(c);
-    const upper = upperShadow(c);
+    const uShadow = upperShadow(c);
+    const lShadow = lowerShadow(c);
 
-    if (range === 0) return null;
-    if (upper < body * 2) return null;
-    if (lower > body * 0.5) return null;
     if (!isPriorUptrend(candles, index)) return null;
+    if (body === 0 || body / range > 0.35) return null;
+    if (uShadow < 2.0 * body) return null;
+    if (lShadow / range > 0.12) return null;
 
     return {
       name: 'Shooting Star',
-      type: 'bearish_reversal',
+      type: 'single',
       signal: 'bearish',
-      confidence: 'high',
+      confidence: 82,
+      timestamp: c.time,
       index,
-      explanation:
-        'A Shooting Star appears after an uptrend with a long upper shadow. Buyers pushed the price to new highs during the session, but sellers fought back and drove it down near the open. This rejection of higher prices signals that bullish momentum is fading and a bearish reversal is likely.',
+      price: c.close,
+      explanation: `Bearish reversal formation at resistance. Buyers pushed price to new intraday highs, but sellers overwhelmed demand and pushed price down near the session open.`,
+      rulesMatched: [
+        'Confirmed prior uptrend / resistance approach',
+        'Small body located in lower 35% of range',
+        `Upper shadow (${uShadow.toFixed(2)}) >= 2.0x body (${body.toFixed(2)})`,
+        'Minimal lower shadow',
+      ],
     };
   }
 
-  // ────────────────────────────────────────────
-  // TWO-CANDLE PATTERNS
-  // ────────────────────────────────────────────
+  /**
+   * Hanging Man
+   * Math: Uptrend + Small body at top (<= 35% range) + Lower shadow >= 2x body + Upper shadow <= 10% range
+   */
+  function detectHangingMan(candles, index) {
+    const c = candles[index];
+    const body = bodySize(c);
+    const range = candleRange(c);
+    const uShadow = upperShadow(c);
+    const lShadow = lowerShadow(c);
+
+    if (!isPriorUptrend(candles, index)) return null;
+    if (body === 0 || body / range > 0.35) return null;
+    if (lShadow < 2.0 * body) return null;
+    if (uShadow / range > 0.12) return null;
+
+    return {
+      name: 'Hanging Man',
+      type: 'single',
+      signal: 'bearish',
+      confidence: 75,
+      timestamp: c.time,
+      index,
+      price: c.close,
+      explanation: `Bearish warning signal at market peak. The deep intraday sell-off demonstrates that institutional supply is entering the market.`,
+      rulesMatched: [
+        'Confirmed prior uptrend',
+        'Small body located near peak',
+        `Lower shadow (${lShadow.toFixed(2)}) >= 2.0x body (${body.toFixed(2)})`,
+      ],
+    };
+  }
 
   /**
-   * Bullish Engulfing — Large bullish candle engulfs previous bearish candle
+   * Marubozu (Bullish & Bearish)
+   * Math: Body >= 85% of total range + Wicks <= 5% of range
+   */
+  function detectMarubozu(candles, index) {
+    const c = candles[index];
+    const body = bodySize(c);
+    const range = candleRange(c);
+    const uShadow = upperShadow(c);
+    const lShadow = lowerShadow(c);
+    const avgBody = avgBodySize(candles, index);
+
+    if (body / range < 0.85) return null;
+    if (uShadow / range > 0.06 || lShadow / range > 0.06) return null;
+    if (body < avgBody * 1.3) return null; // Must be significant size
+
+    const bullish = isBullish(c);
+    return {
+      name: bullish ? 'Bullish Marubozu' : 'Bearish Marubozu',
+      type: 'single',
+      signal: bullish ? 'bullish' : 'bearish',
+      confidence: 88,
+      timestamp: c.time,
+      index,
+      price: c.close,
+      explanation: bullish
+        ? 'Extreme directional momentum: buyers maintained absolute control from open to close without letting sellers push price back.'
+        : 'Extreme directional liquidation: sellers dominated the entire session from open to close without buyer resistance.',
+      rulesMatched: [
+        `Body covers ${(body/range*100).toFixed(1)}% of total range (>= 85%)`,
+        'Virtually zero upper/lower shadows (<= 6%)',
+        `Body size ${(body).toFixed(2)} exceeds 1.3x average body ${(avgBody).toFixed(2)}`,
+      ],
+    };
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // 2. MULTI-CANDLE PATTERNS
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Bullish Engulfing
+   * Math: C1 < O1 (Red) + C2 > O2 (Green) + O2 <= C1 + C2 >= O1
    */
   function detectBullishEngulfing(candles, index) {
     if (index < 1) return null;
@@ -226,23 +327,37 @@ const Patterns = (() => {
     const curr = candles[index];
 
     if (!isBearish(prev) || !isBullish(curr)) return null;
-    if (curr.open > prev.close || curr.close < prev.open) return null;
-    if (bodySize(curr) <= bodySize(prev)) return null;
+    if (bodySize(prev) === 0 || bodySize(curr) === 0) return null;
+
+    // Body 2 must completely cover Body 1
+    const engulfs = curr.open <= (prev.close + 0.05) && curr.close >= (prev.open - 0.05);
+    if (!engulfs) return null;
     if (!isPriorDowntrend(candles, index - 1)) return null;
+
+    const sizeRatio = bodySize(curr) / bodySize(prev);
+    const confidence = sizeRatio >= 1.5 ? 86 : 80;
 
     return {
       name: 'Bullish Engulfing',
-      type: 'bullish_reversal',
+      type: 'multi',
       signal: 'bullish',
-      confidence: 'high',
+      confidence,
+      timestamp: curr.time,
       index,
-      explanation:
-        'A Bullish Engulfing pattern occurs when a large green (bullish) candle completely engulfs the previous red (bearish) candle after a downtrend. This demonstrates a dramatic shift in momentum — buyers have overwhelmed sellers. The larger the engulfing candle, the stronger the reversal signal.',
+      price: curr.close,
+      explanation: `High-reliability institutional reversal: a large bullish green bar completely engulfs the prior bearish red body after a downtrend, signaling full buyer dominance.`,
+      rulesMatched: [
+        'Prior candle was bearish red',
+        'Current candle is strong bullish green',
+        `Current body (${bodySize(curr).toFixed(2)}) completely engulfs prior body (${bodySize(prev).toFixed(2)})`,
+        'Confirmed preceding downtrend',
+      ],
     };
   }
 
   /**
-   * Bearish Engulfing — Large bearish candle engulfs previous bullish candle
+   * Bearish Engulfing
+   * Math: C1 > O1 (Green) + C2 < O2 (Red) + O2 >= C1 + C2 <= O1
    */
   function detectBearishEngulfing(candles, index) {
     if (index < 1) return null;
@@ -250,49 +365,71 @@ const Patterns = (() => {
     const curr = candles[index];
 
     if (!isBullish(prev) || !isBearish(curr)) return null;
-    if (curr.open < prev.close || curr.close > prev.open) return null;
-    if (bodySize(curr) <= bodySize(prev)) return null;
+    if (bodySize(prev) === 0 || bodySize(curr) === 0) return null;
+
+    const engulfs = curr.open >= (prev.close - 0.05) && curr.close <= (prev.open + 0.05);
+    if (!engulfs) return null;
     if (!isPriorUptrend(candles, index - 1)) return null;
+
+    const sizeRatio = bodySize(curr) / bodySize(prev);
+    const confidence = sizeRatio >= 1.5 ? 85 : 79;
 
     return {
       name: 'Bearish Engulfing',
-      type: 'bearish_reversal',
+      type: 'multi',
       signal: 'bearish',
-      confidence: 'high',
+      confidence,
+      timestamp: curr.time,
       index,
-      explanation:
-        'A Bearish Engulfing pattern occurs when a large red (bearish) candle completely engulfs the previous green (bullish) candle after an uptrend. Sellers have taken decisive control, overwhelming buying pressure. This is one of the most reliable bearish reversal signals.',
+      price: curr.close,
+      explanation: `Institutional distribution pattern: a large bearish red candle completely engulfs the prior green candle at peak/resistance, signaling supply flooding the market.`,
+      rulesMatched: [
+        'Prior candle was bullish green',
+        'Current candle is strong bearish red',
+        `Current body (${bodySize(curr).toFixed(2)}) completely engulfs prior body (${bodySize(prev).toFixed(2)})`,
+        'Confirmed preceding uptrend / resistance zone',
+      ],
     };
   }
 
   /**
-   * Piercing Line — Bullish reversal: bearish candle followed by bullish candle that closes above midpoint
+   * Piercing Pattern
+   * Math: Downtrend + C1 < O1 (Red) + C2 > O2 (Green) + O2 < Low1 + C2 > midpoint(C1, O1) + C2 < O1
    */
-  function detectPiercingLine(candles, index) {
+  function detectPiercingPattern(candles, index) {
     if (index < 1) return null;
     const prev = candles[index - 1];
     const curr = candles[index];
 
     if (!isBearish(prev) || !isBullish(curr)) return null;
-    const prevMid = (prev.open + prev.close) / 2;
-    if (curr.open > prev.close) return null; // Must gap down or open at/below prev close
-    if (curr.close < prevMid) return null; // Must close above midpoint
-    if (curr.close > prev.open) return null; // Must not fully engulf
     if (!isPriorDowntrend(candles, index - 1)) return null;
 
+    const prevMidpoint = (prev.open + prev.close) / 2;
+    const opensBelow = curr.open <= prev.close;
+    const closesAboveMid = curr.close > prevMidpoint && curr.close < prev.open;
+
+    if (!opensBelow || !closesAboveMid) return null;
+
     return {
-      name: 'Piercing Line',
-      type: 'bullish_reversal',
+      name: 'Piercing Pattern',
+      type: 'multi',
       signal: 'bullish',
-      confidence: 'medium',
+      confidence: 80,
+      timestamp: curr.time,
       index,
-      explanation:
-        'A Piercing Line forms after a downtrend when a bullish candle opens below the previous bearish candle\'s close and rallies to close above its midpoint. This shows buyers are regaining control and "piercing" through the selling pressure. Stronger when accompanied by high volume.',
+      price: curr.close,
+      explanation: `Bullish bottom reversal: price opened with a gap down below prior session low, but strong accumulation forced a powerful close > 50% into the preceding red candle body.`,
+      rulesMatched: [
+        'Preceding bar was long red candle in downtrend',
+        'Current bar opened below previous close/low',
+        `Current bar closed > 50% midpoint of previous body (Close: ₹${curr.close.toFixed(2)} > Mid: ₹${prevMidpoint.toFixed(2)})`,
+      ],
     };
   }
 
   /**
-   * Dark Cloud Cover — Bearish reversal: bullish candle followed by bearish candle
+   * Dark Cloud Cover
+   * Math: Uptrend + C1 > O1 (Green) + C2 < O2 (Red) + O2 > High1 + C2 < midpoint(C1, O1) + C2 > O1
    */
   function detectDarkCloudCover(candles, index) {
     if (index < 1) return null;
@@ -300,259 +437,300 @@ const Patterns = (() => {
     const curr = candles[index];
 
     if (!isBullish(prev) || !isBearish(curr)) return null;
-    const prevMid = (prev.open + prev.close) / 2;
-    if (curr.open < prev.close) return null; // Must gap up or open at/above prev close
-    if (curr.close > prevMid) return null; // Must close below midpoint
-    if (curr.close < prev.open) return null; // Must not fully engulf
     if (!isPriorUptrend(candles, index - 1)) return null;
+
+    const prevMidpoint = (prev.open + prev.close) / 2;
+    const opensAbove = curr.open >= prev.close;
+    const closesBelowMid = curr.close < prevMidpoint && curr.close > prev.open;
+
+    if (!opensAbove || !closesBelowMid) return null;
 
     return {
       name: 'Dark Cloud Cover',
-      type: 'bearish_reversal',
+      type: 'multi',
       signal: 'bearish',
-      confidence: 'medium',
+      confidence: 81,
+      timestamp: curr.time,
       index,
-      explanation:
-        'A Dark Cloud Cover forms after an uptrend when a bearish candle opens above the previous bullish candle\'s close and drops to close below its midpoint. It\'s like a dark cloud moving over the bulls\' sunny outlook — the bears are taking control. Watch for follow-through selling.',
+      price: curr.close,
+      explanation: `Bearish top reversal: price gapped up at the open, but bears rejected the new high and drove price down to close > 50% into the previous bullish candle body.`,
+      rulesMatched: [
+        'Preceding bar was long green candle in uptrend',
+        'Current bar opened above previous close/high',
+        `Current bar closed < 50% midpoint of previous body (Close: ₹${curr.close.toFixed(2)} < Mid: ₹${prevMidpoint.toFixed(2)})`,
+      ],
     };
   }
 
   /**
-   * Tweezer Top — Two candles with same high after uptrend
-   */
-  function detectTweezerTop(candles, index) {
-    if (index < 1) return null;
-    const prev = candles[index - 1];
-    const curr = candles[index];
-
-    const tolerance = candleRange(curr) * 0.02;
-    if (Math.abs(prev.high - curr.high) > tolerance) return null;
-    if (!isBullish(prev) || !isBearish(curr)) return null;
-    if (!isPriorUptrend(candles, index - 1)) return null;
-
-    return {
-      name: 'Tweezer Top',
-      type: 'bearish_reversal',
-      signal: 'bearish',
-      confidence: 'medium',
-      index,
-      explanation:
-        'Tweezer Tops form when two consecutive candles have nearly identical highs after an uptrend. The first is bullish and the second is bearish. The matching highs represent a resistance level the price cannot break through, suggesting selling pressure is capping further gains.',
-    };
-  }
-
-  /**
-   * Tweezer Bottom — Two candles with same low after downtrend
-   */
-  function detectTweezerBottom(candles, index) {
-    if (index < 1) return null;
-    const prev = candles[index - 1];
-    const curr = candles[index];
-
-    const tolerance = candleRange(curr) * 0.02;
-    if (Math.abs(prev.low - curr.low) > tolerance) return null;
-    if (!isBearish(prev) || !isBullish(curr)) return null;
-    if (!isPriorDowntrend(candles, index - 1)) return null;
-
-    return {
-      name: 'Tweezer Bottom',
-      type: 'bullish_reversal',
-      signal: 'bullish',
-      confidence: 'medium',
-      index,
-      explanation:
-        'Tweezer Bottoms form when two consecutive candles have nearly identical lows after a downtrend. The matching lows establish a support level — buyers defend this price twice. The second bullish candle confirms buyers are stepping in.',
-    };
-  }
-
-  // ────────────────────────────────────────────
-  // THREE-CANDLE PATTERNS
-  // ────────────────────────────────────────────
-
-  /**
-   * Morning Star — Three-candle bullish reversal
+   * Morning Star (3-Candle Bullish Reversal)
+   * Math: C1 long red + C2 small star body (gap down) + C3 long green closing > 50% into C1
    */
   function detectMorningStar(candles, index) {
     if (index < 2) return null;
-    const first = candles[index - 2];
-    const second = candles[index - 1];
-    const third = candles[index];
+    const c1 = candles[index - 2];
+    const c2 = candles[index - 1];
+    const c3 = candles[index];
 
-    if (!isBearish(first)) return null;
-    if (bodySize(second) > bodySize(first) * 0.5) return null; // Small body (star)
-    if (!isBullish(third)) return null;
-    if (third.close < (first.open + first.close) / 2) return null; // Must close above midpoint
+    if (!isBearish(c1) || !isBullish(c3)) return null;
     if (!isPriorDowntrend(candles, index - 2)) return null;
+
+    const c1Body = bodySize(c1);
+    const c2Body = bodySize(c2);
+    const c3Body = bodySize(c3);
+
+    // c2 must be small star (<= 35% of c1)
+    if (c2Body > c1Body * 0.40) return null;
+    // c3 must close > 50% into c1
+    const c1Mid = (c1.open + c1.close) / 2;
+    if (c3.close < c1Mid) return null;
+    if (c3Body < c1Body * 0.5) return null;
 
     return {
       name: 'Morning Star',
-      type: 'bullish_reversal',
+      type: 'multi',
       signal: 'bullish',
-      confidence: 'high',
+      confidence: 89,
+      timestamp: c3.time,
       index,
-      explanation:
-        'A Morning Star is a powerful three-candle reversal pattern. First, a large bearish candle shows strong selling. Then, a small-bodied "star" candle shows indecision — selling pressure is exhausting. Finally, a large bullish candle confirms buyers have taken control. This is one of the most reliable bullish reversal patterns.',
+      price: c3.close,
+      explanation: `Premier 3-bar bullish reversal: Long red bar (panic), followed by indecision star/doji (supply exhaustion), followed by high-volume green breakout closing deep into the first bar.`,
+      rulesMatched: [
+        'Bar 1: Substantial bearish red candle in downtrend',
+        `Bar 2: Indecision star body (${c2Body.toFixed(2)}) <= 40% of Bar 1 body (${c1Body.toFixed(2)})`,
+        `Bar 3: Bullish green bar closing above 50% midpoint (₹${c1Mid.toFixed(2)})`,
+      ],
     };
   }
 
   /**
-   * Evening Star — Three-candle bearish reversal
+   * Evening Star (3-Candle Bearish Reversal)
+   * Math: C1 long green + C2 small star body (gap up) + C3 long red closing < 50% into C1
    */
   function detectEveningStar(candles, index) {
     if (index < 2) return null;
-    const first = candles[index - 2];
-    const second = candles[index - 1];
-    const third = candles[index];
+    const c1 = candles[index - 2];
+    const c2 = candles[index - 1];
+    const c3 = candles[index];
 
-    if (!isBullish(first)) return null;
-    if (bodySize(second) > bodySize(first) * 0.5) return null;
-    if (!isBearish(third)) return null;
-    if (third.close > (first.open + first.close) / 2) return null;
+    if (!isBullish(c1) || !isBearish(c3)) return null;
     if (!isPriorUptrend(candles, index - 2)) return null;
+
+    const c1Body = bodySize(c1);
+    const c2Body = bodySize(c2);
+    const c3Body = bodySize(c3);
+
+    if (c2Body > c1Body * 0.40) return null;
+    const c1Mid = (c1.open + c1.close) / 2;
+    if (c3.close > c1Mid) return null;
+    if (c3Body < c1Body * 0.5) return null;
 
     return {
       name: 'Evening Star',
-      type: 'bearish_reversal',
+      type: 'multi',
       signal: 'bearish',
-      confidence: 'high',
+      confidence: 88,
+      timestamp: c3.time,
       index,
-      explanation:
-        'An Evening Star is a powerful three-candle bearish reversal. After a large bullish candle, a small "star" candle signals indecision at the top. The subsequent large bearish candle confirms sellers have taken over. Like the evening star heralding nightfall, this pattern warns that the bullish trend is ending.',
+      price: c3.close,
+      explanation: `Premier 3-bar bearish reversal at peaks: Long green bar (euphoria), followed by indecision star/doji (buyer exhaustion), followed by aggressive liquidation closing deep into the first bar.`,
+      rulesMatched: [
+        'Bar 1: Substantial bullish green candle in uptrend',
+        `Bar 2: Indecision star body (${c2Body.toFixed(2)}) <= 40% of Bar 1 body (${c1Body.toFixed(2)})`,
+        `Bar 3: Bearish red bar closing below 50% midpoint (₹${c1Mid.toFixed(2)})`,
+      ],
     };
   }
 
   /**
-   * Three White Soldiers — Three consecutive large bullish candles
+   * Harami (Bullish & Bearish Inside Bar)
+   * Math: Body 2 is completely contained inside Body 1
    */
-  function detectThreeWhiteSoldiers(candles, index) {
-    if (index < 2) return null;
-    const first = candles[index - 2];
-    const second = candles[index - 1];
-    const third = candles[index];
+  function detectHarami(candles, index) {
+    if (index < 1) return null;
+    const prev = candles[index - 1];
+    const curr = candles[index];
 
-    if (!isBullish(first) || !isBullish(second) || !isBullish(third)) return null;
+    const prevBody = bodySize(prev);
+    const currBody = bodySize(curr);
+    if (prevBody === 0 || currBody === 0) return null;
 
-    // Each should close progressively higher
-    if (second.close <= first.close || third.close <= second.close) return null;
+    const isContained =
+      Math.max(curr.open, curr.close) <= Math.max(prev.open, prev.close) &&
+      Math.min(curr.open, curr.close) >= Math.min(prev.open, prev.close);
 
-    // Each should open within the body of the previous candle
-    if (second.open < first.open || second.open > first.close) return null;
-    if (third.open < second.open || third.open > second.close) return null;
+    if (!isContained || currBody > prevBody * 0.6) return null;
 
-    // Bodies should be reasonably sized
-    const avg = avgBodySize(candles, index - 2);
-    if (bodySize(first) < avg * 0.5 || bodySize(second) < avg * 0.5 || bodySize(third) < avg * 0.5) return null;
-
-    return {
-      name: 'Three White Soldiers',
-      type: 'bullish_continuation',
-      signal: 'bullish',
-      confidence: 'high',
-      index,
-      explanation:
-        'Three White Soldiers consists of three consecutive long bullish candles, each opening within the prior candle\'s body and closing progressively higher. This pattern represents sustained buying pressure and strong bullish momentum. It often signals the start of a significant uptrend.',
-    };
+    if (isBearish(prev) && isBullish(curr) && isPriorDowntrend(candles, index - 1)) {
+      return {
+        name: 'Bullish Harami',
+        type: 'multi',
+        signal: 'bullish',
+        confidence: 76,
+        timestamp: curr.time,
+        index,
+        price: curr.close,
+        explanation: 'Inside bar reversal in downtrend: selling momentum halted as the entire current body traded within the prior large red candle.',
+        rulesMatched: [
+          'Preceding candle was large red body',
+          `Current green body (${currBody.toFixed(2)}) fully inside previous body (${prevBody.toFixed(2)})`,
+        ],
+      };
+    } else if (isBullish(prev) && isBearish(curr) && isPriorUptrend(candles, index - 1)) {
+      return {
+        name: 'Bearish Harami',
+        type: 'multi',
+        signal: 'bearish',
+        confidence: 75,
+        timestamp: curr.time,
+        index,
+        price: curr.close,
+        explanation: 'Inside bar reversal in uptrend: buying momentum halted as current price traded completely inside the previous green body.',
+        rulesMatched: [
+          'Preceding candle was large green body',
+          `Current red body (${currBody.toFixed(2)}) fully inside previous body (${prevBody.toFixed(2)})`,
+        ],
+      };
+    }
+    return null;
   }
 
   /**
-   * Three Black Crows — Three consecutive large bearish candles
+   * Tweezer Top & Tweezer Bottom
+   * Math: Equal/matching Highs (Top) or Lows (Bottom) across 2 consecutive bars within 0.1% tolerance
    */
-  function detectThreeBlackCrows(candles, index) {
-    if (index < 2) return null;
-    const first = candles[index - 2];
-    const second = candles[index - 1];
-    const third = candles[index];
+  function detectTweezers(candles, index) {
+    if (index < 1) return null;
+    const prev = candles[index - 1];
+    const curr = candles[index];
 
-    if (!isBearish(first) || !isBearish(second) || !isBearish(third)) return null;
+    const highDiffPct = Math.abs(curr.high - prev.high) / Math.max(0.1, curr.high) * 100;
+    const lowDiffPct = Math.abs(curr.low - prev.low) / Math.max(0.1, curr.low) * 100;
 
-    if (second.close >= first.close || third.close >= second.close) return null;
+    // Tweezer Top
+    if (highDiffPct <= 0.08 && isPriorUptrend(candles, index - 1) && isBullish(prev) && isBearish(curr)) {
+      return {
+        name: 'Tweezer Top',
+        type: 'multi',
+        signal: 'bearish',
+        confidence: 78,
+        timestamp: curr.time,
+        index,
+        price: curr.close,
+        explanation: `Double high rejection: Two consecutive candles tested identical resistance level (₹${curr.high.toFixed(2)}) and failed to break out, establishing a key swing high.`,
+        rulesMatched: [
+          `Identical peak highs: Bar 1 High (₹${prev.high.toFixed(2)}) ≈ Bar 2 High (₹${curr.high.toFixed(2)}) [Diff: ${highDiffPct.toFixed(2)}%]`,
+          'Bar 1 is green, Bar 2 is red in uptrend',
+        ],
+      };
+    }
 
-    if (second.open > first.open || second.open < first.close) return null;
-    if (third.open > second.open || third.open < second.close) return null;
+    // Tweezer Bottom
+    if (lowDiffPct <= 0.08 && isPriorDowntrend(candles, index - 1) && isBearish(prev) && isBullish(curr)) {
+      return {
+        name: 'Tweezer Bottom',
+        type: 'multi',
+        signal: 'bullish',
+        confidence: 79,
+        timestamp: curr.time,
+        index,
+        price: curr.close,
+        explanation: `Double low support test: Two consecutive candles tested identical floor support (₹${curr.low.toFixed(2)}) and held firmly, confirming strong buyer demand.`,
+        rulesMatched: [
+          `Identical trough lows: Bar 1 Low (₹${prev.low.toFixed(2)}) ≈ Bar 2 Low (₹${curr.low.toFixed(2)}) [Diff: ${lowDiffPct.toFixed(2)}%]`,
+          'Bar 1 is red, Bar 2 is green in downtrend',
+        ],
+      };
+    }
 
-    const avg = avgBodySize(candles, index - 2);
-    if (bodySize(first) < avg * 0.5 || bodySize(second) < avg * 0.5 || bodySize(third) < avg * 0.5) return null;
-
-    return {
-      name: 'Three Black Crows',
-      type: 'bearish_continuation',
-      signal: 'bearish',
-      confidence: 'high',
-      index,
-      explanation:
-        'Three Black Crows consists of three consecutive long bearish candles, each opening within the prior candle\'s body and closing progressively lower. This represents relentless selling pressure. Like crows circling, this pattern warns of continued downside — sellers are in full control.',
-    };
+    return null;
   }
 
-  // ────────────────────────────────────────────
-  // MAIN DETECTION ENGINE
-  // ────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════
+  // MASTER SCANNER PIPELINE
+  // ════════════════════════════════════════════════════════════
+
+  const DETECTORS = [
+    detectBullishEngulfing,
+    detectBearishEngulfing,
+    detectMorningStar,
+    detectEveningStar,
+    detectPiercingPattern,
+    detectDarkCloudCover,
+    detectHammer,
+    detectShootingStar,
+    detectInvertedHammer,
+    detectHangingMan,
+    detectMarubozu,
+    detectHarami,
+    detectTweezers,
+    detectDoji,
+  ];
 
   /**
-   * Detect all patterns in the candle data
-   * Only checks the most recent `lookback` candles
-   * @param {Array} candles - OHLCV data
-   * @param {number} lookback - How many recent candles to scan
-   * @returns {Array} Detected patterns sorted by index (most recent first)
+   * Scan an entire candlestick array for all recognized patterns
+   * @param {Object[]} candles - Array of OHLCV candle objects
+   * @returns {Object[]} List of detected pattern events
    */
-  function detectAll(candles, lookback = 20) {
-    const patterns = [];
-    const startIdx = Math.max(0, candles.length - lookback);
+  function scan(candles) {
+    if (!candles || candles.length === 0) return [];
+    const detected = [];
 
-    const detectors = [
-      detectDoji,
-      detectHammer,
-      detectInvertedHammer,
-      detectHangingMan,
-      detectShootingStar,
-      detectBullishEngulfing,
-      detectBearishEngulfing,
-      detectPiercingLine,
-      detectDarkCloudCover,
-      detectTweezerTop,
-      detectTweezerBottom,
-      detectMorningStar,
-      detectEveningStar,
-      detectThreeWhiteSoldiers,
-      detectThreeBlackCrows,
-    ];
-
-    for (let i = startIdx; i < candles.length; i++) {
-      for (const detector of detectors) {
-        const pattern = detector(candles, i);
-        if (pattern) {
-          patterns.push(pattern);
+    for (let i = 0; i < candles.length; i++) {
+      for (const detector of DETECTORS) {
+        try {
+          const result = detector(candles, i);
+          if (result) {
+            result.id = `pat_${result.name.replace(/\s+/g, '_').toLowerCase()}_${i}`;
+            detected.push(result);
+            break; // Record top priority pattern for this bar
+          }
+        } catch (e) {
+          // Continue scanning next detector
         }
       }
     }
 
-    // Sort by index descending (most recent first), then by confidence
-    const confidenceOrder = { high: 0, medium: 1, low: 2 };
-    patterns.sort((a, b) => {
-      if (b.index !== a.index) return b.index - a.index;
-      return (confidenceOrder[a.confidence] || 2) - (confidenceOrder[b.confidence] || 2);
-    });
+    return detected;
+  }
 
-    return patterns;
+  /**
+   * Scan latest completed candle for fresh pattern alert
+   */
+  function scanLatest(candles) {
+    if (!candles || candles.length < 2) return null;
+    const lastIdx = candles.length - 1;
+
+    for (const detector of DETECTORS) {
+      const result = detector(candles, lastIdx);
+      if (result) {
+        result.id = `pat_${result.name.replace(/\s+/g, '_').toLowerCase()}_${lastIdx}`;
+        return result;
+      }
+    }
+    return null;
   }
 
   return {
-    detectAll,
-    // Export individual detectors for testing
+    scan,
+    scanLatest,
     detectDoji,
     detectHammer,
     detectInvertedHammer,
-    detectHangingMan,
     detectShootingStar,
+    detectHangingMan,
+    detectMarubozu,
     detectBullishEngulfing,
     detectBearishEngulfing,
-    detectPiercingLine,
+    detectPiercingPattern,
     detectDarkCloudCover,
-    detectTweezerTop,
-    detectTweezerBottom,
     detectMorningStar,
     detectEveningStar,
-    detectThreeWhiteSoldiers,
-    detectThreeBlackCrows,
+    detectHarami,
+    detectTweezers,
   };
 })();
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Patterns;
+}

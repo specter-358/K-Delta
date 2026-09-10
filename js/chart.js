@@ -1,7 +1,7 @@
 /* ============================================================
-   K-Delta — Chart Wrapper
-   Clean Light Mode (Zerodha Kite / TradingView / Groww Aesthetic)
-   Wraps TradingView Lightweight Charts library with IST localization
+   K-Delta — Professional Candlestick Chart Engine
+   Wraps TradingView Lightweight Charts with Real-Time Streams,
+   Overlays (VWAP, EMA, SMA, BB, S/R, Trendlines) & Pattern Markers
    ============================================================ */
 
 const ChartManager = (() => {
@@ -9,69 +9,57 @@ const ChartManager = (() => {
   let candleSeries = null;
   let volumeSeries = null;
   let overlayLines = {};
-  let markers = [];
-  let currentIsIntraday = false;
+  let tradePriceLines = [];
+  let srPriceLines = [];
+  let currentCandles = [];
+  let isIntraday = false;
   let containerEl = null;
 
-  const OVERLAY_COLORS = {
-    sma20: { color: '#d97706', title: 'SMA 20' },
-    sma50: { color: '#2563eb', title: 'SMA 50' },
-    ema12: { color: '#0284c7', title: 'EMA 12' },
-    ema26: { color: '#7c3aed', title: 'EMA 26' },
-    bbUpper: { color: 'rgba(37, 99, 235, 0.35)', title: 'BB Upper' },
-    bbLower: { color: 'rgba(37, 99, 235, 0.35)', title: 'BB Lower' },
+  const OVERLAY_CONFIGS = {
+    sma20: { color: '#f59e0b', lineWidth: 2, title: 'SMA 20' },
+    sma50: { color: '#38bdf8', lineWidth: 2, title: 'SMA 50' },
+    sma200: { color: '#a855f7', lineWidth: 2, title: 'SMA 200' },
+    ema12: { color: '#06b6d4', lineWidth: 1.5, title: 'EMA 12' },
+    ema26: { color: '#818cf8', lineWidth: 1.5, title: 'EMA 26' },
+    vwap: { color: '#ec4899', lineWidth: 2, title: 'VWAP' },
+    bbUpper: { color: 'rgba(56, 189, 248, 0.75)', lineWidth: 1.5, title: 'BB Upper' },
+    bbLower: { color: 'rgba(56, 189, 248, 0.75)', lineWidth: 1.5, title: 'BB Lower' },
+    trendUpper: { color: '#f43f5e', lineWidth: 1.5, title: 'Resistance Trendline' },
+    trendLower: { color: '#10b981', lineWidth: 1.5, title: 'Support Trendline' },
   };
 
   /**
    * Format time for Lightweight Charts
-   * Supports:
-   * - Daily/Weekly BusinessDay: "YYYY-MM-DD" or { year, month, day }
-   * - Intraday Unix timestamp: number in seconds (e.g. 1789033500)
    */
   function formatTime(timeVal) {
     if (timeVal == null) return timeVal;
-
-    // If it's already a numeric UNIX timestamp in seconds
-    if (typeof timeVal === 'number') {
-      return timeVal;
-    }
-
-    // If it's a numeric string timestamp (e.g., "1789033500")
+    if (typeof timeVal === 'number') return Math.floor(timeVal);
     if (typeof timeVal === 'string' && /^\d{9,12}$/.test(timeVal.trim())) {
       return parseInt(timeVal.trim(), 10);
     }
-
-    // If it's already a BusinessDay object { year, month, day }
-    if (typeof timeVal === 'object' && timeVal.year && timeVal.month && timeVal.day) {
-      return timeVal;
-    }
-
-    // If it's a date string "YYYY-MM-DD"
     if (typeof timeVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(timeVal.trim())) {
-      const [year, month, day] = timeVal.trim().split('-').map(Number);
-      return { year, month, day };
+      return timeVal.trim();
     }
-
-    // If it's an ISO timestamp string
+    if (typeof timeVal === 'object' && timeVal.year && timeVal.month && timeVal.day) {
+      return `${timeVal.year}-${String(timeVal.month).padStart(2, '0')}-${String(timeVal.day).padStart(2, '0')}`;
+    }
     const d = new Date(timeVal);
     if (!isNaN(d.getTime())) {
       return Math.floor(d.getTime() / 1000);
     }
-
     return timeVal;
   }
 
   /**
-   * Initialize the chart in a container
-   * @param {HTMLElement} container - DOM element
+   * Initialize Chart in container
    */
   function init(container) {
     if (chart) {
       chart.remove();
+      chart = null;
     }
 
     containerEl = container;
-
     const bgColor = '#080b11';
     const textColor = '#94a3b8';
     const gridColor = 'rgba(255, 255, 255, 0.04)';
@@ -113,16 +101,16 @@ const ChartManager = (() => {
       crosshair: {
         mode: LightweightCharts.CrosshairMode.Normal,
         vertLine: {
-          color: '#94a3b8',
+          color: '#38bdf8',
           width: 1,
           style: LightweightCharts.LineStyle.Dashed,
-          labelBackgroundColor: isDark ? '#1e293b' : '#0f172a',
+          labelBackgroundColor: '#101623',
         },
         horzLine: {
-          color: '#94a3b8',
+          color: '#38bdf8',
           width: 1,
           style: LightweightCharts.LineStyle.Dashed,
-          labelBackgroundColor: isDark ? '#1e293b' : '#0f172a',
+          labelBackgroundColor: '#101623',
         },
       },
       rightPriceScale: {
@@ -133,380 +121,408 @@ const ChartManager = (() => {
       },
       timeScale: {
         borderColor: borderColor,
-        timeVisible: false,
+        timeVisible: true,
         secondsVisible: false,
       },
       handleScroll: { vertTouchDrag: false },
     });
 
-    // Candlestick series (Teal/Emerald green & Crimson/Coral red)
+    // Candlestick series (Indian Markets: Emerald Teal & Crimson Coral)
     candleSeries = chart.addCandlestickSeries({
-      upColor: '#089981',
-      downColor: '#f23645',
-      borderUpColor: '#089981',
-      borderDownColor: '#f23645',
-      wickUpColor: '#089981',
-      wickDownColor: '#f23645',
+      upColor: '#10b981',
+      downColor: '#f43f5e',
+      borderUpColor: '#10b981',
+      borderDownColor: '#f43f5e',
+      wickUpColor: '#10b981',
+      wickDownColor: '#f43f5e',
     });
 
     // Volume series
     volumeSeries = chart.addHistogramSeries({
       priceFormat: { type: 'volume' },
-      priceScaleId: 'volume',
+      priceScaleId: '', // overlay on same scale with bottom margins
+      scaleMargins: { top: 0.82, bottom: 0 },
     });
 
-    chart.priceScale('volume').applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
-    });
+    // Crosshair move handler for OHLC display bar
+    chart.subscribeCrosshairMove(param => {
+      const ohlcEl = document.getElementById('chart-live-ohlc');
+      if (!ohlcEl) return;
 
-    // Handle resize
-    const resizeObserver = new ResizeObserver(() => {
-      if (container && chart) {
-        chart.applyOptions({
-          width: container.clientWidth,
-          height: container.clientHeight,
-        });
+      if (!param || !param.time || !param.seriesPrices || !param.seriesPrices.get(candleSeries)) {
+        updateOHLCDisplay(null);
+        return;
       }
-    });
-    resizeObserver.observe(container);
 
-    overlayLines = {};
-    markers = [];
+      const bar = param.seriesPrices.get(candleSeries);
+      updateOHLCDisplay(bar);
+    });
+
+    // Handle responsive resize
+    window.addEventListener('resize', handleResize);
   }
 
-  /**
-   * Set resolution/timeframe on the chart
-   * Controls whether time/hours are shown on the timescale
-   */
-  function setTimeframe(interval) {
-    if (!chart) return;
-    const isIntraday = ['1min', '1m', '5min', '5m', '15min', '15m', '1h', '60min'].includes(interval.toLowerCase());
-    currentIsIntraday = isIntraday;
-    chart.applyOptions({
-      timeScale: {
-        timeVisible: isIntraday,
-        secondsVisible: false,
-      },
-    });
-  }
-
-  /**
-   * Set candlestick data and auto-fit to view
-   * @param {Array} candles - Array of { time, open, high, low, close }
-   * @param {boolean} fit - Whether to fit content
-   */
-  function setData(candles, fit = true) {
-    if (!candleSeries || !Array.isArray(candles) || !candles.length) return;
-
-    // Filter valid candles & normalize timestamp format
-    const rawFormatted = candles
-      .filter(c => c && c.open != null && c.high != null && c.low != null && c.close != null && !isNaN(c.close))
-      .map(c => ({
-        time: formatTime(c.time),
-        open: typeof c.open === 'number' ? c.open : parseFloat(c.open),
-        high: typeof c.high === 'number' ? c.high : parseFloat(c.high),
-        low: typeof c.low === 'number' ? c.low : parseFloat(c.low),
-        close: typeof c.close === 'number' ? c.close : parseFloat(c.close),
-      }));
-
-    // Deduplicate candles by time key
-    const candleMap = new Map();
-    for (const c of rawFormatted) {
-      const key = typeof c.time === 'object' ? `${c.time.year}-${String(c.time.month).padStart(2, '0')}-${String(c.time.day).padStart(2, '0')}` : c.time;
-      candleMap.set(key, c);
-    }
-
-    // Sort ascending by time
-    const formatted = Array.from(candleMap.values()).sort((a, b) => {
-      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
-      if (typeof a.time === 'object' && typeof b.time === 'object') {
-        const da = new Date(a.time.year, a.time.month - 1, a.time.day).getTime();
-        const db = new Date(b.time.year, b.time.month - 1, b.time.day).getTime();
-        return da - db;
-      }
-      return 0;
-    });
-
-    if (formatted.length === 0) return;
-
-    candleSeries.setData(formatted);
-
-    // Reset price scale and fit content to new stock's price range
-    if (chart) {
-      chart.priceScale('right').applyOptions({ autoScale: true });
-      if (fit) {
-        chart.timeScale().fitContent();
-      }
-      // Re-fit on next animation frame in case container size changed
-      requestAnimationFrame(() => {
-        if (chart) {
-          chart.timeScale().fitContent();
-        }
+  function handleResize() {
+    if (chart && containerEl) {
+      chart.applyOptions({
+        width: containerEl.clientWidth,
+        height: containerEl.clientHeight,
       });
     }
   }
 
+  function updateOHLCDisplay(bar) {
+    const ohlcEl = document.getElementById('chart-live-ohlc');
+    if (!ohlcEl) return;
+
+    if (!bar && currentCandles.length > 0) {
+      const last = currentCandles[currentCandles.length - 1];
+      bar = { open: last.open, high: last.high, low: last.low, close: last.close };
+    }
+
+    if (!bar) {
+      ohlcEl.innerHTML = '';
+      return;
+    }
+
+    const isUp = bar.close >= bar.open;
+    const colorClass = isUp ? 'price-up' : 'price-down';
+    const diff = bar.close - bar.open;
+    const pct = bar.open ? (diff / bar.open) * 100 : 0;
+    const sign = diff >= 0 ? '+' : '';
+
+    ohlcEl.innerHTML = `
+      <span style="color:var(--text-muted)">O:</span> <strong>₹${bar.open.toFixed(2)}</strong>
+      <span style="color:var(--text-muted);margin-left:8px">H:</span> <strong>₹${bar.high.toFixed(2)}</strong>
+      <span style="color:var(--text-muted);margin-left:8px">L:</span> <strong>₹${bar.low.toFixed(2)}</strong>
+      <span style="color:var(--text-muted);margin-left:8px">C:</span> <strong class="${colorClass}">₹${bar.close.toFixed(2)}</strong>
+      <span class="${colorClass}" style="margin-left:8px font-weight:700">(${sign}${pct.toFixed(2)}%)</span>
+    `;
+  }
+
   /**
-   * Update the latest live forming candle in real time
-   * @param {Object} candle - { time, open, high, low, close }
+   * Set complete historical candle data
    */
-  function updateCandle(candle) {
+  function setData(candles) {
+    if (!chart || !candleSeries || !candles || candles.length === 0) return;
+
+    currentCandles = [...candles];
+    isIntraday = typeof candles[0].time === 'number';
+
+    const seenTimes = new Set();
+    const formattedCandles = [];
+    const formattedVolumes = [];
+
+    for (const c of candles) {
+      if (!c || c.time == null || c.open == null || c.high == null || c.low == null || c.close == null) continue;
+      const t = formatTime(c.time);
+      const tKey = typeof t === 'object' ? JSON.stringify(t) : String(t);
+      if (!seenTimes.has(tKey)) {
+        seenTimes.add(tKey);
+        formattedCandles.push({
+          time: t,
+          open: Number(c.open),
+          high: Number(c.high),
+          low: Number(c.low),
+          close: Number(c.close),
+        });
+        formattedVolumes.push({
+          time: t,
+          value: Number(c.volume) || 10,
+          color: c.close >= c.open ? 'rgba(16, 185, 129, 0.35)' : 'rgba(244, 63, 94, 0.35)',
+        });
+      }
+    }
+
+    formattedCandles.sort((a, b) => {
+      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+      return String(a.time).localeCompare(String(b.time));
+    });
+
+    formattedVolumes.sort((a, b) => {
+      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+      return String(a.time).localeCompare(String(b.time));
+    });
+
+    candleSeries.setData(formattedCandles);
+    if (volumeSeries) {
+      volumeSeries.setData(formattedVolumes);
+    }
+
+    // Default time scale visibility
+    chart.timeScale().applyOptions({
+      timeVisible: isIntraday,
+    });
+
+    chart.timeScale().fitContent();
+    updateOHLCDisplay(null);
+  }
+
+  /**
+   * Update the currently forming candle dynamically from live WebSocket tick
+   */
+  function updateLiveCandle(candle) {
     if (!candleSeries || !candle) return;
-    try {
-      const formatted = {
-        time: formatTime(candle.time),
-        open: typeof candle.open === 'number' ? candle.open : parseFloat(candle.open),
-        high: typeof candle.high === 'number' ? candle.high : parseFloat(candle.high),
-        low: typeof candle.low === 'number' ? candle.low : parseFloat(candle.low),
-        close: typeof candle.close === 'number' ? candle.close : parseFloat(candle.close),
-      };
-      candleSeries.update(formatted);
-    } catch (e) {
-      console.warn('Error updating candle in real-time:', e);
-    }
-  }
 
-  /**
-   * Set volume data
-   * @param {Array} volumeData - Array of { time, value, color }
-   */
-  function setVolume(volumeData) {
-    if (!volumeSeries || !Array.isArray(volumeData) || !volumeData.length) return;
-
-    const rawFormatted = volumeData.map(v => ({
-      time: formatTime(v.time),
-      value: v.value || 0,
-      color: v.color || 'rgba(8, 153, 129, 0.25)',
-    }));
-
-    const volMap = new Map();
-    for (const v of rawFormatted) {
-      const key = typeof v.time === 'object' ? `${v.time.year}-${String(v.time.month).padStart(2, '0')}-${String(v.time.day).padStart(2, '0')}` : v.time;
-      volMap.set(key, v);
-    }
-
-    const formatted = Array.from(volMap.values()).sort((a, b) => {
-      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
-      if (typeof a.time === 'object' && typeof b.time === 'object') {
-        const da = new Date(a.time.year, a.time.month - 1, a.time.day).getTime();
-        const db = new Date(b.time.year, b.time.month - 1, b.time.day).getTime();
-        return da - db;
-      }
-      return 0;
+    const formattedTimeKey = formatTime(candle.time);
+    candleSeries.update({
+      time: formattedTimeKey,
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
     });
 
-    volumeSeries.setData(formatted);
-  }
-
-  /**
-   * Set an overlay indicator line (e.g. SMA, EMA)
-   * @param {string} id - Identifier ('sma20', 'sma50', 'ema12', 'ema26', 'bbUpper', 'bbLower')
-   * @param {Array} data - Array of { time, value }
-   */
-  function setOverlay(id, data) {
-    if (!chart || !Array.isArray(data) || !data.length) return;
-
-    const config = OVERLAY_COLORS[id] || { color: '#2563eb', title: id };
-
-    if (!overlayLines[id]) {
-      overlayLines[id] = chart.addLineSeries({
-        color: config.color,
-        lineWidth: 2,
-        title: config.title,
-        priceLineVisible: false,
-        lastValueVisible: false,
+    if (volumeSeries && candle.volume) {
+      volumeSeries.update({
+        time: formattedTimeKey,
+        value: candle.volume,
+        color: candle.close >= candle.open ? 'rgba(16, 185, 129, 0.35)' : 'rgba(244, 63, 94, 0.35)',
       });
     }
 
-    const rawFormatted = data
-      .filter(d => d && d.value != null && !isNaN(d.value))
-      .map(d => ({
-        time: formatTime(d.time),
-        value: typeof d.value === 'number' ? d.value : parseFloat(d.value),
-      }));
-
-    const dataMap = new Map();
-    for (const d of rawFormatted) {
-      const key = typeof d.time === 'object' ? `${d.time.year}-${String(d.time.month).padStart(2, '0')}-${String(d.time.day).padStart(2, '0')}` : d.time;
-      dataMap.set(key, d);
-    }
-
-    const formatted = Array.from(dataMap.values()).sort((a, b) => {
-      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
-      if (typeof a.time === 'object' && typeof b.time === 'object') {
-        const da = new Date(a.time.year, a.time.month - 1, a.time.day).getTime();
-        const db = new Date(b.time.year, b.time.month - 1, b.time.day).getTime();
-        return da - db;
+    // Update current candles cache
+    if (currentCandles.length > 0) {
+      const last = currentCandles[currentCandles.length - 1];
+      if (last.time === candle.time) {
+        last.high = candle.high;
+        last.low = candle.low;
+        last.close = candle.close;
+        last.volume = candle.volume;
+      } else {
+        currentCandles.push({ ...candle });
       }
-      return 0;
-    });
+    }
 
-    if (formatted.length) {
-      overlayLines[id].setData(formatted);
+    updateOHLCDisplay(candle);
+  }
+
+  /**
+   * Set Technical Overlay (SMA, EMA, VWAP, BB, S/R, Trendline)
+   */
+  function setOverlay(name, dataPoints) {
+    if (!chart || !dataPoints || !dataPoints.length) return;
+
+    try {
+      const config = OVERLAY_CONFIGS[name] || { color: '#38bdf8', lineWidth: 1.5, title: name };
+      
+      let lineSeries = overlayLines[name];
+      if (!lineSeries) {
+        lineSeries = chart.addLineSeries({
+          color: config.color,
+          lineWidth: config.lineWidth || 1.5,
+          title: config.title || name,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          crosshairMarkerVisible: true,
+        });
+        overlayLines[name] = lineSeries;
+      }
+
+      const validPoints = dataPoints.filter(p => p && p.time != null && p.value != null && !isNaN(p.value));
+      const seenTimes = new Set();
+      const formattedData = [];
+
+      for (const p of validPoints) {
+        const t = formatTime(p.time);
+        const tKey = typeof t === 'object' ? JSON.stringify(t) : String(t);
+        if (!seenTimes.has(tKey)) {
+          seenTimes.add(tKey);
+          formattedData.push({ time: t, value: Number(p.value) });
+        }
+      }
+
+      formattedData.sort((a, b) => {
+        if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+        return String(a.time).localeCompare(String(b.time));
+      });
+
+      if (formattedData.length > 0) {
+        lineSeries.setData(formattedData);
+      }
+    } catch (err) {
+      console.warn(`Error setting overlay ${name}:`, err);
     }
   }
 
   /**
-   * Remove an overlay line
-   * @param {string} id
+   * Remove a specific overlay
    */
-  function removeOverlay(id) {
-    if (overlayLines[id]) {
-      chart.removeSeries(overlayLines[id]);
-      delete overlayLines[id];
+  function removeOverlay(name) {
+    if (overlayLines[name]) {
+      try {
+        chart.removeSeries(overlayLines[name]);
+      } catch (e) {}
+      delete overlayLines[name];
     }
   }
 
   /**
-   * Clear all overlays
+   * Clear all active overlays
    */
-  function clearOverlays() {
-    Object.keys(overlayLines).forEach(id => {
-      chart.removeSeries(overlayLines[id]);
+  function clearAllOverlays() {
+    Object.keys(overlayLines).forEach(name => {
+      removeOverlay(name);
     });
     overlayLines = {};
   }
 
   /**
-   * Set pattern markers on candlestick bars
-   * @param {Array} patterns - Detected patterns
-   * @param {Array} candles - Candle data
+   * Display Pattern Markers directly on chart candles
    */
-  function setPatternMarkers(patterns, candles) {
-    if (!candleSeries || !Array.isArray(patterns) || !Array.isArray(candles)) return;
+  function setPatternMarkers(patternList) {
+    if (!candleSeries || !patternList) return;
 
-    const newMarkers = [];
+    const markers = patternList.map(p => {
+      const isBullish = p.signal === 'bullish';
+      const isBearish = p.signal === 'bearish';
 
-    patterns.forEach(pattern => {
-      if (pattern.candleIndex != null && candles[pattern.candleIndex]) {
-        const targetCandle = candles[pattern.candleIndex];
-        const isBullish = pattern.signal === 'bullish';
-        const isBearish = pattern.signal === 'bearish';
-
-        newMarkers.push({
-          time: formatTime(targetCandle.time),
-          position: isBullish ? 'belowBar' : isBearish ? 'aboveBar' : 'aboveBar',
-          color: isBullish ? '#089981' : isBearish ? '#f23645' : '#d97706',
-          shape: isBullish ? 'arrowUp' : isBearish ? 'arrowDown' : 'circle',
-          text: pattern.name.length > 14 ? pattern.name.substring(0, 12) + '..' : pattern.name,
-        });
-      }
+      return {
+        time: formatTime(p.timestamp),
+        position: isBullish ? 'belowBar' : isBearish ? 'aboveBar' : 'inBar',
+        color: isBullish ? '#10b981' : isBearish ? '#f43f5e' : '#f59e0b',
+        shape: isBullish ? 'arrowUp' : isBearish ? 'arrowDown' : 'circle',
+        text: `${p.name} (${p.confidence}%)`,
+        size: 1.2,
+      };
     });
 
-    const markerMap = new Map();
-    newMarkers.forEach(m => {
-      const key = typeof m.time === 'object' ? `${m.time.year}-${m.time.month}-${m.time.day}` : m.time;
-      if (!markerMap.has(key)) {
-        markerMap.set(key, m);
-      }
-    });
-
-    const uniqueMarkers = Array.from(markerMap.values());
-    uniqueMarkers.sort((a, b) => {
-      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
-      if (typeof a.time === 'object' && typeof b.time === 'object') {
-        const da = new Date(a.time.year, a.time.month - 1, a.time.day).getTime();
-        const db = new Date(b.time.year, b.time.month - 1, b.time.day).getTime();
-        return da - db;
-      }
-      return 0;
-    });
-
-    candleSeries.setMarkers(uniqueMarkers);
-    markers = uniqueMarkers;
-  }
-
-  let tradePriceLines = [];
-
-  /**
-   * Set visual horizontal trade target levels on the chart
-   * @param {Object} setup - Trade setup object
-   */
-  function setTradeLevels(setup) {
-    if (!candleSeries) return;
-    clearTradeLevels();
-
-    if (!setup || (!setup.entryPrice && !setup.target1)) return;
-
-    try {
-      const isBuy = setup.type === 'BUY';
-      const isSell = setup.type === 'SELL';
-
-      // 1. Entry Line (Blue)
-      if (setup.entryPrice) {
-        const entryTitle = isBuy ? 'BUY ENTRY' : isSell ? 'SELL ENTRY' : 'ENTRY ZONE';
-        const entryLine = candleSeries.createPriceLine({
-          price: setup.entryPrice,
-          color: '#2563eb',
-          lineWidth: 2,
-          lineStyle: LightweightCharts.LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: entryTitle,
-        });
-        tradePriceLines.push(entryLine);
-      }
-
-      // 2. Take Profit 1 Line (Bullish Green)
-      if (setup.target1) {
-        const tp1Line = candleSeries.createPriceLine({
-          price: setup.target1,
-          color: '#089981',
-          lineWidth: 2,
-          lineStyle: LightweightCharts.LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: `TP1 (${setup.target1Pct || ''})`,
-        });
-        tradePriceLines.push(tp1Line);
-      }
-
-      // 3. Take Profit 2 Line (Emerald Green)
-      if (setup.target2) {
-        const tp2Line = candleSeries.createPriceLine({
-          price: setup.target2,
-          color: '#059669',
-          lineWidth: 1,
-          lineStyle: LightweightCharts.LineStyle.Dotted,
-          axisLabelVisible: true,
-          title: `TP2 (${setup.target2Pct || ''})`,
-        });
-        tradePriceLines.push(tp2Line);
-      }
-
-      // 4. Stop Loss Line (Crimson Red)
-      if (setup.stopLoss) {
-        const slLine = candleSeries.createPriceLine({
-          price: setup.stopLoss,
-          color: '#f23645',
-          lineWidth: 2,
-          lineStyle: LightweightCharts.LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: `STOP (${setup.stopLossPct || ''})`,
-        });
-        tradePriceLines.push(slLine);
-      }
-    } catch (e) {
-      console.warn('Error setting trade target lines:', e);
-    }
+    candleSeries.setMarkers(markers);
   }
 
   /**
-   * Clear all trade target lines from chart
+   * Clear Trade Execution Lines
    */
   function clearTradeLevels() {
     if (!candleSeries || !tradePriceLines.length) return;
-    try {
-      tradePriceLines.forEach(line => {
-        candleSeries.removePriceLine(line);
-      });
-    } catch (e) {
-      console.warn('Error clearing trade levels:', e);
-    }
+    tradePriceLines.forEach(line => {
+      try { candleSeries.removePriceLine(line); } catch (e) {}
+    });
     tradePriceLines = [];
   }
 
   /**
-   * Update chart theme colors dynamically (Light / Dark)
+   * Set Horizontal Trade Price Lines (Entry, TP1, TP2, SL)
    */
+  function setTradeLevels(setup) {
+    clearTradeLevels();
+    if (!candleSeries) return;
+
+    try {
+      let entry = setup && setup.entryPrice;
+      let target1 = setup && setup.target1;
+      let target2 = setup && setup.target2;
+      let stopLoss = setup && setup.stopLoss;
+      let isBuy = setup ? setup.type === 'BUY' : true;
+
+      // Dynamic fallback if no specific pattern setup exists yet
+      if (!entry && currentCandles.length > 0) {
+        const lastCandle = currentCandles[currentCandles.length - 1];
+        entry = lastCandle.close;
+        const atr = Indicators.atr(currentCandles, 14);
+        const currentAtr = (atr && atr[atr.length - 1]) || (entry * 0.015);
+        target1 = +(entry + currentAtr * 1.5).toFixed(2);
+        target2 = +(entry + currentAtr * 3.0).toFixed(2);
+        stopLoss = +(entry - currentAtr * 1.0).toFixed(2);
+      }
+
+      if (entry) {
+        tradePriceLines.push(candleSeries.createPriceLine({
+          price: entry,
+          color: '#38bdf8',
+          lineWidth: 2,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: isBuy ? 'BUY ENTRY' : 'SELL ENTRY',
+        }));
+      }
+
+      if (target1) {
+        tradePriceLines.push(candleSeries.createPriceLine({
+          price: target1,
+          color: '#10b981',
+          lineWidth: 2,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'TARGET 1 (TP1)',
+        }));
+      }
+
+      if (target2) {
+        tradePriceLines.push(candleSeries.createPriceLine({
+          price: target2,
+          color: '#059669',
+          lineWidth: 1,
+          lineStyle: LightweightCharts.LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: 'TARGET 2 (TP2)',
+        }));
+      }
+
+      if (stopLoss) {
+        tradePriceLines.push(candleSeries.createPriceLine({
+          price: stopLoss,
+          color: '#f43f5e',
+          lineWidth: 2,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'STOP LOSS',
+        }));
+      }
+    } catch (e) {
+      console.warn('Error setting trade levels:', e);
+    }
+  }
+
+  /**
+   * Clear Support / Resistance Price Lines
+   */
+  function clearSupportResistanceLevels() {
+    if (!candleSeries || !srPriceLines.length) return;
+    srPriceLines.forEach(line => {
+      try { candleSeries.removePriceLine(line); } catch (e) {}
+    });
+    srPriceLines = [];
+  }
+
+  /**
+   * Set Support / Resistance Price Lines
+   */
+  function setSupportResistanceLevels(levels) {
+    clearSupportResistanceLevels();
+    if (!candleSeries || !levels) return;
+
+    try {
+      if (levels.support) {
+        levels.support.forEach((price, idx) => {
+          srPriceLines.push(candleSeries.createPriceLine({
+            price,
+            color: 'rgba(16, 185, 129, 0.75)',
+            lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted,
+            axisLabelVisible: true,
+            title: `S${idx + 1} Support`,
+          }));
+        });
+      }
+
+      if (levels.resistance) {
+        levels.resistance.forEach((price, idx) => {
+          srPriceLines.push(candleSeries.createPriceLine({
+            price,
+            color: 'rgba(244, 63, 94, 0.75)',
+            lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted,
+            axisLabelVisible: true,
+            title: `R${idx + 1} Resist`,
+          }));
+        });
+      }
+    } catch (e) {
+      console.warn('Error setting SR levels:', e);
+    }
+  }
+
   function updateTheme(theme) {
     if (!chart) return;
     chart.applyOptions({
@@ -514,51 +530,34 @@ const ChartManager = (() => {
         background: { type: 'solid', color: '#080b11' },
         textColor: '#94a3b8',
       },
-      grid: {
-        vertLines: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9' },
-        horzLines: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9' },
-      },
-      crosshair: {
-        vertLine: {
-          labelBackgroundColor: isDark ? '#1e293b' : '#0f172a',
-        },
-        horzLine: {
-          labelBackgroundColor: isDark ? '#1e293b' : '#0f172a',
-        },
-      },
-      rightPriceScale: {
-        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
-      },
-      timeScale: {
-        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
-      },
     });
   }
 
-  /**
-   * Reset & fit chart view to container
-   */
-  function fitToView() {
+  function destroy() {
     if (chart) {
-      chart.priceScale('right').applyOptions({ autoScale: true });
-      chart.timeScale().fitContent();
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+      chart = null;
     }
   }
 
   return {
     init,
     setData,
-    updateCandle,
-    setVolume,
+    updateLiveCandle,
     setOverlay,
     removeOverlay,
-    clearOverlays,
+    clearAllOverlays,
     setPatternMarkers,
     setTradeLevels,
     clearTradeLevels,
-    setTimeframe,
+    setSupportResistanceLevels,
+    clearSupportResistanceLevels,
     updateTheme,
-    fitToView,
-    getChart: () => chart,
+    destroy,
   };
 })();
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ChartManager;
+}
