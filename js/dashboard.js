@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupTimeframeSelector();
   setupIndicatorButtons();
   setupDashboardSearch();
+  setupCompanySwitcher();
   loadLiveTickerTape();
   loadWatchlist();
   updateMarketStatus();
@@ -862,4 +863,115 @@ function showLoading(show) {
   if (loading) {
     loading.classList.toggle('hidden', !show);
   }
+}
+
+/**
+ * Setup Interactive Header Company Switcher Dropdown
+ */
+function setupCompanySwitcher() {
+  const selector = document.getElementById('chart-company-selector');
+  const dropdown = document.getElementById('company-switcher-dropdown');
+  const input = document.getElementById('company-switcher-input');
+  const list = document.getElementById('company-switcher-list');
+
+  if (!selector || !dropdown) return;
+
+  const topCompanies = [
+    { symbol: 'RELIANCE.NS', name: 'Reliance Industries Ltd.', exchange: 'NSE' },
+    { symbol: 'TCS.NS', name: 'Tata Consultancy Services', exchange: 'NSE' },
+    { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.', exchange: 'NSE' },
+    { symbol: 'INFY.NS', name: 'Infosys Ltd.', exchange: 'NSE' },
+    { symbol: 'ICICIBANK.NS', name: 'ICICI Bank Ltd.', exchange: 'NSE' },
+    { symbol: 'SBIN.NS', name: 'State Bank of India', exchange: 'NSE' },
+    { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel Ltd.', exchange: 'NSE' },
+    { symbol: 'TATASTEEL.NS', name: 'Tata Steel Ltd.', exchange: 'NSE' },
+    { symbol: 'ITC.NS', name: 'ITC Ltd.', exchange: 'NSE' },
+    { symbol: 'LT.NS', name: 'Larsen & Toubro Ltd.', exchange: 'NSE' },
+    { symbol: '^NSEI', name: 'NIFTY 50 Index', exchange: 'NSE' },
+    { symbol: '^BSESN', name: 'SENSEX Index', exchange: 'BSE' },
+    { symbol: '^NSEBANK', name: 'BANK NIFTY Index', exchange: 'NSE' },
+  ];
+
+  function renderList(items) {
+    if (!list) return;
+    list.innerHTML = items.map(c => `
+      <div class="company-switcher-item" data-symbol="${c.symbol}">
+        <div>
+          <div class="company-switcher-item__symbol">${c.symbol}</div>
+          <div class="company-switcher-item__name">${c.name}</div>
+        </div>
+        <span class="company-switcher-item__exchange">${c.exchange || 'NSE'}</span>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.company-switcher-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const sym = item.dataset.symbol;
+        if (sym) {
+          loadSymbol(sym);
+          dropdown.classList.remove('active');
+          selector.classList.remove('active');
+        }
+      });
+    });
+  }
+
+  renderList(topCompanies);
+
+  selector.addEventListener('click', (e) => {
+    if (e.target.closest('#company-switcher-dropdown')) return;
+    const isActive = dropdown.classList.toggle('active');
+    selector.classList.toggle('active', isActive);
+    if (isActive && input) {
+      input.value = '';
+      renderList(topCompanies);
+      setTimeout(() => input.focus(), 50);
+    }
+  });
+
+  if (input) {
+    let debounceTimer;
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const query = input.value.trim().toLowerCase();
+      if (!query) {
+        renderList(topCompanies);
+        return;
+      }
+      debounceTimer = setTimeout(async () => {
+        const localMatches = topCompanies.filter(c => 
+          c.symbol.toLowerCase().includes(query) || c.name.toLowerCase().includes(query)
+        );
+        const remoteResults = await API.searchSymbol(query);
+        const combined = [...localMatches];
+        if (remoteResults) {
+          remoteResults.forEach(r => {
+            if (!combined.some(c => c.symbol === r.symbol)) {
+              combined.push({ symbol: r.symbol, name: r.name || r.symbol, exchange: r.exchange });
+            }
+          });
+        }
+        renderList(combined.slice(0, 8));
+      }, 200);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const first = list.querySelector('.company-switcher-item');
+        if (first && first.dataset.symbol) {
+          loadSymbol(first.dataset.symbol);
+          dropdown.classList.remove('active');
+          selector.classList.remove('active');
+        }
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!selector.contains(e.target)) {
+      dropdown.classList.remove('active');
+      selector.classList.remove('active');
+    }
+  });
 }
