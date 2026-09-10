@@ -612,33 +612,44 @@ function setupTimeframeSelector() {
  * Setup indicator toggle buttons
  */
 function setupIndicatorButtons() {
-  const buttons = document.querySelectorAll('.chart-header__indicator-btn');
+  const buttons = document.querySelectorAll('.chart-header__indicator-btn[data-overlay]');
   buttons.forEach(btn => {
     const overlay = btn.dataset.overlay;
+    if (!overlay) return;
+
     if (activeOverlays.has(overlay)) {
       btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
     }
 
-    btn.addEventListener('click', () => {
-      btn.classList.toggle('active');
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
       if (activeOverlays.has(overlay)) {
         activeOverlays.delete(overlay);
+        btn.classList.remove('active');
         if (overlay === 'targets') {
           ChartManager.clearTradeLevels();
+          showToast('🎯 Target price lines hidden', 'info');
         } else if (overlay === 'bb') {
           ChartManager.removeOverlay('bbUpper');
           ChartManager.removeOverlay('bbLower');
+          showToast('Bollinger Bands hidden', 'info');
         } else {
           ChartManager.removeOverlay(overlay);
+          showToast(`${overlay.toUpperCase()} hidden`, 'info');
         }
       } else {
         activeOverlays.add(overlay);
+        btn.classList.add('active');
         if (overlay === 'targets') {
           if (currentPrediction && currentPrediction.tradeSetup) {
             ChartManager.setTradeLevels(currentPrediction.tradeSetup);
+            showToast('🎯 Target levels active (Entry, TP1, TP2, Stop Loss)', 'success');
           }
         } else if (currentPrediction) {
           updateOverlays(currentPrediction);
+          showToast(`${overlay.toUpperCase()} overlay active`, 'success');
         }
       }
     });

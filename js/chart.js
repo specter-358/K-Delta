@@ -421,20 +421,22 @@ const ChartManager = (() => {
     if (!candleSeries) return;
     clearTradeLevels();
 
-    if (!setup || !setup.hasSetup) return;
+    if (!setup || (!setup.entryPrice && !setup.target1)) return;
 
     try {
       const isBuy = setup.type === 'BUY';
+      const isSell = setup.type === 'SELL';
 
       // 1. Entry Line (Blue)
       if (setup.entryPrice) {
+        const entryTitle = isBuy ? '🎯 BUY ENTRY' : isSell ? '🎯 SELL ENTRY' : '🎯 ENTRY ZONE';
         const entryLine = candleSeries.createPriceLine({
           price: setup.entryPrice,
           color: '#2563eb',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
-          title: isBuy ? '🎯 BUY ENTRY' : '🎯 SELL ENTRY',
+          title: entryTitle,
         });
         tradePriceLines.push(entryLine);
       }
