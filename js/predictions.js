@@ -115,6 +115,15 @@ const Predictions = (() => {
     // ── 5b. Compute Precise Trade Setup (Entry, Targets, Stop Loss, Timing) ──
     const tradeSetup = calculateTradeSetup(lastClose, currentATR, signal, action, trend, bbResult, lastIdx);
 
+    // ── 5c. Run Historical Backtest & Forward Accuracy Verification ──
+    const backtest = runBacktest(candles);
+
+    // ── 5d. Compute 5-Bar Forward Price Forecast & Confidence Cones ──
+    const forecast = computeForecast(lastClose, currentATR, signal, confidence, trend);
+
+    // ── 5e. Compute Confluence Quality Matrix ──
+    const confluence = computeConfluenceMatrix(totalScore, rsiResult, macdScore, maScore, patternScore, volumeScore);
+
     // ── 6. Build Indicator Summary ──
     const rsiStatusObj = Indicators.rsiStatus(currentRSI);
     const macdStatusObj = Indicators.macdStatus(currentMACD, currentSignal, currentHistogram);
@@ -174,6 +183,9 @@ const Predictions = (() => {
       trend: trend.direction,
       trendStrength: trend.strength,
       tradeSetup,
+      backtest,
+      forecast,
+      confluence,
       reasons,
       patterns,
       indicators,
