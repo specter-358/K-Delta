@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Delta — Stock Candlestick Prediction</title>
+  <meta name="description" content="Real-time stock market candlestick pattern analysis and predictions. Detect trends, patterns, and get actionable buy/sell signals.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+
+  <!-- ═══ Navbar ═══ -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="navbar__brand">
+      <span class="logo-icon">K</span>
+      <span class="logo-k">K-Delta</span>
+    </a>
+    <div class="navbar__links">
+      <a href="index.html" class="active">Home</a>
+      <a href="dashboard.html?symbol=AAPL">Dashboard</a>
+    </div>
+    <div class="navbar__market-status">
+      <span class="status-dot" id="market-status-dot"></span>
+      <span id="market-status-text">Market Closed</span>
+    </div>
+  </nav>
+
+  <!-- ═══ API Key Setup ═══ -->
+  <div class="container">
+    <div class="glass-card api-setup hidden" id="api-setup">
+      <div class="api-setup__icon">🔑</div>
+      <div class="api-setup__title">Connect Your Market Data</div>
+      <div class="api-setup__text">
+        Enter your free <a href="https://twelvedata.com/signup" target="_blank">Twelve Data API key</a> to get real-time stock data.
+        The free tier gives you 800 credits/day — more than enough for analysis.
+      </div>
+      <div class="api-setup__input-wrap">
+        <input
+          type="text"
+          id="api-key-input"
+          class="api-setup__input"
+          placeholder="Paste your API key here..."
+          autocomplete="off"
+        >
+        <button class="btn btn--primary" onclick="submitApiKey()">Connect</button>
+      </div>
+      <button class="btn btn--ghost btn--sm mt-md" onclick="skipApiSetup()" style="margin-top:12px">
+        Skip — Use Demo Data
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ Main Content ═══ -->
+  <main id="main-content">
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container">
+        <h1 class="hero__title">
+          Predict the Market with<br>
+          <span class="gradient-text">Candlestick Intelligence</span>
+        </h1>
+        <p class="hero__subtitle">
+          Real-time candlestick pattern detection, technical analysis, and actionable predictions — all powered by proven market science.
+        </p>
+        <div class="hero__search">
+          <div class="search-box">
+            <span class="search-box__icon">🔍</span>
+            <input
+              type="text"
+              class="search-box__input"
+              id="hero-search-input"
+              placeholder="Search stocks... (e.g. AAPL, TSLA, GOOGL)"
+              autocomplete="off"
+            >
+            <div class="search-box__results" id="hero-search-results"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Disclaimer -->
+    <div class="container">
+      <div class="disclaimer mb-lg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>
+          <strong>Disclaimer:</strong> Predictions are based on technical analysis patterns and are not financial advice. Past patterns do not guarantee future results. Always do your own research before making investment decisions.
+        </span>
+      </div>
+    </div>
+
+    <!-- Market Overview -->
+    <section class="market-overview">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <div class="section-header__title">Market Overview</div>
+            <div class="section-header__subtitle">Major stocks at a glance</div>
+          </div>
+        </div>
+        <div class="market-grid" id="market-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Recently Visited -->
+    <section class="recent-section" id="recent-section">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <div class="section-header__title">Recently Analyzed</div>
+            <div class="section-header__subtitle">Your recent stock predictions</div>
+          </div>
+          <a href="dashboard.html" class="btn btn--ghost btn--sm">Open Dashboard →</a>
+        </div>
+        <div class="recent-grid" id="recent-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Top Movers -->
+    <section class="movers-section">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <div class="section-header__title">Top Movers</div>
+            <div class="section-header__subtitle">Biggest price movements today</div>
+          </div>
+          <div class="movers-tabs">
+            <button class="movers-tab active" data-filter="all" onclick="switchMoverTab(this)">All</button>
+            <button class="movers-tab" data-filter="gainers" onclick="switchMoverTab(this)">Gainers</button>
+            <button class="movers-tab" data-filter="losers" onclick="switchMoverTab(this)">Losers</button>
+          </div>
+        </div>
+        <div class="movers-list" id="movers-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p class="footer__text">K-Delta © 2026 — Candlestick Pattern Analysis & Prediction Engine</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/indicators.js"></script>
+  <script src="js/patterns.js"></script>
+  <script src="js/predictions.js"></script>
+  <script src="js/home.js"></script>
+
+</body>
+</html>

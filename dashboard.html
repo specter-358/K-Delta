@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Delta — Dashboard</title>
+  <meta name="description" content="K-Delta stock prediction dashboard. Candlestick chart with real-time pattern detection and technical analysis.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <!-- TradingView Lightweight Charts -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+
+  <!-- ═══ Navbar ═══ -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="navbar__brand">
+      <span class="logo-icon">K</span>
+      <span class="logo-k">K-Delta</span>
+    </a>
+    <div class="navbar__links">
+      <a href="index.html">Home</a>
+      <a href="dashboard.html" class="active">Dashboard</a>
+    </div>
+    <div class="navbar__market-status">
+      <span class="status-dot" id="market-status-dot"></span>
+      <span id="market-status-text">Market Closed</span>
+    </div>
+  </nav>
+
+  <!-- ═══ Dashboard Layout ═══ -->
+  <div class="dashboard">
+
+    <!-- ── Left Sidebar ── -->
+    <aside class="sidebar-left">
+
+      <!-- Search -->
+      <div class="sidebar-left__search">
+        <div class="search-box">
+          <span class="search-box__icon">🔍</span>
+          <input
+            type="text"
+            class="search-box__input"
+            id="dash-search-input"
+            placeholder="Search symbol..."
+            autocomplete="off"
+          >
+          <div class="search-box__results" id="dash-search-results"></div>
+        </div>
+      </div>
+
+      <!-- Timeframe Selector -->
+      <div class="timeframe-selector">
+        <div class="timeframe-selector__label">Timeframe</div>
+        <div class="timeframe-selector__buttons">
+          <button class="timeframe-btn" data-interval="1min">1m</button>
+          <button class="timeframe-btn" data-interval="5min">5m</button>
+          <button class="timeframe-btn" data-interval="15min">15m</button>
+          <button class="timeframe-btn" data-interval="1h">1h</button>
+          <button class="timeframe-btn active" data-interval="1day">1D</button>
+          <button class="timeframe-btn" data-interval="1week">1W</button>
+        </div>
+      </div>
+
+      <!-- Watchlist -->
+      <div class="watchlist">
+        <div class="watchlist__header">
+          <span class="watchlist__title">Watchlist</span>
+        </div>
+        <div id="watchlist-items">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ── Main Chart Area ── -->
+    <main class="chart-area">
+
+      <!-- Chart Header -->
+      <div class="chart-header">
+        <div class="chart-header__left">
+          <span class="chart-header__symbol" id="chart-symbol">AAPL</span>
+          <div class="chart-header__price-info">
+            <span class="chart-header__price" id="chart-price">—</span>
+            <span class="chart-header__change" id="chart-change">—</span>
+          </div>
+        </div>
+        <div class="chart-header__right">
+          <button class="chart-header__indicator-btn active" data-overlay="sma20">SMA 20</button>
+          <button class="chart-header__indicator-btn active" data-overlay="sma50">SMA 50</button>
+          <button class="chart-header__indicator-btn" data-overlay="ema12">EMA 12</button>
+          <button class="chart-header__indicator-btn" data-overlay="ema26">EMA 26</button>
+          <button class="chart-header__indicator-btn" data-overlay="bb">Bollinger</button>
+        </div>
+      </div>
+
+      <!-- Chart Canvas -->
+      <div class="chart-container">
+        <div id="chart-canvas" class="chart-container__canvas"></div>
+        <!-- Loading overlay -->
+        <div class="chart-loading" id="chart-loading">
+          <div class="spinner"></div>
+          <div class="chart-loading__text">Loading chart data...</div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ── Right Sidebar — Predictions ── -->
+    <aside class="sidebar-right">
+
+      <!-- Overall Signal -->
+      <div class="signal-header">
+        <div class="signal-badge signal-badge--hold" id="signal-badge">■ HOLD</div>
+        <div class="signal-confidence" id="signal-confidence">Confidence: <strong>0%</strong></div>
+      </div>
+
+      <!-- Trend Direction -->
+      <div class="trend-section">
+        <div class="trend-indicator">
+          <span class="trend-indicator__arrow sideways" id="trend-arrow">→</span>
+          <div>
+            <div class="trend-indicator__label">Current Trend</div>
+            <div class="trend-indicator__value" id="trend-value">Analyzing...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detected Patterns -->
+      <div class="panel-section">
+        <div class="panel-section__title">
+          🕯️ Detected Patterns
+        </div>
+        <div class="pattern-list" id="pattern-list">
+          <div class="no-patterns">Analyzing patterns...</div>
+        </div>
+      </div>
+
+      <!-- Technical Indicators -->
+      <div class="panel-section">
+        <div class="panel-section__title">
+          📊 Technical Indicators
+        </div>
+        <div class="indicators-grid">
+
+          <!-- RSI Gauge -->
+          <div class="indicator-card rsi-gauge">
+            <div class="indicator-card__label">RSI (14)</div>
+            <div style="display:flex;align-items:baseline;gap:8px">
+              <span class="indicator-card__value" id="rsi-value">—</span>
+              <span class="indicator-card__status" id="rsi-status">—</span>
+            </div>
+            <div class="rsi-gauge__bar">
+              <div class="rsi-gauge__pointer" id="rsi-pointer" style="left:50%"></div>
+            </div>
+            <div class="rsi-gauge__labels">
+              <span>0 (Oversold)</span>
+              <span>50</span>
+              <span>100 (Overbought)</span>
+            </div>
+          </div>
+
+          <!-- MACD -->
+          <div class="indicator-card" style="grid-column:1/-1">
+            <div class="indicator-card__label">MACD (12,26,9)</div>
+            <div class="indicator-card__value" id="macd-value">—</div>
+            <div class="indicator-card__status" id="macd-status">—</div>
+          </div>
+
+          <!-- SMA 20 -->
+          <div class="indicator-card">
+            <div class="indicator-card__label">SMA 20</div>
+            <div class="indicator-card__value" id="sma20-value">—</div>
+            <div class="indicator-card__status" id="sma20-status">—</div>
+          </div>
+
+          <!-- SMA 50 -->
+          <div class="indicator-card">
+            <div class="indicator-card__label">SMA 50</div>
+            <div class="indicator-card__value" id="sma50-value">—</div>
+            <div class="indicator-card__status" id="sma50-status">—</div>
+          </div>
+
+          <!-- Bollinger Bands -->
+          <div class="indicator-card" style="grid-column:1/-1">
+            <div class="indicator-card__label">Bollinger Bands</div>
+            <div class="indicator-card__status" id="bb-status">—</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Prediction Reasoning -->
+      <div class="reasoning-section">
+        <div class="panel-section__title">
+          🧠 Analysis Summary
+        </div>
+        <div class="reasoning-text" id="reasoning-text">
+          Analyzing market data...
+        </div>
+      </div>
+
+      <!-- Disclaimer -->
+      <div style="padding: 0 var(--space-lg) var(--space-lg)">
+        <div class="disclaimer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>For educational purposes only. Not financial advice.</span>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ── Bottom Bar ── -->
+    <div class="bottom-bar">
+      <div class="bottom-bar__ticker" id="bottom-ticker">
+        <!-- Populated dynamically -->
+      </div>
+      <div class="bottom-bar__info">
+        <span id="market-countdown">Market Closed</span>
+        <span id="last-updated">Updated: —</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/indicators.js"></script>
+  <script src="js/patterns.js"></script>
+  <script src="js/predictions.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/dashboard.js"></script>
+
+</body>
+</html>
