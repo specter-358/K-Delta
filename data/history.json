@@ -1,5 +1,158 @@
 [
   {
+    "id": "hist_1789041301213_lw6sh",
+    "symbol": "RELIANCE.NS",
+    "name": "RELIANCE INDUSTRIES LTD",
+    "exchange": "NSI",
+    "price": 1274,
+    "change": -5,
+    "percentChange": -0.39,
+    "volume": 9290437,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 48,
+    "trend": "downtrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $1274.00",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $1300.33 (Buy trigger) or breakdown below $1247.67 (Sell trigger).",
+      "entryPrice": 1274,
+      "entryZone": "Consolidation ($1247.67 – $1300.33)",
+      "stopLoss": 1247.67,
+      "stopLossPct": "Trigger",
+      "target1": 1300.33,
+      "target1Pct": "Trigger",
+      "target2": 1322.27,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$1300.33** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$1247.67** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **downtrend**. **RSI at 41.1** — Mildly bearish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T11:55:01.212Z",
+    "timestampIST": "10 Sept 2026, 5:25:01 pm IST"
+  },
+  {
+    "id": "hist_1789041031609_u86v3",
+    "symbol": "RELIANCE.NS",
+    "name": "RELIANCE INDUSTRIES LTD",
+    "exchange": "NSI",
+    "price": 1274,
+    "change": -5,
+    "percentChange": -0.39,
+    "volume": 9290437,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 48,
+    "trend": "downtrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $1274.00",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $1300.33 (Buy trigger) or breakdown below $1247.67 (Sell trigger).",
+      "entryPrice": 1274,
+      "entryZone": "Consolidation ($1247.67 – $1300.33)",
+      "stopLoss": 1247.67,
+      "stopLossPct": "Trigger",
+      "target1": 1300.33,
+      "target1Pct": "Trigger",
+      "target2": 1322.27,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$1300.33** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$1247.67** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **downtrend**. **RSI at 41.1** — Mildly bearish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T11:50:31.609Z",
+    "timestampIST": "10 Sept 2026, 5:20:31 pm IST"
+  },
+  {
+    "id": "hist_1789040807768_ihed7",
+    "symbol": "RELIANCE.NS",
+    "name": "RELIANCE INDUSTRIES LTD",
+    "exchange": "NSI",
+    "price": 1274,
+    "change": -5,
+    "percentChange": -0.39,
+    "volume": 9290437,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 48,
+    "trend": "downtrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $1274.00",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $1300.33 (Buy trigger) or breakdown below $1247.67 (Sell trigger).",
+      "entryPrice": 1274,
+      "entryZone": "Consolidation ($1247.67 – $1300.33)",
+      "stopLoss": 1247.67,
+      "stopLossPct": "Trigger",
+      "target1": 1300.33,
+      "target1Pct": "Trigger",
+      "target2": 1322.27,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$1300.33** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$1247.67** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **downtrend**. **RSI at 41.1** — Mildly bearish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T11:46:47.767Z",
+    "timestampIST": "10 Sept 2026, 5:16:47 pm IST"
+  },
+  {
     "id": "hist_1789040620602_0xf5u",
     "symbol": "RELIANCE.NS",
     "name": "RELIANCE INDUSTRIES LTD",
@@ -1018,108 +1171,6 @@
     "marketStatus": "Market Closed",
     "timestamp": "2026-09-10T11:27:54.346Z",
     "timestampIST": "10 Sept 2026, 4:57:54 pm IST"
-  },
-  {
-    "id": "hist_1789039619461_9m0c6",
-    "symbol": "HDFCBANK.NS",
-    "name": "HDFC BANK LTD",
-    "exchange": "NSI",
-    "price": 693.8,
-    "change": 6.7,
-    "percentChange": 0.98,
-    "volume": 27103195,
-    "signal": "HOLD",
-    "action": "WAIT / NO TRADE",
-    "confidence": 47,
-    "trend": "downtrend",
-    "tradeSetup": {
-      "hasSetup": false,
-      "type": "HOLD",
-      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $693.80",
-      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $709.17 (Buy trigger) or breakdown below $678.43 (Sell trigger).",
-      "entryPrice": 693.8,
-      "entryZone": "Consolidation ($678.43 – $709.17)",
-      "stopLoss": 678.43,
-      "stopLossPct": "Trigger",
-      "target1": 709.17,
-      "target1Pct": "Trigger",
-      "target2": 721.98,
-      "target2Pct": "Trigger",
-      "riskReward": "N/A",
-      "timeHorizon": "Wait for Breakout",
-      "checklist": [
-        {
-          "type": "wait",
-          "label": "WHEN TO BUY (TRIGGER)",
-          "text": "Buy only if candle breaks out and closes above **$709.17** with rising volume."
-        },
-        {
-          "type": "wait",
-          "label": "WHEN TO SELL (TRIGGER)",
-          "text": "Sell / Short only if candle breaks down below **$678.43** support."
-        },
-        {
-          "type": "hold",
-          "label": "CURRENT ACTION",
-          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
-        }
-      ]
-    },
-    "summary": "The market is showing **mixed signals**. The current trend is **downtrend**. **MACD** is below the signal line — bearish momentum....",
-    "marketStatus": "Market Closed",
-    "timestamp": "2026-09-10T11:26:59.460Z",
-    "timestampIST": "10 Sept 2026, 4:56:59 pm IST"
-  },
-  {
-    "id": "hist_1789039553629_9qfao",
-    "symbol": "TCS.NS",
-    "name": "TATA CONSULTANCY SERV LT",
-    "exchange": "NSI",
-    "price": 2204.1,
-    "change": -3.9,
-    "percentChange": -0.18,
-    "volume": 2490349,
-    "signal": "HOLD",
-    "action": "WAIT / NO TRADE",
-    "confidence": 49,
-    "trend": "downtrend",
-    "tradeSetup": {
-      "hasSetup": false,
-      "type": "HOLD",
-      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $2204.10",
-      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $2271.24 (Buy trigger) or breakdown below $2136.96 (Sell trigger).",
-      "entryPrice": 2204.1,
-      "entryZone": "Consolidation ($2136.96 – $2271.24)",
-      "stopLoss": 2136.96,
-      "stopLossPct": "Trigger",
-      "target1": 2271.24,
-      "target1Pct": "Trigger",
-      "target2": 2327.19,
-      "target2Pct": "Trigger",
-      "riskReward": "N/A",
-      "timeHorizon": "Wait for Breakout",
-      "checklist": [
-        {
-          "type": "wait",
-          "label": "WHEN TO BUY (TRIGGER)",
-          "text": "Buy only if candle breaks out and closes above **$2271.24** with rising volume."
-        },
-        {
-          "type": "wait",
-          "label": "WHEN TO SELL (TRIGGER)",
-          "text": "Sell / Short only if candle breaks down below **$2136.96** support."
-        },
-        {
-          "type": "hold",
-          "label": "CURRENT ACTION",
-          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
-        }
-      ]
-    },
-    "summary": "The market is showing **mixed signals**. The current trend is **downtrend**. **MACD** is below the signal line — bearish momentum....",
-    "marketStatus": "Market Closed",
-    "timestamp": "2026-09-10T11:25:53.629Z",
-    "timestampIST": "10 Sept 2026, 4:55:53 pm IST"
   },
   {
     "id": "hist_1789039495862_1b4t2",

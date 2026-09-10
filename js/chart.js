@@ -72,12 +72,18 @@ const ChartManager = (() => {
 
     containerEl = container;
 
+    const isDark = (typeof getSavedTheme === 'function' ? getSavedTheme() : 'light') === 'dark';
+    const bgColor = isDark ? '#0d121f' : '#ffffff';
+    const textColor = isDark ? '#94a3b8' : '#334155';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9';
+    const borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0';
+
     chart = LightweightCharts.createChart(container, {
       width: container.clientWidth || 800,
       height: container.clientHeight || 560,
       layout: {
-        background: { type: 'solid', color: '#ffffff' },
-        textColor: '#334155',
+        background: { type: 'solid', color: bgColor },
+        textColor: textColor,
         fontSize: 11,
         fontFamily: "'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       },
@@ -102,8 +108,8 @@ const ChartManager = (() => {
         },
       },
       grid: {
-        vertLines: { color: '#f1f5f9' },
-        horzLines: { color: '#f1f5f9' },
+        vertLines: { color: gridColor },
+        horzLines: { color: gridColor },
       },
       crosshair: {
         mode: LightweightCharts.CrosshairMode.Normal,
@@ -111,23 +117,23 @@ const ChartManager = (() => {
           color: '#94a3b8',
           width: 1,
           style: LightweightCharts.LineStyle.Dashed,
-          labelBackgroundColor: '#0f172a',
+          labelBackgroundColor: isDark ? '#1e293b' : '#0f172a',
         },
         horzLine: {
           color: '#94a3b8',
           width: 1,
           style: LightweightCharts.LineStyle.Dashed,
-          labelBackgroundColor: '#0f172a',
+          labelBackgroundColor: isDark ? '#1e293b' : '#0f172a',
         },
       },
       rightPriceScale: {
-        borderColor: '#e2e8f0',
+        borderColor: borderColor,
         scaleMargins: { top: 0.08, bottom: 0.22 },
         alignLabels: true,
         autoScale: true,
       },
       timeScale: {
-        borderColor: '#e2e8f0',
+        borderColor: borderColor,
         timeVisible: false,
         secondsVisible: false,
       },
@@ -500,6 +506,38 @@ const ChartManager = (() => {
   }
 
   /**
+   * Update chart theme colors dynamically (Light / Dark)
+   */
+  function updateTheme(theme) {
+    if (!chart) return;
+    const isDark = theme === 'dark';
+    chart.applyOptions({
+      layout: {
+        background: { type: 'solid', color: isDark ? '#0d121f' : '#ffffff' },
+        textColor: isDark ? '#94a3b8' : '#334155',
+      },
+      grid: {
+        vertLines: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9' },
+        horzLines: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9' },
+      },
+      crosshair: {
+        vertLine: {
+          labelBackgroundColor: isDark ? '#1e293b' : '#0f172a',
+        },
+        horzLine: {
+          labelBackgroundColor: isDark ? '#1e293b' : '#0f172a',
+        },
+      },
+      rightPriceScale: {
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+      },
+      timeScale: {
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+      },
+    });
+  }
+
+  /**
    * Reset & fit chart view to container
    */
   function fitToView() {
@@ -521,6 +559,7 @@ const ChartManager = (() => {
     setTradeLevels,
     clearTradeLevels,
     setTimeframe,
+    updateTheme,
     fitToView,
     getChart: () => chart,
   };

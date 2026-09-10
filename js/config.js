@@ -25,6 +25,7 @@ const CONFIG = {
     { symbol: '^BSESN', name: 'SENSEX', exchange: 'BSE' },
     { symbol: '^NSEBANK', name: 'BANK NIFTY', exchange: 'NSE' },
     { symbol: '^CNXIT', name: 'NIFTY IT', exchange: 'NSE' },
+    { symbol: '^INDIAVIX', name: 'INDIA VIX', exchange: 'NSE' },
   ],
 
   // Top Indian liquid equities
@@ -103,48 +104,57 @@ function getWatchlist() {
 }
 
 /**
- * Save watchlist
+ * Save watchlist to localStorage
  */
 function saveWatchlist(list) {
   localStorage.setItem('kdelta_watchlist', JSON.stringify(list));
 }
 
 /**
- * Check if Indian market (NSE/BSE) is currently open in IST (Asia/Kolkata)
+ * Add symbol to watchlist
+ */
+function addToWatchlist(symbol) {
+  const list = getWatchlist();
+  if (!list.includes(symbol)) {
+    list.push(symbol);
+    saveWatchlist(list);
+  }
+}
+
+/**
+ * Remove symbol from watchlist
+ */
+function removeFromWatchlist(symbol) {
+  const list = getWatchlist().filter(s => s !== symbol);
+  saveWatchlist(list);
+}
+
+/**
+ * Check if Indian market is currently open (Asia/Kolkata timezone)
  */
 function isMarketOpen() {
   const now = new Date();
-  const istFormatter = new Intl.DateTimeFormat('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    hour12: false,
-    weekday: 'short',
-    hour: 'numeric',
-    minute: 'numeric',
-  });
+  const istStr = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+  const ist = new Date(istStr);
+  const day = ist.getDay();
 
-  const parts = istFormatter.formatToParts(now);
-  const map = {};
-  parts.forEach(p => map[p.type] = p.value);
+  // Weekend check
+  if (day === 0 || day === 6) return false;
 
-  const weekday = map.weekday;
-  const hour = parseInt(map.hour, 10);
-  const minute = parseInt(map.minute, 10);
-
-  // Closed on weekends
-  if (weekday === 'Sat' || weekday === 'Sun') return false;
-
-  const currentMinutes = hour * 60 + minute;
-  const openMinutes = CONFIG.MARKET_OPEN_HOUR * 60 + CONFIG.MARKET_OPEN_MIN; // 09:15 = 555
-  const closeMinutes = CONFIG.MARKET_CLOSE_HOUR * 60 + CONFIG.MARKET_CLOSE_MIN; // 15:30 = 930
+  const hours = ist.getHours();
+  const minutes = ist.getMinutes();
+  const currentMinutes = hours * 60 + minutes;
+  const openMinutes = CONFIG.MARKET_OPEN_HOUR * 60 + CONFIG.MARKET_OPEN_MIN; // 09:15 -> 555
+  const closeMinutes = CONFIG.MARKET_CLOSE_HOUR * 60 + CONFIG.MARKET_CLOSE_MIN; // 15:30 -> 930
 
   return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
 }
 
 /**
- * Format timestamp in IST
+ * Format timestamp into Indian Standard Time (IST)
  */
 function formatISTTime(date = new Date()) {
-  return new Date(date).toLocaleString('en-IN', {
+  return date.toLocaleString('en-IN', {
     timeZone: 'Asia/Kolkata',
     dateStyle: 'medium',
     timeStyle: 'medium',
@@ -225,3 +235,63 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
+
+/* ═════════════════════════════════════════════════════════════
+   THEME MANAGEMENT (LIGHT / DARK THEME SLIDER)
+   ═════════════════════════════════════════════════════════════ */
+
+/**
+ * Get saved theme preference
+ */
+function getSavedTheme() {
+  return localStorage.getItem('kdelta_theme') || 'light';
+}
+
+/**
+ * Apply theme to document and chart
+ */
+function applyTheme(theme) {
+  const isDark = theme === 'dark';
+  if (isDark) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    if (document.body) document.body.classList.add('dark-theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+    if (document.body) document.body.classList.remove('dark-theme');
+  }
+  localStorage.setItem('kdelta_theme', theme);
+
+  // Sync checkbox state
+  const checkbox = document.getElementById('theme-toggle-checkbox');
+  if (checkbox) {
+    checkbox.checked = isDark;
+  }
+
+  // Update chart if initialized
+  if (typeof ChartManager !== 'undefined' && ChartManager.updateTheme) {
+    ChartManager.updateTheme(theme);
+  }
+}
+
+/**
+ * Toggle theme when switch slider is clicked
+ */
+function toggleTheme(isDark) {
+  const theme = isDark ? 'dark' : 'light';
+  applyTheme(theme);
+  showToast(isDark ? '🌙 Dark Mode activated' : '☀️ Light Mode activated', 'info');
+}
+
+/**
+ * Initialize theme on page load
+ */
+function initTheme() {
+  const saved = getSavedTheme();
+  applyTheme(saved);
+}
+
+// Run immediately to prevent flash of wrong theme
+initTheme();
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+});
