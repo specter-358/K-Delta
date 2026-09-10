@@ -1,5 +1,362 @@
 [
   {
+    "id": "hist_1789037346162_if6lw",
+    "symbol": "HDFCBANK.NS",
+    "name": "HDFC BANK LTD",
+    "exchange": "NSI",
+    "price": 693.8,
+    "change": 6.7,
+    "percentChange": 0.98,
+    "volume": 27103195,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 47,
+    "trend": "uptrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $693.80",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $694.95 (Buy trigger) or breakdown below $692.65 (Sell trigger).",
+      "entryPrice": 693.8,
+      "entryZone": "Consolidation ($692.65 – $694.95)",
+      "stopLoss": 692.65,
+      "stopLossPct": "Trigger",
+      "target1": 694.95,
+      "target1Pct": "Trigger",
+      "target2": 695.91,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$694.95** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$692.65** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **uptrend**. **MACD** is below the signal line — bearish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T10:49:06.162Z",
+    "timestampIST": "10 Sept 2026, 4:19:06 pm IST"
+  },
+  {
+    "id": "hist_1789037319328_bzkwq",
+    "symbol": "PNB.BO",
+    "name": "PUNJAB NATIONAL BANK",
+    "exchange": "BSE",
+    "price": 116.85,
+    "change": 1.25,
+    "percentChange": 1.08,
+    "volume": 977697,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 47,
+    "trend": "downtrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $116.85",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $117.10 (Buy trigger) or breakdown below $116.60 (Sell trigger).",
+      "entryPrice": 116.85,
+      "entryZone": "Consolidation ($116.60 – $117.10)",
+      "stopLoss": 116.6,
+      "stopLossPct": "Trigger",
+      "target1": 117.1,
+      "target1Pct": "Trigger",
+      "target2": 117.31,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$117.10** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$116.60** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **downtrend**. **RSI at 55.6** — Mildly bullish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T10:48:39.327Z",
+    "timestampIST": "10 Sept 2026, 4:18:39 pm IST"
+  },
+  {
+    "id": "hist_1789037292430_de7yd",
+    "symbol": "HDFCBANK.NS",
+    "name": "HDFC BANK LTD",
+    "exchange": "NSI",
+    "price": 693.8,
+    "change": 6.7,
+    "percentChange": 0.98,
+    "volume": 27103195,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 47,
+    "trend": "uptrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $693.80",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $694.95 (Buy trigger) or breakdown below $692.65 (Sell trigger).",
+      "entryPrice": 693.8,
+      "entryZone": "Consolidation ($692.65 – $694.95)",
+      "stopLoss": 692.65,
+      "stopLossPct": "Trigger",
+      "target1": 694.95,
+      "target1Pct": "Trigger",
+      "target2": 695.91,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$694.95** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$692.65** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **uptrend**. **MACD** is below the signal line — bearish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T10:48:12.429Z",
+    "timestampIST": "10 Sept 2026, 4:18:12 pm IST"
+  },
+  {
+    "id": "hist_1789036824292_q5t0y",
+    "symbol": "HDFCBANK.NS",
+    "name": "HDFC BANK LTD",
+    "exchange": "NSI",
+    "price": 693.8,
+    "change": 6.7,
+    "percentChange": 0.98,
+    "volume": 27103195,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 49,
+    "trend": "uptrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $693.80",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $695.84 (Buy trigger) or breakdown below $691.76 (Sell trigger).",
+      "entryPrice": 693.8,
+      "entryZone": "Consolidation ($691.76 – $695.84)",
+      "stopLoss": 691.76,
+      "stopLossPct": "Trigger",
+      "target1": 695.84,
+      "target1Pct": "Trigger",
+      "target2": 697.54,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$695.84** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$691.76** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **uptrend**. **RSI at 55.5** — Mildly bullish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T10:40:24.292Z",
+    "timestampIST": "10 Sept 2026, 4:10:24 pm IST"
+  },
+  {
+    "id": "hist_1789036783824_eg23q",
+    "symbol": "HDFCBANK.NS",
+    "name": "HDFC BANK LTD",
+    "exchange": "NSI",
+    "price": 693.8,
+    "change": 6.7,
+    "percentChange": 0.98,
+    "volume": 27103195,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 47,
+    "trend": "downtrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $693.80",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $709.17 (Buy trigger) or breakdown below $678.43 (Sell trigger).",
+      "entryPrice": 693.8,
+      "entryZone": "Consolidation ($678.43 – $709.17)",
+      "stopLoss": 678.43,
+      "stopLossPct": "Trigger",
+      "target1": 709.17,
+      "target1Pct": "Trigger",
+      "target2": 721.98,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$709.17** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$678.43** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **downtrend**. **MACD** is below the signal line — bearish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T10:39:43.823Z",
+    "timestampIST": "10 Sept 2026, 4:09:43 pm IST"
+  },
+  {
+    "id": "hist_1789036749702_6j1po",
+    "symbol": "HDFCBANK.NS",
+    "name": "HDFC BANK LTD",
+    "exchange": "NSI",
+    "price": 693.8,
+    "change": 6.7,
+    "percentChange": 0.98,
+    "volume": 27103195,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 49,
+    "trend": "downtrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $693.80",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $698.51 (Buy trigger) or breakdown below $689.09 (Sell trigger).",
+      "entryPrice": 693.8,
+      "entryZone": "Consolidation ($689.09 – $698.51)",
+      "stopLoss": 689.09,
+      "stopLossPct": "Trigger",
+      "target1": 698.51,
+      "target1Pct": "Trigger",
+      "target2": 702.44,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$698.51** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$689.09** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **downtrend**. **RSI at 42.4** — Mildly bearish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T10:39:09.701Z",
+    "timestampIST": "10 Sept 2026, 4:09:09 pm IST"
+  },
+  {
+    "id": "hist_1789036691549_7yyjr",
+    "symbol": "HDFCBANK.NS",
+    "name": "HDFC BANK LTD",
+    "exchange": "NSI",
+    "price": 693.8,
+    "change": 6.7,
+    "percentChange": 0.98,
+    "volume": 27103195,
+    "signal": "HOLD",
+    "action": "WAIT / NO TRADE",
+    "confidence": 47,
+    "trend": "downtrend",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD",
+      "actionHeadline": "⏳ WAIT / NO CLEAR SETUP — Market is in consolidation at $693.80",
+      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above $709.17 (Buy trigger) or breakdown below $678.43 (Sell trigger).",
+      "entryPrice": 693.8,
+      "entryZone": "Consolidation ($678.43 – $709.17)",
+      "stopLoss": 678.43,
+      "stopLossPct": "Trigger",
+      "target1": 709.17,
+      "target1Pct": "Trigger",
+      "target2": 721.98,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY (TRIGGER)",
+          "text": "Buy only if candle breaks out and closes above **$709.17** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL (TRIGGER)",
+          "text": "Sell / Short only if candle breaks down below **$678.43** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
+        }
+      ]
+    },
+    "summary": "The market is showing **mixed signals**. The current trend is **downtrend**. **MACD** is below the signal line — bearish momentum....",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-10T10:38:11.549Z",
+    "timestampIST": "10 Sept 2026, 4:08:11 pm IST"
+  },
+  {
     "id": "hist_1789035683733_myyr6",
     "symbol": "PNB.BO",
     "name": "PUNJAB NATIONAL BANK",

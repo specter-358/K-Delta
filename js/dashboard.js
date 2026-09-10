@@ -128,8 +128,9 @@ async function loadSymbol(symbol, isRefresh = false) {
       return;
     }
 
-    // Update chart
-    ChartManager.setData(candles);
+    // Set chart timeframe & update chart data
+    ChartManager.setTimeframe(currentInterval);
+    ChartManager.setData(candles, !isRefresh);
 
     // Fetch quote for header
     const quote = await API.fetchQuote(currentSymbol);

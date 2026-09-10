@@ -1,6 +1,6 @@
 /* ============================================================
    K-Delta — Chart Wrapper
-   Wraps TradingView Lightweight Charts library
+   Wraps TradingView Lightweight Charts library with IST localization
    ============================================================ */
 
 const ChartManager = (() => {
@@ -9,6 +9,7 @@ const ChartManager = (() => {
   let volumeSeries = null;
   let overlayLines = {};
   let markers = [];
+  let currentIsIntraday = false;
 
   const OVERLAY_COLORS = {
     sma20: { color: '#ffd740', title: 'SMA 20' },
@@ -18,6 +19,45 @@ const ChartManager = (() => {
     bbUpper: { color: 'rgba(0, 212, 255, 0.3)', title: 'BB Upper' },
     bbLower: { color: 'rgba(0, 212, 255, 0.3)', title: 'BB Lower' },
   };
+
+  /**
+   * Format time for Lightweight Charts
+   * Supports:
+   * - Daily/Weekly BusinessDay: "YYYY-MM-DD" or { year, month, day }
+   * - Intraday Unix timestamp: number in seconds (e.g. 1789033500)
+   */
+  function formatTime(timeVal) {
+    if (timeVal == null) return timeVal;
+
+    // If it's already a numeric UNIX timestamp in seconds
+    if (typeof timeVal === 'number') {
+      return timeVal;
+    }
+
+    // If it's a numeric string timestamp (e.g., "1789033500")
+    if (typeof timeVal === 'string' && /^\d{9,12}$/.test(timeVal.trim())) {
+      return parseInt(timeVal.trim(), 10);
+    }
+
+    // If it's already a BusinessDay object { year, month, day }
+    if (typeof timeVal === 'object' && timeVal.year && timeVal.month && timeVal.day) {
+      return timeVal;
+    }
+
+    // If it's a date string "YYYY-MM-DD"
+    if (typeof timeVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(timeVal.trim())) {
+      const [year, month, day] = timeVal.trim().split('-').map(Number);
+      return { year, month, day };
+    }
+
+    // If it's an ISO timestamp string
+    const d = new Date(timeVal);
+    if (!isNaN(d.getTime())) {
+      return Math.floor(d.getTime() / 1000);
+    }
+
+    return timeVal;
+  }
 
   /**
    * Initialize the chart in a container
@@ -35,7 +75,27 @@ const ChartManager = (() => {
         background: { type: 'solid', color: '#060914' },
         textColor: '#9fa8da',
         fontSize: 12,
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "'JetBrains Mono', 'Inter', monospace",
+      },
+      localization: {
+        priceFormatter: price => '₹' + price.toFixed(2),
+        timeFormatter: timestamp => {
+          if (typeof timestamp === 'number') {
+            const d = new Date(timestamp * 1000);
+            return d.toLocaleString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+              day: '2-digit',
+              month: 'short',
+            });
+          }
+          if (typeof timestamp === 'object' && timestamp.year) {
+            return `${String(timestamp.day).padStart(2, '0')}/${String(timestamp.month).padStart(2, '0')}/${timestamp.year}`;
+          }
+          return timestamp;
+        },
       },
       grid: {
         vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
@@ -62,7 +122,7 @@ const ChartManager = (() => {
       },
       timeScale: {
         borderColor: 'rgba(255, 255, 255, 0.06)',
-        timeVisible: true,
+        timeVisible: false,
         secondsVisible: false,
       },
       handleScroll: { vertTouchDrag: false },
@@ -102,23 +162,81 @@ const ChartManager = (() => {
   }
 
   /**
+   * Set resolution/timeframe on the chart
+   */
+  function setTimeframe(interval) {
+    if (!chart) return;
+    const isIntraday = ['1min', '1m', '5min', '5m', '15min', '15m', '1h', '60min'].includes(interval.toLowerCase());
+    currentIsIntraday = isIntraday;
+    chart.applyOptions({
+      timeScale: {
+        timeVisible: isIntraday,
+        secondsVisible: false,
+      },
+    });
+  }
+
+  /**
    * Set candlestick data
    * @param {Array} candles - Array of {time, open, high, low, close}
+   * @param {boolean} fit - Whether to fit content to screen
    */
-  function setData(candles) {
-    if (!candleSeries || !candles.length) return;
+  function setData(candles, fit = true) {
+    if (!candleSeries || !Array.isArray(candles) || !candles.length) return;
 
-    // Convert time strings to proper format
-    const formatted = candles.map(c => ({
-      time: formatTime(c.time),
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
+    // Filter valid OHLC items and format time
+    const rawFormatted = candles
+      .filter(c => c && c.open != null && c.high != null && c.low != null && c.close != null && !isNaN(c.close))
+      .map(c => ({
+        time: formatTime(c.time),
+        open: typeof c.open === 'number' ? c.open : parseFloat(c.open),
+        high: typeof c.high === 'number' ? c.high : parseFloat(c.high),
+        low: typeof c.low === 'number' ? c.low : parseFloat(c.low),
+        close: typeof c.close === 'number' ? c.close : parseFloat(c.close),
+      }));
+
+    // Deduplicate by time key and sort ascending for Lightweight Charts requirement
+    const candleMap = new Map();
+    for (const c of rawFormatted) {
+      const key = typeof c.time === 'object' ? `${c.time.year}-${String(c.time.month).padStart(2, '0')}-${String(c.time.day).padStart(2, '0')}` : c.time;
+      candleMap.set(key, c);
+    }
+
+    const formatted = Array.from(candleMap.values()).sort((a, b) => {
+      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+      if (typeof a.time === 'object' && typeof b.time === 'object') {
+        const da = new Date(a.time.year, a.time.month - 1, a.time.day).getTime();
+        const db = new Date(b.time.year, b.time.month - 1, b.time.day).getTime();
+        return da - db;
+      }
+      return 0;
+    });
+
+    if (formatted.length === 0) return;
 
     candleSeries.setData(formatted);
-    chart.timeScale().fitContent();
+    if (fit) {
+      chart.timeScale().fitContent();
+    }
+  }
+
+  /**
+   * Update the latest live forming candle in real time
+   * @param {Object} candle - {time, open, high, low, close}
+   */
+  function updateCandle(candle) {
+    if (!candleSeries || !candle) return;
+    try {
+      candleSeries.update({
+        time: formatTime(candle.time),
+        open: typeof candle.open === 'number' ? candle.open : parseFloat(candle.open),
+        high: typeof candle.high === 'number' ? candle.high : parseFloat(candle.high),
+        low: typeof candle.low === 'number' ? candle.low : parseFloat(candle.low),
+        close: typeof candle.close === 'number' ? candle.close : parseFloat(candle.close),
+      });
+    } catch (e) {
+      console.warn('Error updating candle in real-time:', e);
+    }
   }
 
   /**
@@ -126,13 +244,30 @@ const ChartManager = (() => {
    * @param {Array} volumeData - Array of {time, value, color}
    */
   function setVolume(volumeData) {
-    if (!volumeSeries) return;
+    if (!volumeSeries || !Array.isArray(volumeData) || !volumeData.length) return;
 
-    const formatted = volumeData.map(v => ({
+    const rawFormatted = volumeData.map(v => ({
       time: formatTime(v.time),
-      value: v.value,
+      value: v.value || 0,
       color: v.color || 'rgba(0, 212, 255, 0.3)',
     }));
+
+    // Deduplicate and sort
+    const volMap = new Map();
+    for (const v of rawFormatted) {
+      const key = typeof v.time === 'object' ? `${v.time.year}-${String(v.time.month).padStart(2, '0')}-${String(v.time.day).padStart(2, '0')}` : v.time;
+      volMap.set(key, v);
+    }
+
+    const formatted = Array.from(volMap.values()).sort((a, b) => {
+      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+      if (typeof a.time === 'object' && typeof b.time === 'object') {
+        const da = new Date(a.time.year, a.time.month - 1, a.time.day).getTime();
+        const db = new Date(b.time.year, b.time.month - 1, b.time.day).getTime();
+        return da - db;
+      }
+      return 0;
+    });
 
     volumeSeries.setData(formatted);
   }
@@ -143,7 +278,7 @@ const ChartManager = (() => {
    * @param {Array} data - Array of {time, value}
    */
   function setOverlay(name, data) {
-    if (!chart || !data.length) return;
+    if (!chart || !Array.isArray(data) || !data.length) return;
 
     const config = OVERLAY_COLORS[name] || { color: '#ffffff', title: name };
 
@@ -161,10 +296,29 @@ const ChartManager = (() => {
       crosshairMarkerVisible: false,
     });
 
-    const formatted = data.map(d => ({
-      time: formatTime(d.time),
-      value: d.value,
-    }));
+    const rawFormatted = data
+      .filter(d => d && d.value != null && !isNaN(d.value))
+      .map(d => ({
+        time: formatTime(d.time),
+        value: typeof d.value === 'number' ? d.value : parseFloat(d.value),
+      }));
+
+    // Deduplicate and sort
+    const lineMap = new Map();
+    for (const d of rawFormatted) {
+      const key = typeof d.time === 'object' ? `${d.time.year}-${String(d.time.month).padStart(2, '0')}-${String(d.time.day).padStart(2, '0')}` : d.time;
+      lineMap.set(key, d);
+    }
+
+    const formatted = Array.from(lineMap.values()).sort((a, b) => {
+      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+      if (typeof a.time === 'object' && typeof b.time === 'object') {
+        const da = new Date(a.time.year, a.time.month - 1, a.time.day).getTime();
+        const db = new Date(b.time.year, b.time.month - 1, b.time.day).getTime();
+        return da - db;
+      }
+      return 0;
+    });
 
     lineSeries.setData(formatted);
     overlayLines[name] = lineSeries;
@@ -196,7 +350,7 @@ const ChartManager = (() => {
    * @param {Array} candles - Original candle data (to get time)
    */
   function setPatternMarkers(patterns, candles) {
-    if (!candleSeries) return;
+    if (!candleSeries || !Array.isArray(patterns) || !Array.isArray(candles)) return;
 
     const markerData = patterns
       .filter(p => p.index < candles.length)
@@ -210,15 +364,9 @@ const ChartManager = (() => {
           shape: isBullish ? 'arrowUp' : 'arrowDown',
           text: p.name,
         };
-      })
-      .sort((a, b) => {
-        // Sort by time for Lightweight Charts requirement
-        if (a.time < b.time) return -1;
-        if (a.time > b.time) return 1;
-        return 0;
       });
 
-    // Deduplicate by time (Lightweight Charts requires unique times)
+    // Deduplicate by time key
     const uniqueMarkers = [];
     const seenTimes = new Set();
     for (const m of markerData) {
@@ -228,6 +376,16 @@ const ChartManager = (() => {
         uniqueMarkers.push(m);
       }
     }
+
+    uniqueMarkers.sort((a, b) => {
+      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+      if (typeof a.time === 'object' && typeof b.time === 'object') {
+        const da = new Date(a.time.year, a.time.month - 1, a.time.day).getTime();
+        const db = new Date(b.time.year, b.time.month - 1, b.time.day).getTime();
+        return da - db;
+      }
+      return 0;
+    });
 
     candleSeries.setMarkers(uniqueMarkers);
     markers = uniqueMarkers;
@@ -318,27 +476,6 @@ const ChartManager = (() => {
   }
 
   /**
-   * Format time for Lightweight Charts
-   * Supports "YYYY-MM-DD" and "YYYY-MM-DD HH:MM:SS" formats
-   */
-  function formatTime(timeStr) {
-    if (!timeStr) return timeStr;
-
-    // If already a number or business day object, return as-is
-    if (typeof timeStr === 'number' || typeof timeStr === 'object') return timeStr;
-
-    // "YYYY-MM-DD" → business day
-    if (timeStr.length === 10) {
-      const [year, month, day] = timeStr.split('-').map(Number);
-      return { year, month, day };
-    }
-
-    // "YYYY-MM-DD HH:MM:SS" → UTC timestamp
-    const date = new Date(timeStr.replace(' ', 'T') + 'Z');
-    return Math.floor(date.getTime() / 1000);
-  }
-
-  /**
    * Scroll to the latest data
    */
   function scrollToLatest() {
@@ -370,7 +507,9 @@ const ChartManager = (() => {
 
   return {
     init,
+    setTimeframe,
     setData,
+    updateCandle,
     setVolume,
     setOverlay,
     removeOverlay,
@@ -378,6 +517,7 @@ const ChartManager = (() => {
     setPatternMarkers,
     setTradeLevels,
     clearTradeLevels,
+    formatTime,
     scrollToLatest,
     getChart,
     destroy,

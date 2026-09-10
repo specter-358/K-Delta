@@ -327,32 +327,32 @@ app.get('/api/candles', async (req, res) => {
   }
 
   const symbol = normalizeSymbol(rawSymbol);
-  const intervalParam = req.query.interval || '1day';
+  const intervalParam = (req.query.interval || '1day').toLowerCase();
   const outputsize = parseInt(req.query.outputsize, 10) || 120;
 
-  // Map internal timeframe to Yahoo Finance interval and period
+  // Map internal timeframe to Yahoo Finance interval and valid period range
   let yfInterval = '1d';
   let period1 = new Date();
 
   if (intervalParam === '1min' || intervalParam === '1m') {
     yfInterval = '1m';
-    period1.setDate(period1.getDate() - 7); // Max 7d for 1m
+    period1.setDate(period1.getDate() - 4); // Max 7d allowed by provider for 1m
   } else if (intervalParam === '5min' || intervalParam === '5m') {
     yfInterval = '5m';
-    period1.setDate(period1.getDate() - 30);
+    period1.setDate(period1.getDate() - 14); // Max 60d
   } else if (intervalParam === '15min' || intervalParam === '15m') {
     yfInterval = '15m';
-    period1.setDate(period1.getDate() - 45);
+    period1.setDate(period1.getDate() - 45); // Max 60d
   } else if (intervalParam === '1h' || intervalParam === '60min') {
     yfInterval = '1h';
-    period1.setDate(period1.getDate() - 120);
-  } else if (intervalParam === '1week' || intervalParam === '1wk' || intervalParam === '1W') {
+    period1.setDate(period1.getDate() - 120); // Max 730d
+  } else if (intervalParam === '1week' || intervalParam === '1wk' || intervalParam === '1w') {
     yfInterval = '1wk';
     period1.setFullYear(period1.getFullYear() - 3);
   } else {
     // 1day default
     yfInterval = '1d';
-    period1.setDate(period1.getDate() - Math.max(outputsize * 2, 200));
+    period1.setDate(period1.getDate() - Math.max(outputsize * 2, 365));
   }
 
   const cacheKey = `candles_${symbol}_${yfInterval}`;
@@ -369,29 +369,47 @@ app.get('/api/candles', async (req, res) => {
       return res.status(404).json({ error: `No candle data available for ${symbol}` });
     }
 
-    // Filter valid numeric candles and format
-    const candles = chartData.quotes
-      .filter(q => q.open != null && q.high != null && q.low != null && q.close != null && !isNaN(q.close))
-      .map(q => {
-        let timeStr;
-        const d = new Date(q.date);
-        if (yfInterval === '1d' || yfInterval === '1wk') {
-          // Date string format YYYY-MM-DD
-          timeStr = d.toISOString().split('T')[0];
-        } else {
-          // UNIX timestamp in seconds for intraday
-          timeStr = Math.floor(d.getTime() / 1000);
-        }
+    // Filter valid numeric candles and eliminate empty null slots
+    const validRaw = chartData.quotes.filter(q => 
+      q && q.open != null && q.high != null && q.low != null && q.close != null && 
+      !isNaN(q.open) && !isNaN(q.high) && !isNaN(q.low) && !isNaN(q.close) &&
+      q.open > 0 && q.high > 0 && q.low > 0 && q.close > 0
+    );
 
-        return {
-          time: timeStr,
-          open: parseFloat(q.open.toFixed(2)),
-          high: parseFloat(q.high.toFixed(2)),
-          low: parseFloat(q.low.toFixed(2)),
-          close: parseFloat(q.close.toFixed(2)),
-          volume: q.volume || 0,
-        };
+    if (validRaw.length === 0) {
+      return res.status(404).json({ error: `Data unavailable for ${symbol}` });
+    }
+
+    const isDailyOrWeekly = (yfInterval === '1d' || yfInterval === '1wk');
+    const candleMap = new Map();
+
+    for (const q of validRaw) {
+      const d = new Date(q.date);
+      let timeKey;
+
+      if (isDailyOrWeekly) {
+        // Date formatted as YYYY-MM-DD in Asia/Kolkata (IST) timezone
+        timeKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(d);
+      } else {
+        // Numeric UNIX timestamp in seconds
+        timeKey = Math.floor(d.getTime() / 1000);
+      }
+
+      candleMap.set(timeKey, {
+        time: timeKey,
+        open: parseFloat(q.open.toFixed(2)),
+        high: parseFloat(q.high.toFixed(2)),
+        low: parseFloat(q.low.toFixed(2)),
+        close: parseFloat(q.close.toFixed(2)),
+        volume: q.volume || 0,
       });
+    }
+
+    // Sort ascending by time
+    const candles = Array.from(candleMap.values()).sort((a, b) => {
+      if (typeof a.time === 'number' && typeof b.time === 'number') return a.time - b.time;
+      return String(a.time).localeCompare(String(b.time));
+    });
 
     if (candles.length === 0) {
       return res.status(404).json({ error: `Data unavailable for ${symbol}` });
@@ -402,7 +420,7 @@ app.get('/api/candles', async (req, res) => {
     setCache(cacheKey, sliced);
     res.json(sliced);
   } catch (err) {
-    console.error(`Candles error for ${symbol}:`, err.message);
+    console.error(`Candles error for ${symbol} (${yfInterval}):`, err.message);
     res.status(502).json({ error: `Data unavailable for ${symbol}`, details: err.message });
   }
 });
