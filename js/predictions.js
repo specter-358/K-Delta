@@ -89,28 +89,28 @@ const Predictions = (() => {
     let signal, action, actionType, confidence;
 
     if (totalScore > 50) {
-      signal = 'BUY';
-      action = 'STRONG BUY';
+      signal = 'BUY STOCK';
+      action = 'STRONG BUY STOCK';
       actionType = 'strong-buy';
       confidence = Math.min(96, Math.round(65 + totalScore * 0.35));
     } else if (totalScore > 20) {
-      signal = 'BUY';
-      action = 'BUY ON PULLBACK';
+      signal = 'BUY STOCK';
+      action = 'BUY STOCK ON PULLBACK';
       actionType = 'buy';
       confidence = Math.min(90, Math.round(50 + totalScore * 0.45));
     } else if (totalScore < -50) {
-      signal = 'SELL';
-      action = 'STRONG SELL';
+      signal = 'SELL STOCK';
+      action = 'STRONG SELL STOCK';
       actionType = 'strong-sell';
       confidence = Math.min(96, Math.round(65 + Math.abs(totalScore) * 0.35));
     } else if (totalScore < -20) {
-      signal = 'SELL';
-      action = 'SELL ON RALLY';
+      signal = 'SELL STOCK';
+      action = 'SELL STOCK ON RALLY';
       actionType = 'sell';
       confidence = Math.min(90, Math.round(50 + Math.abs(totalScore) * 0.45));
     } else {
-      signal = 'HOLD';
-      action = 'WAIT / NO TRADE';
+      signal = 'HOLD STOCK';
+      action = 'HOLD STOCK / WAIT';
       actionType = 'hold';
       confidence = Math.round(50 - Math.abs(totalScore) * 0.3);
     }
@@ -208,8 +208,11 @@ const Predictions = (() => {
     let entry = currentPrice;
     let entryMin, entryMax, stopLoss, target1, target2, riskReward, actionHeadline, timingAdvice, checklist;
 
-    if (signal === 'BUY') {
-      const isStrong = action === 'STRONG BUY';
+    const isBuySignal = signal.includes('BUY');
+    const isSellSignal = signal.includes('SELL');
+
+    if (isBuySignal) {
+      const isStrong = action.includes('STRONG');
       entry = currentPrice;
       entryMin = +(currentPrice - validATR * 0.3).toFixed(2);
       entryMax = +(currentPrice + validATR * 0.2).toFixed(2);
@@ -230,34 +233,34 @@ const Predictions = (() => {
       const target2Pct = (((target2 - entry) / entry) * 100).toFixed(2);
 
       actionHeadline = isStrong
-        ? `BUY NOW — High conviction bullish setup at ₹${entry.toFixed(2)}`
-        : `BUY ON PULLBACK — Accumulate between ₹${entryMin.toFixed(2)} - ₹${entryMax.toFixed(2)}`;
+        ? `BUY STOCK NOW — High conviction bullish setup at ₹${entry.toFixed(2)}`
+        : `BUY STOCK ON PULLBACK — Accumulate between ₹${entryMin.toFixed(2)} - ₹${entryMax.toFixed(2)}`;
 
       timingAdvice = isStrong
-        ? `Enter market order or limit at ₹${entry.toFixed(2)}. Bullish patterns and indicator momentum confirm strong upside probability.`
-        : `Place limit buy order between ₹${entryMin.toFixed(2)} and ₹${entry.toFixed(2)}. Wait for a slight dip before entering to maximize risk-reward.`;
+        ? `Buy stock at market price or limit at ₹${entry.toFixed(2)}. Bullish patterns and indicator momentum confirm strong upside probability.`
+        : `Place limit order to buy stock between ₹${entryMin.toFixed(2)} and ₹${entry.toFixed(2)}. Wait for a slight dip before entering to maximize risk-reward.`;
 
       checklist = [
         {
           type: 'enter',
-          label: 'WHEN TO BUY',
-          text: `Enter long position around **₹${entry.toFixed(2)}** (Optimal Zone: ₹${entryMin.toFixed(2)} – ₹${entryMax.toFixed(2)}).`,
+          label: 'WHEN TO BUY STOCK',
+          text: `Buy stock around **₹${entry.toFixed(2)}** (Optimal Zone: ₹${entryMin.toFixed(2)} – ₹${entryMax.toFixed(2)}).`,
         },
         {
           type: 'target',
           label: 'WHEN TO TAKE PROFIT',
-          text: `Sell 50% at **Target 1 (₹${target1.toFixed(2)} / +${target1Pct}%)**. Let remaining 50% run to **Target 2 (₹${target2.toFixed(2)} / +${target2Pct}%)** while moving stop to breakeven.`,
+          text: `Sell 50% stock at **Target 1 (₹${target1.toFixed(2)} / +${target1Pct}%)**. Let remaining 50% run to **Target 2 (₹${target2.toFixed(2)} / +${target2Pct}%)** while moving stop to breakeven.`,
         },
         {
           type: 'exit',
-          label: 'WHEN TO SELL / CUT LOSS',
-          text: `Exit 100% if candle closes below **Stop Loss (₹${stopLoss.toFixed(2)} / ${riskPct}%)** to protect capital.`,
+          label: 'WHEN TO SELL STOCK / CUT LOSS',
+          text: `Sell 100% stock if candle closes below **Stop Loss (₹${stopLoss.toFixed(2)} / ${riskPct}%)** to protect capital.`,
         },
       ];
 
       return {
         hasSetup: true,
-        type: 'BUY',
+        type: 'BUY STOCK',
         actionHeadline,
         timingAdvice,
         entryPrice: entry,
@@ -273,8 +276,8 @@ const Predictions = (() => {
         checklist,
       };
 
-    } else if (signal === 'SELL') {
-      const isStrong = action === 'STRONG SELL';
+    } else if (isSellSignal) {
+      const isStrong = action.includes('STRONG');
       entry = currentPrice;
       entryMin = +(currentPrice - validATR * 0.2).toFixed(2);
       entryMax = +(currentPrice + validATR * 0.3).toFixed(2);
@@ -295,23 +298,23 @@ const Predictions = (() => {
       const target2Pct = (((target2 - entry) / entry) * 100).toFixed(2);
 
       actionHeadline = isStrong
-        ? `SELL / TAKE PROFIT NOW — Heavy bearish pressure at ₹${entry.toFixed(2)}`
-        : `SELL ON RALLY — Exit long positions or short into resistance at ₹${entryMax.toFixed(2)}`;
+        ? `SELL STOCK NOW — Heavy bearish pressure at ₹${entry.toFixed(2)}`
+        : `SELL STOCK ON RALLY — Exit long positions or short into resistance at ₹${entryMax.toFixed(2)}`;
 
       timingAdvice = isStrong
-        ? `Close active long positions immediately or consider short entry at ₹${entry.toFixed(2)}. Technical breakdown is in progress.`
-        : `Sell into current mini-bounces between ₹${entry.toFixed(2)} - ₹${entryMax.toFixed(2)}. Avoid holding long positions as overhead supply is high.`;
+        ? `Sell stock immediately or enter short position at ₹${entry.toFixed(2)}. Technical breakdown is in progress.`
+        : `Sell stock into current mini-bounces between ₹${entry.toFixed(2)} - ₹${entryMax.toFixed(2)}. Overhead supply is high.`;
 
       checklist = [
         {
           type: 'enter',
-          label: 'WHEN TO SELL / SHORT',
-          text: `Liquidate longs or enter short around **₹${entry.toFixed(2)}** (Rally Zone: ₹${entry.toFixed(2)} – ₹${entryMax.toFixed(2)}).`,
+          label: 'WHEN TO SELL STOCK',
+          text: `Sell stock or enter short around **₹${entry.toFixed(2)}** (Rally Zone: ₹${entry.toFixed(2)} – ₹${entryMax.toFixed(2)}).`,
         },
         {
           type: 'target',
           label: 'WHEN TO BUY BACK (COVER)',
-          text: `Cover 50% short at **Target 1 (₹${target1.toFixed(2)} / ${target1Pct}%)**. Take remaining profit at **Target 2 (₹${target2.toFixed(2)} / ${target2Pct}%)**.`,
+          text: `Buy back (cover) 50% short at **Target 1 (₹${target1.toFixed(2)} / ${target1Pct}%)**. Take remaining profit at **Target 2 (₹${target2.toFixed(2)} / ${target2Pct}%)**.`,
         },
         {
           type: 'exit',
@@ -322,7 +325,7 @@ const Predictions = (() => {
 
       return {
         hasSetup: true,
-        type: 'SELL',
+        type: 'SELL STOCK',
         actionHeadline,
         timingAdvice,
         entryPrice: entry,
@@ -343,30 +346,30 @@ const Predictions = (() => {
       const breakoutBuy = +(currentPrice + validATR * 1.2).toFixed(2);
       const breakdownSell = +(currentPrice - validATR * 1.2).toFixed(2);
 
-      actionHeadline = `WAIT / NO CLEAR SETUP — Market is in consolidation at ₹${currentPrice.toFixed(2)}`;
-      timingAdvice = `Do not take new positions right now. Wait for a clear breakout above ₹${breakoutBuy.toFixed(2)} (Buy trigger) or breakdown below ₹${breakdownSell.toFixed(2)} (Sell trigger).`;
+      actionHeadline = `HOLD STOCK / WAIT — Market is in consolidation at ₹${currentPrice.toFixed(2)}`;
+      timingAdvice = `Do not buy stock right now. Wait for a clear breakout above ₹${breakoutBuy.toFixed(2)} (Buy stock trigger) or breakdown below ₹${breakdownSell.toFixed(2)} (Sell stock trigger).`;
 
       checklist = [
         {
           type: 'wait',
-          label: 'WHEN TO BUY (TRIGGER)',
-          text: `Buy only if candle breaks out and closes above **₹${breakoutBuy.toFixed(2)}** with rising volume.`,
+          label: 'WHEN TO BUY STOCK (TRIGGER)',
+          text: `Buy stock only if candle breaks out and closes above **₹${breakoutBuy.toFixed(2)}** with rising volume.`,
         },
         {
           type: 'wait',
-          label: 'WHEN TO SELL (TRIGGER)',
-          text: `Sell / Short only if candle breaks down below **₹${breakdownSell.toFixed(2)}** support.`,
+          label: 'WHEN TO SELL STOCK (TRIGGER)',
+          text: `Sell stock / Short only if candle breaks down below **₹${breakdownSell.toFixed(2)}** support.`,
         },
         {
           type: 'hold',
           label: 'CURRENT ACTION',
-          text: `Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently.`,
+          text: `Stay in cash or hold existing position with a trailing stop. Wait for clear buy stock or sell stock trigger.`,
         },
       ];
 
       return {
         hasSetup: false,
-        type: 'HOLD',
+        type: 'HOLD STOCK',
         actionHeadline,
         timingAdvice,
         entryPrice: currentPrice,
@@ -834,12 +837,12 @@ const Predictions = (() => {
     const filteredReasons = reasons.filter(Boolean);
 
     let summary = '';
-    if (signal === 'BUY') {
-      summary = `The technical analysis indicates a **bullish outlook** with ${confidence}% confidence. `;
-    } else if (signal === 'SELL') {
-      summary = `The technical analysis indicates a **bearish outlook** with ${confidence}% confidence. `;
+    if (signal && signal.includes('BUY')) {
+      summary = `The technical analysis indicates a **bullish outlook (BUY STOCK)** with ${confidence}% confidence. `;
+    } else if (signal && signal.includes('SELL')) {
+      summary = `The technical analysis indicates a **bearish outlook (SELL STOCK)** with ${confidence}% confidence. `;
     } else {
-      summary = `The market is showing **mixed signals**. `;
+      summary = `The market is showing **consolidation (HOLD STOCK)**. `;
     }
 
     summary += `The current trend is **${trend}**. `;

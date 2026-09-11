@@ -9,6 +9,20 @@
   min-height: calc(100vh - 86px);
   background: var(--bg-primary);
   border-top: 1px solid var(--border-color);
+  transition: grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.dashboard.left-collapsed {
+  grid-template-columns: 0px 1fr 380px;
+}
+
+.dashboard.right-collapsed {
+  grid-template-columns: 280px 1fr 0px;
+}
+
+.dashboard.left-collapsed.right-collapsed {
+  grid-template-columns: 0px 1fr 0px;
 }
 
 /* ═════════════════════════════════════════════════════════════
@@ -22,7 +36,17 @@
   flex-direction: column;
   gap: var(--space-md);
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: calc(100vh - 120px);
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.dashboard.left-collapsed .sidebar-left {
+  padding: 0;
+  border-right: none;
+  visibility: hidden;
+  opacity: 0;
 }
 
 .sidebar-left__search .search-box {
@@ -485,7 +509,64 @@
   flex-direction: column;
   gap: var(--space-md);
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: calc(100vh - 120px);
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.dashboard.right-collapsed .sidebar-right {
+  padding: 0;
+  border-left: none;
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* ── Edge Minimize/Expand Toggles ── */
+.sidebar-edge-toggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  width: 22px;
+  height: 48px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.sidebar-edge-toggle:hover {
+  background: var(--bg-card-hover);
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.sidebar-edge-toggle--left {
+  left: 280px;
+  border-left: none;
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard.left-collapsed .sidebar-edge-toggle--left {
+  left: 0px;
+}
+
+.sidebar-edge-toggle--right {
+  right: 380px;
+  border-right: none;
+  border-radius: var(--radius-xs) 0 0 var(--radius-xs);
+  transition: right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard.right-collapsed .sidebar-edge-toggle--right {
+  right: 0px;
 }
 
 /* ── Technical Inspector Tab Bar ── */

@@ -967,3 +967,23 @@ img {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes flashUp {
+  0% { background-color: rgba(16, 185, 129, 0.35); color: #10b981; }
+  100% { background-color: transparent; }
+}
+
+@keyframes flashDown {
+  0% { background-color: rgba(244, 63, 94, 0.35); color: #f43f5e; }
+  100% { background-color: transparent; }
+}
+
+.flash-up {
+  animation: flashUp 1.2s ease-out;
+  border-radius: var(--radius-xs);
+}
+
+.flash-down {
+  animation: flashDown 1.2s ease-out;
+  border-radius: var(--radius-xs);
+}

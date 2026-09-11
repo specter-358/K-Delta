@@ -3,12 +3,28 @@
    WebSocket Live Tick Stream, Candlestick Engine, Overlays & Patterns
    ============================================================ */
 
+function getSavedOverlays() {
+  try {
+    const saved = localStorage.getItem('kdelta_active_overlays');
+    if (saved) {
+      return new Set(JSON.parse(saved));
+    }
+  } catch (e) {}
+  return new Set(['targets', 'patterns', 'volume', 'vwap', 'sma20', 'sma50']);
+}
+
+function saveActiveOverlays() {
+  try {
+    localStorage.setItem('kdelta_active_overlays', JSON.stringify(Array.from(activeOverlays)));
+  } catch (e) {}
+}
+
 let currentSymbol = 'RELIANCE.NS';
 let currentInterval = '1day';
 let currentCandles = [];
 let currentPrediction = null;
 let currentPatterns = [];
-let activeOverlays = new Set(['targets', 'vwap', 'sma20', 'sma50']);
+let activeOverlays = getSavedOverlays();
 let refreshTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -32,11 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load initial symbol
   loadSymbol(currentSymbol);
 
-  // Background ticker polling
+  // Background ticker polling every 3 seconds during market hours
   refreshTimer = setInterval(() => {
     loadLiveTickerTape();
     updateMarketStatus();
-  }, 20000);
+  }, 3000);
 });
 
 /**
@@ -77,18 +93,28 @@ function setupWebSocketListeners() {
   });
 }
 
+let lastChartPrice = null;
+
 function updateLivePriceInfo(tick) {
   const priceEl = document.getElementById('chart-price');
   const changeEl = document.getElementById('chart-change');
   if (!priceEl || !changeEl) return;
 
+  const prevPrice = lastChartPrice;
+  lastChartPrice = tick.price;
+
   priceEl.textContent = formatPrice(tick.price);
   const isUp = tick.change >= 0;
   const changeClass = isUp ? 'price-up' : 'price-down';
-  const sign = isUp ? '+' : '';
 
   changeEl.className = `chart-header__change ${changeClass}`;
-  changeEl.textContent = `${sign}${formatChange(tick.change)} (${sign}${formatPercent(tick.percentChange)})`;
+  changeEl.textContent = `${formatChange(tick.change)} (${formatPercent(tick.percentChange)})`;
+
+  if (prevPrice !== null && tick.price !== prevPrice) {
+    priceEl.classList.remove('flash-up', 'flash-down');
+    void priceEl.offsetWidth; // trigger reflow
+    priceEl.classList.add(tick.price > prevPrice ? 'flash-up' : 'flash-down');
+  }
 }
 
 /**
@@ -114,6 +140,8 @@ function initChart() {
   ChartManager.init(container);
 }
 
+const prevTickerPrices = new Map();
+
 /**
  * Load Live Ticker Tape for Indian Market
  */
@@ -129,10 +157,17 @@ async function loadLiveTickerTape() {
       const isUp = (item.change || item.percentChange) >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
       const displayName = item.displayName || item.name || item.symbol.replace('^', '');
+      const prevPrice = prevTickerPrices.get(item.symbol);
+      let flashClass = '';
+      if (prevPrice != null && item.price !== prevPrice) {
+        flashClass = item.price > prevPrice ? 'flash-up' : 'flash-down';
+      }
+      prevTickerPrices.set(item.symbol, item.price);
+
       return `
         <div class="ticker-tape__item" onclick="loadSymbol('${item.symbol}')">
           <span class="ticker-tape__symbol">${displayName}</span>
-          <span class="ticker-tape__price">${formatPrice(item.price)}</span>
+          <span class="ticker-tape__price ${flashClass}">${formatPrice(item.price)}</span>
           <span class="ticker-tape__change ${changeClass}">${formatPercent(item.percentChange)}</span>
         </div>
       `;
@@ -213,9 +248,11 @@ function runAnalysisAndRender(updateMarkers = true) {
   // 2. Scan All Mathematical Candlestick Patterns
   currentPatterns = Patterns.scan(currentCandles);
 
-  // 3. Render Chart Pattern Markers
-  if (updateMarkers) {
+  // 3. Render Chart Pattern Markers (if active)
+  if (updateMarkers && activeOverlays.has('patterns')) {
     ChartManager.setPatternMarkers(currentPatterns);
+  } else if (!activeOverlays.has('patterns')) {
+    ChartManager.clearPatternMarkers();
   }
 
   // 4. Update Technical Overlays
@@ -243,9 +280,18 @@ function renderHeader(quote) {
   const changeEl = document.getElementById('chart-change');
   const exchEl = document.getElementById('chart-exchange');
 
-  if (symEl) symEl.textContent = quote.symbol;
-  if (compEl) compEl.textContent = quote.name || quote.symbol;
-  if (exchEl) exchEl.textContent = quote.exchange || 'NSE';
+  const cleanSym = (quote.symbol || '')
+    .replace('.NS', '')
+    .replace('.BO', '')
+    .replace('^', '');
+
+  if (symEl) symEl.textContent = cleanSym;
+  if (compEl) compEl.textContent = quote.name || cleanSym;
+  if (exchEl) {
+    // Hide or display clean exchange without raw NSI codes
+    exchEl.textContent = 'NSE';
+    exchEl.style.display = 'none';
+  }
 
   if (priceEl && quote.price != null) {
     priceEl.textContent = formatPrice(quote.price);
@@ -254,19 +300,32 @@ function renderHeader(quote) {
   if (changeEl && quote.change != null) {
     const isUp = quote.change >= 0;
     const changeClass = isUp ? 'price-up' : 'price-down';
-    const sign = isUp ? '+' : '';
     changeEl.className = `chart-header__change ${changeClass}`;
-    changeEl.textContent = `${sign}${formatChange(quote.change)} (${sign}${formatPercent(quote.percentChange)})`;
+    changeEl.textContent = `${formatChange(quote.change)} (${formatPercent(quote.percentChange)})`;
   }
 }
 
 /**
- * Update Chart Overlays (SMA, EMA, VWAP, Bollinger, S/R, Trendlines, Targets)
+ * Update Chart Overlays (SMA, EMA, VWAP, Bollinger, S/R, Trendlines, Targets, Patterns)
  */
 function updateOverlays(prediction) {
   if (!currentCandles || !currentCandles.length) return;
 
   const closes = currentCandles.map(c => c.close);
+
+  // 0. Pattern Markers (e.g. Bullish Engulfing, Bearish Harami, etc.)
+  if (activeOverlays.has('patterns')) {
+    ChartManager.setPatternMarkers(currentPatterns);
+  } else {
+    ChartManager.clearPatternMarkers();
+  }
+
+  // 0b. Volume Histogram Overlay
+  if (activeOverlays.has('volume')) {
+    ChartManager.setVolumeVisibility(true);
+  } else {
+    ChartManager.setVolumeVisibility(false);
+  }
 
   // 1. Targets
   if (activeOverlays.has('targets')) {
@@ -362,13 +421,16 @@ function renderSignalHeader(pred) {
   const confEl = document.getElementById('signal-confidence');
   const headlineEl = document.getElementById('action-headline');
 
+  const sigKey = (pred.signal || '').toLowerCase().includes('buy') ? 'buy'
+    : (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold';
+
   if (badge) {
-    badge.className = `signal-badge signal-badge--${pred.signal.toLowerCase()}`;
+    badge.className = `signal-badge signal-badge--${sigKey}`;
     badge.textContent = pred.signal;
   }
 
   if (actionPill) {
-    actionPill.className = `action-pill pill--${pred.signal.toLowerCase()}`;
+    actionPill.className = `action-pill pill--${sigKey}`;
     actionPill.textContent = pred.action || pred.signal;
   }
 
@@ -392,7 +454,10 @@ function renderBannerAction(pred) {
 
   if (!banner || !pred.tradeSetup) return;
 
-  banner.className = `action-alert-banner banner--${pred.signal.toLowerCase()}`;
+  const sigKey = (pred.signal || '').toLowerCase().includes('buy') ? 'buy'
+    : (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold';
+
+  banner.className = `action-alert-banner banner--${sigKey}`;
   if (badge) badge.textContent = pred.action || pred.signal;
   if (text) text.textContent = pred.tradeSetup.timingAdvice || pred.tradeSetup.actionHeadline;
 
@@ -664,6 +729,61 @@ function setupTimeframeSelector() {
   });
 }
 
+const STOCK_NAMES = {
+  'RELIANCE': 'Reliance Industries',
+  'RELIANCE.NS': 'Reliance Industries',
+  'TCS': 'Tata Consultancy Services',
+  'TCS.NS': 'Tata Consultancy Services',
+  'HDFCBANK': 'HDFC Bank Ltd.',
+  'HDFCBANK.NS': 'HDFC Bank Ltd.',
+  'INFY': 'Infosys Ltd.',
+  'INFY.NS': 'Infosys Ltd.',
+  'ICICIBANK': 'ICICI Bank Ltd.',
+  'ICICIBANK.NS': 'ICICI Bank Ltd.',
+  'SBIN': 'State Bank of India',
+  'SBIN.NS': 'State Bank of India',
+  'BHARTIARTL': 'Bharti Airtel Ltd.',
+  'BHARTIARTL.NS': 'Bharti Airtel Ltd.',
+  'TATASTEEL': 'Tata Steel Ltd.',
+  'TATASTEEL.NS': 'Tata Steel Ltd.',
+  'TATAMOTORS': 'Tata Motors Ltd.',
+  'TATAMOTORS.NS': 'Tata Motors Ltd.',
+  'ITC': 'ITC Ltd.',
+  'ITC.NS': 'ITC Ltd.',
+  'LT': 'Larsen & Toubro Ltd.',
+  'LT.NS': 'Larsen & Toubro Ltd.',
+  'MARUTI': 'Maruti Suzuki India',
+  'MARUTI.NS': 'Maruti Suzuki India',
+  'SUNPHARMA': 'Sun Pharmaceutical',
+  'SUNPHARMA.NS': 'Sun Pharmaceutical',
+  'BAJFINANCE': 'Bajaj Finance Ltd.',
+  'BAJFINANCE.NS': 'Bajaj Finance Ltd.',
+  'HINDUNILVR': 'Hindustan Unilever',
+  'HINDUNILVR.NS': 'Hindustan Unilever',
+  'KOTAKBANK': 'Kotak Mahindra Bank',
+  'KOTAKBANK.NS': 'Kotak Mahindra Bank',
+  'AXISBANK': 'Axis Bank Ltd.',
+  'AXISBANK.NS': 'Axis Bank Ltd.',
+  'ASIANPAINT': 'Asian Paints Ltd.',
+  'ASIANPAINT.NS': 'Asian Paints Ltd.',
+  '^NSEI': 'NIFTY 50 Index',
+  'NIFTY 50': 'NIFTY 50 Index',
+  '^BSESN': 'SENSEX Index',
+  'SENSEX': 'SENSEX Index',
+  '^NSEBANK': 'BANK NIFTY Index',
+  'BANK NIFTY': 'BANK NIFTY Index',
+  '^CNXIT': 'NIFTY IT Index',
+  '^INDIAVIX': 'INDIA VIX',
+};
+
+function getCleanStockName(sym, fallbackName) {
+  if (STOCK_NAMES[sym]) return STOCK_NAMES[sym];
+  const stripped = sym ? sym.replace('.NS', '').replace('.BO', '').replace('^', '') : '';
+  if (STOCK_NAMES[stripped]) return STOCK_NAMES[stripped];
+  if (fallbackName && fallbackName !== sym && fallbackName !== stripped) return fallbackName;
+  return stripped;
+}
+
 /**
  * Setup Technical Indicator Overlay Buttons
  */
@@ -690,6 +810,7 @@ function setupIndicatorButtons() {
         btn.classList.add('active');
         showToast(`${overlay.toUpperCase()} active`, 'success');
       }
+      saveActiveOverlays();
       updateOverlays(currentPrediction);
     });
   });
@@ -742,15 +863,19 @@ function setupDashboardSearch() {
         return;
       }
 
-      results.innerHTML = searchResults.slice(0, 6).map(r => `
-        <div class="search-result-item" onclick="loadSymbol('${r.symbol}')">
-          <div>
-            <div class="search-result-item__symbol">${r.symbol}</div>
-            <div class="search-result-item__name">${r.name || ''}</div>
+      results.innerHTML = searchResults.slice(0, 6).map(r => {
+        const cleanSym = (r.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
+        const cleanName = getCleanStockName(r.symbol, r.name);
+        return `
+          <div class="search-result-item" onclick="loadSymbol('${r.symbol}')">
+            <div>
+              <div class="search-result-item__symbol">${cleanSym}</div>
+              <div class="search-result-item__name">${cleanName}</div>
+            </div>
+            <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
           </div>
-          <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
-        </div>
-      `).join('');
+        `;
+      }).join('');
 
       results.classList.add('active');
     }, 250);
@@ -781,18 +906,22 @@ async function loadWatchlist() {
   if (!container) return;
 
   const symbols = getWatchlist();
-  container.innerHTML = symbols.map(s => `
-    <div class="watchlist-item" id="watchlist-item-${s.replace(/[^A-Z0-9]/g, '_')}" onclick="loadSymbol('${s}')">
-      <div>
-        <div class="watchlist-item__symbol">${s.replace('.NS', '').replace('.BO', '')}</div>
-        <div class="watchlist-item__name">${s}</div>
+  container.innerHTML = symbols.map(s => {
+    const cleanSym = s.replace('.NS', '').replace('.BO', '').replace('^', '');
+    const cleanName = getCleanStockName(s);
+    return `
+      <div class="watchlist-item" id="watchlist-item-${s.replace(/[^A-Z0-9]/g, '_')}" onclick="loadSymbol('${s}')">
+        <div>
+          <div class="watchlist-item__symbol">${cleanSym}</div>
+          <div class="watchlist-item__name">${cleanName}</div>
+        </div>
+        <div class="watchlist-item__right">
+          <div class="watchlist-item__price">—</div>
+          <div class="watchlist-item__change price-neutral">—</div>
+        </div>
       </div>
-      <div class="watchlist-item__right">
-        <div class="watchlist-item__price">—</div>
-        <div class="watchlist-item__change price-neutral">—</div>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   try {
     const quotes = await API.fetchMultipleQuotes(symbols);
@@ -801,14 +930,17 @@ async function loadWatchlist() {
       if (!el) return;
       const isUp = q.change >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
-      const sign = isUp ? '+' : '';
 
       const priceEl = el.querySelector('.watchlist-item__price');
       const changeEl = el.querySelector('.watchlist-item__change');
+      const nameEl = el.querySelector('.watchlist-item__name');
       if (priceEl) priceEl.textContent = formatPrice(q.price);
       if (changeEl) {
         changeEl.className = `watchlist-item__change ${changeClass}`;
-        changeEl.textContent = `${sign}${formatPercent(q.percentChange)}`;
+        changeEl.textContent = formatPercent(q.percentChange);
+      }
+      if (nameEl && q.name) {
+        nameEl.textContent = getCleanStockName(q.symbol, q.name);
       }
     });
   } catch (err) {
@@ -903,15 +1035,19 @@ function setupCompanySwitcher() {
 
   function renderList(items) {
     if (!list) return;
-    list.innerHTML = items.map(c => `
-      <div class="company-switcher-item" data-symbol="${c.symbol}">
-        <div>
-          <div class="company-switcher-item__symbol">${c.symbol}</div>
-          <div class="company-switcher-item__name">${c.name}</div>
+    list.innerHTML = items.map(c => {
+      const cleanSym = (c.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
+      const cleanName = getCleanStockName(c.symbol, c.name);
+      return `
+        <div class="company-switcher-item" data-symbol="${c.symbol}">
+          <div>
+            <div class="company-switcher-item__symbol">${cleanSym}</div>
+            <div class="company-switcher-item__name">${cleanName}</div>
+          </div>
+          <span class="company-switcher-item__exchange">${c.exchange || 'NSE'}</span>
         </div>
-        <span class="company-switcher-item__exchange">${c.exchange || 'NSE'}</span>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     list.querySelectorAll('.company-switcher-item').forEach(item => {
       item.addEventListener('click', (e) => {
@@ -984,3 +1120,56 @@ function setupCompanySwitcher() {
     }
   });
 }
+
+/**
+ * Sidebar Edge Minimize / Expand Toggles
+ */
+function toggleSidebarLeft() {
+  const dashboard = document.querySelector('.dashboard');
+  const btn = document.getElementById('btn-toggle-sidebar-left');
+  if (!dashboard) return;
+
+  const isCollapsed = dashboard.classList.toggle('left-collapsed');
+  if (btn) {
+    btn.title = isCollapsed ? 'Expand Watchlist' : 'Minimize Watchlist';
+    btn.innerHTML = isCollapsed
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>`
+      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
+  }
+
+  if (window.ChartManager && window.ChartManager.handleResize) window.ChartManager.handleResize();
+  setTimeout(() => {
+    if (window.ChartManager && window.ChartManager.handleResize) window.ChartManager.handleResize();
+    window.dispatchEvent(new Event('resize'));
+  }, 260);
+}
+
+function toggleSidebarRight() {
+  const dashboard = document.querySelector('.dashboard');
+  const btn = document.getElementById('btn-toggle-sidebar-right');
+  if (!dashboard) return;
+
+  const isCollapsed = dashboard.classList.toggle('right-collapsed');
+  if (btn) {
+    btn.title = isCollapsed ? 'Expand Technical Inspector' : 'Minimize Technical Inspector';
+    btn.innerHTML = isCollapsed
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>`
+      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+  }
+
+  if (window.ChartManager && window.ChartManager.handleResize) window.ChartManager.handleResize();
+  setTimeout(() => {
+    if (window.ChartManager && window.ChartManager.handleResize) window.ChartManager.handleResize();
+    window.dispatchEvent(new Event('resize'));
+  }, 260);
+}
+
+// Global Exports
+if (typeof window !== 'undefined') {
+  window.loadSymbol = loadSymbol;
+  window.switchInspectorTab = switchInspectorTab;
+  window.copyTradeSetupToClipboard = copyTradeSetupToClipboard;
+  window.toggleSidebarLeft = toggleSidebarLeft;
+  window.toggleSidebarRight = toggleSidebarRight;
+}
+

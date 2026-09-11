@@ -105,8 +105,7 @@
         <div class="chart-header__left">
           <div class="chart-header__company-selector" id="chart-company-selector" title="Click to switch company">
             <div style="display:flex;align-items:center;gap:8px">
-              <span class="chart-header__symbol" id="chart-symbol">RELIANCE.NS</span>
-              <span class="badge badge--neutral" id="chart-exchange" style="font-size:0.68rem;padding:2px 6px">NSE</span>
+              <span class="chart-header__symbol" id="chart-symbol">RELIANCE</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="company-dropdown-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div class="chart-header__company" id="chart-company">Reliance Industries Ltd.</div>
@@ -133,6 +132,8 @@
         <!-- Overlays Bar -->
         <div class="chart-header__right">
           <button class="chart-header__indicator-btn active" id="btn-toggle-targets" data-overlay="targets">Targets</button>
+          <button class="chart-header__indicator-btn active" id="btn-toggle-patterns" data-overlay="patterns">Patterns</button>
+          <button class="chart-header__indicator-btn active" id="btn-toggle-volume" data-overlay="volume">Volume</button>
           <button class="chart-header__indicator-btn active" data-overlay="vwap">VWAP</button>
           <button class="chart-header__indicator-btn active" data-overlay="sma20">SMA 20</button>
           <button class="chart-header__indicator-btn active" data-overlay="sma50">SMA 50</button>
@@ -144,6 +145,14 @@
           <button class="chart-header__indicator-btn" onclick="copyTradeSetupToClipboard()" title="Copy Trade Setup">Copy Plan</button>
         </div>
       </div>
+
+      <!-- Left and Right Sidebar Edge Minimize/Expand Toggles -->
+      <button class="sidebar-edge-toggle sidebar-edge-toggle--left" id="btn-toggle-sidebar-left" title="Minimize Watchlist" onclick="toggleSidebarLeft()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
+      <button class="sidebar-edge-toggle sidebar-edge-toggle--right" id="btn-toggle-sidebar-right" title="Minimize Technical Inspector" onclick="toggleSidebarRight()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
 
       <!-- Action Setup Callout Banner -->
       <div class="action-alert-banner" id="action-alert-banner">

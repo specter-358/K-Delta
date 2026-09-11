@@ -137,11 +137,13 @@ const ChartManager = (() => {
       wickDownColor: '#f43f5e',
     });
 
-    // Volume series
+    // Volume series (overlay without polluting price axis)
     volumeSeries = chart.addHistogramSeries({
       priceFormat: { type: 'volume' },
       priceScaleId: '', // overlay on same scale with bottom margins
       scaleMargins: { top: 0.82, bottom: 0 },
+      lastValueVisible: false,
+      priceLineVisible: false,
     });
 
     // Crosshair move handler for OHLC display bar
@@ -158,16 +160,28 @@ const ChartManager = (() => {
       updateOHLCDisplay(bar);
     });
 
-    // Handle responsive resize
+    // Handle responsive resize with ResizeObserver for immediate auto-adjust
+    if (window.ResizeObserver && container) {
+      const ro = new ResizeObserver(() => {
+        handleResize();
+      });
+      ro.observe(container);
+    }
+
     window.addEventListener('resize', handleResize);
   }
 
   function handleResize() {
     if (chart && containerEl) {
-      chart.applyOptions({
-        width: containerEl.clientWidth,
-        height: containerEl.clientHeight,
-      });
+      const w = containerEl.clientWidth;
+      const h = containerEl.clientHeight;
+      if (w > 0 && h > 0) {
+        chart.applyOptions({
+          width: w,
+          height: h,
+        });
+        chart.timeScale().fitContent();
+      }
     }
   }
 
@@ -245,8 +259,9 @@ const ChartManager = (() => {
     });
 
     candleSeries.setData(formattedCandles);
+    cachedVolumes = formattedVolumes;
     if (volumeSeries) {
-      volumeSeries.setData(formattedVolumes);
+      volumeSeries.setData(isVolumeVisible ? formattedVolumes : []);
     }
 
     // Default time scale visibility
@@ -256,6 +271,20 @@ const ChartManager = (() => {
 
     chart.timeScale().fitContent();
     updateOHLCDisplay(null);
+  }
+
+  let isVolumeVisible = true;
+  let cachedVolumes = [];
+
+  /**
+   * Set Volume Histogram Visibility
+   */
+  function setVolumeVisibility(visible) {
+    isVolumeVisible = visible;
+    if (!volumeSeries) return;
+    try {
+      volumeSeries.setData(visible ? cachedVolumes : []);
+    } catch (e) {}
   }
 
   /**
@@ -373,7 +402,16 @@ const ChartManager = (() => {
   function setPatternMarkers(patternList) {
     if (!candleSeries || !patternList) return;
 
-    const markers = patternList.map(p => {
+    // Deduplicate by time and keep highest confidence pattern per bar
+    const uniqueByTime = new Map();
+    patternList.forEach(p => {
+      const timeKey = String(formatTime(p.timestamp));
+      if (!uniqueByTime.has(timeKey) || uniqueByTime.get(timeKey).confidence < p.confidence) {
+        uniqueByTime.set(timeKey, p);
+      }
+    });
+
+    const markers = Array.from(uniqueByTime.values()).map(p => {
       const isBullish = p.signal === 'bullish';
       const isBearish = p.signal === 'bearish';
 
@@ -383,11 +421,21 @@ const ChartManager = (() => {
         color: isBullish ? '#10b981' : isBearish ? '#f43f5e' : '#f59e0b',
         shape: isBullish ? 'arrowUp' : isBearish ? 'arrowDown' : 'circle',
         text: `${p.name} (${p.confidence}%)`,
-        size: 1.2,
+        size: 1,
       };
     });
 
     candleSeries.setMarkers(markers);
+  }
+
+  /**
+   * Clear Pattern Markers from chart candles
+   */
+  function clearPatternMarkers() {
+    if (!candleSeries) return;
+    try {
+      candleSeries.setMarkers([]);
+    } catch (e) {}
   }
 
   /**
@@ -413,7 +461,7 @@ const ChartManager = (() => {
       let target1 = setup && setup.target1;
       let target2 = setup && setup.target2;
       let stopLoss = setup && setup.stopLoss;
-      let isBuy = setup ? setup.type === 'BUY' : true;
+      let isBuy = setup ? (setup.type === 'BUY' || setup.type === 'BUY STOCK' || (setup.signal && setup.signal.includes('BUY'))) : true;
 
       // Dynamic fallback if no specific pattern setup exists yet
       if (!entry && currentCandles.length > 0) {
@@ -429,11 +477,11 @@ const ChartManager = (() => {
       if (entry) {
         tradePriceLines.push(candleSeries.createPriceLine({
           price: entry,
-          color: '#38bdf8',
+          color: isBuy ? '#10b981' : '#f43f5e',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
-          title: isBuy ? 'BUY ENTRY' : 'SELL ENTRY',
+          title: isBuy ? 'BUY STOCK' : 'SELL STOCK',
         }));
       }
 
@@ -549,11 +597,14 @@ const ChartManager = (() => {
     removeOverlay,
     clearAllOverlays,
     setPatternMarkers,
+    clearPatternMarkers,
+    setVolumeVisibility,
     setTradeLevels,
     clearTradeLevels,
     setSupportResistanceLevels,
     clearSupportResistanceLevels,
     updateTheme,
+    handleResize,
     destroy,
   };
 })();

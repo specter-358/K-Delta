@@ -103,8 +103,8 @@ async function loadMarketOverview() {
             <div class="market-card__price">${formatPrice(idx.price)}</div>
           </div>
           <div class="market-card__change ${changeClass}">
-            <div class="market-card__change-value">${arrow}${formatChange(idx.change)}</div>
-            <div class="market-card__change-percent">(${arrow}${formatPercent(idx.percentChange)})</div>
+            <div class="market-card__change-value">${formatChange(idx.change)}</div>
+            <div class="market-card__change-percent">(${formatPercent(idx.percentChange)})</div>
           </div>
         </div>
       `;
@@ -142,14 +142,10 @@ async function loadRecentSetups() {
       if (!quote || !candles || candles.length < 15) continue;
 
       const prediction = PredictionEngine.analyze(candles, stock.symbol);
-      const badgeClass =
-        prediction.signal === 'BUY'
-          ? 'badge--bullish'
-          : prediction.signal === 'SELL'
-          ? 'badge--bearish'
-          : 'badge--neutral';
-      const badgeIcon =
-        prediction.signal === 'BUY' ? '▲' : prediction.signal === 'SELL' ? '▼' : '■';
+      const isBuy = (prediction.signal || '').includes('BUY');
+      const isSell = (prediction.signal || '').includes('SELL');
+      const badgeClass = isBuy ? 'badge--bullish' : isSell ? 'badge--bearish' : 'badge--neutral';
+      const badgeIcon = isBuy ? '▲' : isSell ? '▼' : '■';
       const actionText = prediction.action || prediction.signal;
       const targetText = prediction.tradeSetup && prediction.tradeSetup.hasSetup
         ? `Target: ₹${prediction.tradeSetup.target1.toFixed(2)} (${prediction.tradeSetup.target1Pct})`

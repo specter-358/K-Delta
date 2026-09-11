@@ -116,7 +116,13 @@ function renderHistoryTable() {
 
   // Signal filter
   if (currentFilter !== 'ALL') {
-    filtered = filtered.filter(r => (r.signal || '').toUpperCase() === currentFilter);
+    filtered = filtered.filter(r => {
+      const sig = (r.signal || '').toUpperCase();
+      if (currentFilter === 'BUY') return sig.includes('BUY');
+      if (currentFilter === 'SELL') return sig.includes('SELL');
+      if (currentFilter === 'HOLD') return sig.includes('HOLD') || sig.includes('WAIT');
+      return true;
+    });
   }
 
   // Search filter
@@ -149,12 +155,11 @@ function renderHistoryTable() {
   tbody.innerHTML = filtered.map(r => {
     const isUp = (r.change || r.percentChange) >= 0;
     const changeClass = isUp ? 'price-up' : 'price-down';
-    const badgeClass =
-      r.signal === 'BUY' ? 'signal-badge--buy' :
-      r.signal === 'SELL' ? 'signal-badge--sell' : 'signal-badge--hold';
-    const badgeIcon =
-      r.signal === 'BUY' ? '▲' :
-      r.signal === 'SELL' ? '▼' : '■';
+    const sig = (r.signal || '').toUpperCase();
+    const isBuy = sig.includes('BUY');
+    const isSell = sig.includes('SELL');
+    const badgeClass = isBuy ? 'signal-badge--buy' : isSell ? 'signal-badge--sell' : 'signal-badge--hold';
+    const badgeIcon = isBuy ? '▲' : isSell ? '▼' : '■';
 
     const cleanSymbol = (r.symbol || '').replace('.NS', '').replace('.BO', '');
     const firstChar = cleanSymbol ? cleanSymbol.charAt(0) : 'E';

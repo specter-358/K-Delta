@@ -25,8 +25,11 @@ if (!fs.existsSync(HISTORY_FILE)) {
 function getHistory() {
   try {
     if (!fs.existsSync(HISTORY_FILE)) return [];
-    const data = fs.readFileSync(HISTORY_FILE, 'utf8');
-    return JSON.parse(data || '[]');
+    let data = fs.readFileSync(HISTORY_FILE, 'utf8');
+    if (data.charCodeAt(0) === 0xFEFF) {
+      data = data.slice(1);
+    }
+    return JSON.parse(data.trim() || '[]');
   } catch (err) {
     console.error('Error reading history file:', err);
     return [];
