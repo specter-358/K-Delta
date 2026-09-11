@@ -37,18 +37,21 @@ const Predictions = (() => {
     const atrValues = Indicators.atr(candles, 14);
 
     const lastIdx = closes.length - 1;
-    const currentRSI = rsiValues[lastIdx];
-    const currentMACD = macdResult.macdLine[lastIdx];
-    const currentSignal = macdResult.signalLine[lastIdx];
-    const currentHistogram = macdResult.histogram[lastIdx];
-    const currentSMA20 = sma20[lastIdx];
-    const currentSMA50 = sma50[lastIdx];
-    const currentEMA12 = ema12[lastIdx];
-    const currentEMA26 = ema26[lastIdx];
-    const currentATR = atrValues[lastIdx];
+    const currentRSI = rsiValues ? rsiValues[lastIdx] : 50;
+    const macdArr = macdResult ? (macdResult.macd || macdResult.macdLine || []) : [];
+    const sigArr = macdResult ? (macdResult.signal || macdResult.signalLine || []) : [];
+    const histArr = macdResult ? (macdResult.histogram || []) : [];
+    const currentMACD = macdArr[lastIdx] ?? 0;
+    const currentSignal = sigArr[lastIdx] ?? 0;
+    const currentHistogram = histArr[lastIdx] ?? 0;
+    const currentSMA20 = sma20 ? sma20[lastIdx] : lastClose;
+    const currentSMA50 = sma50 ? sma50[lastIdx] : lastClose;
+    const currentEMA12 = ema12 ? ema12[lastIdx] : lastClose;
+    const currentEMA26 = ema26 ? ema26[lastIdx] : lastClose;
+    const currentATR = atrValues ? atrValues[lastIdx] : (lastClose * 0.015);
 
     // ── 2. Detect Patterns ──
-    const patterns = Patterns.detectAll(candles, 15);
+    const patterns = (Patterns.scan || Patterns.detectAll) ? (Patterns.scan(candles, 15) || []) : [];
 
     // ── 3. Determine Trend ──
     const trend = detectTrend(candles, sma20, sma50, ema12, ema26);
@@ -231,24 +234,24 @@ const Predictions = (() => {
         : `BUY ON PULLBACK — Accumulate between ₹${entryMin.toFixed(2)} - ₹${entryMax.toFixed(2)}`;
 
       timingAdvice = isStrong
-        ? `Enter market order or limit at $${entry.toFixed(2)}. Bullish patterns and indicator momentum confirm strong upside probability.`
-        : `Place limit buy order between $${entryMin.toFixed(2)} and $${entry.toFixed(2)}. Wait for a slight dip before entering to maximize risk-reward.`;
+        ? `Enter market order or limit at ₹${entry.toFixed(2)}. Bullish patterns and indicator momentum confirm strong upside probability.`
+        : `Place limit buy order between ₹${entryMin.toFixed(2)} and ₹${entry.toFixed(2)}. Wait for a slight dip before entering to maximize risk-reward.`;
 
       checklist = [
         {
           type: 'enter',
           label: 'WHEN TO BUY',
-          text: `Enter long position around **$${entry.toFixed(2)}** (Optimal Zone: $${entryMin.toFixed(2)} – $${entryMax.toFixed(2)}).`,
+          text: `Enter long position around **₹${entry.toFixed(2)}** (Optimal Zone: ₹${entryMin.toFixed(2)} – ₹${entryMax.toFixed(2)}).`,
         },
         {
           type: 'target',
           label: 'WHEN TO TAKE PROFIT',
-          text: `Sell 50% at **Target 1 ($${target1.toFixed(2)} / +${target1Pct}%)**. Let remaining 50% run to **Target 2 ($${target2.toFixed(2)} / +${target2Pct}%)** while moving stop to breakeven.`,
+          text: `Sell 50% at **Target 1 (₹${target1.toFixed(2)} / +${target1Pct}%)**. Let remaining 50% run to **Target 2 (₹${target2.toFixed(2)} / +${target2Pct}%)** while moving stop to breakeven.`,
         },
         {
           type: 'exit',
           label: 'WHEN TO SELL / CUT LOSS',
-          text: `Exit 100% if candle closes below **Stop Loss ($${stopLoss.toFixed(2)} / ${riskPct}%)** to protect capital.`,
+          text: `Exit 100% if candle closes below **Stop Loss (₹${stopLoss.toFixed(2)} / ${riskPct}%)** to protect capital.`,
         },
       ];
 
@@ -258,7 +261,7 @@ const Predictions = (() => {
         actionHeadline,
         timingAdvice,
         entryPrice: entry,
-        entryZone: `$${entryMin.toFixed(2)} – $${entryMax.toFixed(2)}`,
+        entryZone: `₹${entryMin.toFixed(2)} – ₹${entryMax.toFixed(2)}`,
         stopLoss,
         stopLossPct: `${riskPct}%`,
         target1,
@@ -296,24 +299,24 @@ const Predictions = (() => {
         : `SELL ON RALLY — Exit long positions or short into resistance at ₹${entryMax.toFixed(2)}`;
 
       timingAdvice = isStrong
-        ? `Close active long positions immediately or consider short entry at $${entry.toFixed(2)}. Technical breakdown is in progress.`
-        : `Sell into current mini-bounces between $${entry.toFixed(2)} - $${entryMax.toFixed(2)}. Avoid holding long positions as overhead supply is high.`;
+        ? `Close active long positions immediately or consider short entry at ₹${entry.toFixed(2)}. Technical breakdown is in progress.`
+        : `Sell into current mini-bounces between ₹${entry.toFixed(2)} - ₹${entryMax.toFixed(2)}. Avoid holding long positions as overhead supply is high.`;
 
       checklist = [
         {
           type: 'enter',
           label: 'WHEN TO SELL / SHORT',
-          text: `Liquidate longs or enter short around **$${entry.toFixed(2)}** (Rally Zone: $${entry.toFixed(2)} – $${entryMax.toFixed(2)}).`,
+          text: `Liquidate longs or enter short around **₹${entry.toFixed(2)}** (Rally Zone: ₹${entry.toFixed(2)} – ₹${entryMax.toFixed(2)}).`,
         },
         {
           type: 'target',
           label: 'WHEN TO BUY BACK (COVER)',
-          text: `Cover 50% short at **Target 1 ($${target1.toFixed(2)} / ${target1Pct}%)**. Take remaining profit at **Target 2 ($${target2.toFixed(2)} / ${target2Pct}%)**.`,
+          text: `Cover 50% short at **Target 1 (₹${target1.toFixed(2)} / ${target1Pct}%)**. Take remaining profit at **Target 2 (₹${target2.toFixed(2)} / ${target2Pct}%)**.`,
         },
         {
           type: 'exit',
           label: 'STOP LOSS FOR SHORTS',
-          text: `Exit short if price closes above **Stop Loss ($${stopLoss.toFixed(2)} / +${Math.abs(riskPct)}%)**.`,
+          text: `Exit short if price closes above **Stop Loss (₹${stopLoss.toFixed(2)} / +${Math.abs(riskPct)}%)**.`,
         },
       ];
 
@@ -323,7 +326,7 @@ const Predictions = (() => {
         actionHeadline,
         timingAdvice,
         entryPrice: entry,
-        entryZone: `$${entryMin.toFixed(2)} – $${entryMax.toFixed(2)}`,
+        entryZone: `₹${entryMin.toFixed(2)} – ₹${entryMax.toFixed(2)}`,
         stopLoss,
         stopLossPct: `+${Math.abs(riskPct)}%`,
         target1,
@@ -341,18 +344,18 @@ const Predictions = (() => {
       const breakdownSell = +(currentPrice - validATR * 1.2).toFixed(2);
 
       actionHeadline = `WAIT / NO CLEAR SETUP — Market is in consolidation at ₹${currentPrice.toFixed(2)}`;
-      timingAdvice = `Do not take new positions right now. Wait for a clear breakout above $${breakoutBuy.toFixed(2)} (Buy trigger) or breakdown below $${breakdownSell.toFixed(2)} (Sell trigger).`;
+      timingAdvice = `Do not take new positions right now. Wait for a clear breakout above ₹${breakoutBuy.toFixed(2)} (Buy trigger) or breakdown below ₹${breakdownSell.toFixed(2)} (Sell trigger).`;
 
       checklist = [
         {
           type: 'wait',
           label: 'WHEN TO BUY (TRIGGER)',
-          text: `Buy only if candle breaks out and closes above **$${breakoutBuy.toFixed(2)}** with rising volume.`,
+          text: `Buy only if candle breaks out and closes above **₹${breakoutBuy.toFixed(2)}** with rising volume.`,
         },
         {
           type: 'wait',
           label: 'WHEN TO SELL (TRIGGER)',
-          text: `Sell / Short only if candle breaks down below **$${breakdownSell.toFixed(2)}** support.`,
+          text: `Sell / Short only if candle breaks down below **₹${breakdownSell.toFixed(2)}** support.`,
         },
         {
           type: 'hold',
@@ -367,7 +370,7 @@ const Predictions = (() => {
         actionHeadline,
         timingAdvice,
         entryPrice: currentPrice,
-        entryZone: `Consolidation ($${breakdownSell.toFixed(2)} – $${breakoutBuy.toFixed(2)})`,
+        entryZone: `Consolidation (₹${breakdownSell.toFixed(2)} – ₹${breakoutBuy.toFixed(2)})`,
         stopLoss: breakdownSell,
         stopLossPct: 'Trigger',
         target1: breakoutBuy,
@@ -576,9 +579,9 @@ const Predictions = (() => {
   function computeConfluenceMatrix(totalScore, rsiResult, macdScore, maScore, patternScore, volumeScore) {
     const absScore = Math.abs(totalScore);
     let grade = 'A+';
-    let quality = 'Institutional Confluence';
+    let quality = 'High Confluence';
 
-    if (absScore >= 65) { grade = 'A+'; quality = 'Institutional Prime'; }
+    if (absScore >= 65) { grade = 'A+'; quality = 'High Conviction Setup'; }
     else if (absScore >= 45) { grade = 'A'; quality = 'High Conviction'; }
     else if (absScore >= 25) { grade = 'B+'; quality = 'Moderate Confluence'; }
     else { grade = 'C'; quality = 'Low Edge / Neutral'; }
@@ -853,3 +856,12 @@ const Predictions = (() => {
     buildSummary,
   };
 })();
+
+const PredictionEngine = Predictions;
+if (typeof window !== 'undefined') {
+  window.PredictionEngine = Predictions;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { Predictions, PredictionEngine };
+}

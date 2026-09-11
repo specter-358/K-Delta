@@ -54,7 +54,7 @@ function normalizeSymbol(sym) {
 
 /**
  * Market Data Normalizer
- * Converts raw provider objects into uniform institutional schemas
+ * Converts raw provider objects into uniform normalized schemas
  */
 class MarketDataNormalizer {
   static normalizeTick(symbol, raw) {
@@ -174,7 +174,7 @@ class BaseMarketProvider extends EventEmitter {
 }
 
 /**
- * Institutional Indian Market Provider using Yahoo Finance 2
+ * Live Indian Market Provider using Yahoo Finance 2
  * Direct source of truth for NSE & BSE stocks and indices
  */
 class YahooMarketProvider extends BaseMarketProvider {

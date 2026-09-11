@@ -1,5 +1,5 @@
 /* ============================================================
-   K-Delta — Institutional Indian Stock Market Backend Server
+   K-Delta — Indian Stock Market Backend Server
    Real-Time Data Engine (NSE/BSE), WebSocket Streaming & Storage
    ============================================================ */
 
@@ -299,10 +299,10 @@ app.use((req, res) => {
 // Start Server
 server.listen(PORT, () => {
   console.log(`====================================================`);
-  console.log(`🚀 K-Delta Institutional Indian Market Server Online`);
-  console.log(`📡 Local Web URL: http://localhost:${PORT}`);
-  console.log(`⚡ WebSocket Stream: ws://localhost:${PORT}/ws`);
-  console.log(`🇮🇳 Market Timezone: Asia/Kolkata (IST)`);
-  console.log(`⏰ Trading Hours: 09:15 – 15:30 IST (Mon–Fri)`);
+  console.log(`K-Delta Indian Market Live Server Online`);
+  console.log(`Local Web URL: http://localhost:${PORT}`);
+  console.log(`WebSocket Stream: ws://localhost:${PORT}/ws`);
+  console.log(`Market Timezone: Asia/Kolkata (IST)`);
+  console.log(`Trading Hours: 09:15 – 15:30 IST (Mon–Fri)`);
   console.log(`====================================================`);
 });

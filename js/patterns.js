@@ -1,6 +1,6 @@
 /* ============================================================
    K-Delta — Mathematical Candlestick Pattern Recognition Engine
-   Institutional Classifiers with Strict OHLC Geometry & Confidence
+   Professional Classifiers with Strict OHLC Geometry & Confidence
    ============================================================ */
 
 const Patterns = (() => {
@@ -268,7 +268,7 @@ const Patterns = (() => {
       timestamp: c.time,
       index,
       price: c.close,
-      explanation: `Bearish warning signal at market peak. The deep intraday sell-off demonstrates that institutional supply is entering the market.`,
+      explanation: `Bearish warning signal at market peak. The deep intraday sell-off demonstrates that major selling supply is entering the market.`,
       rulesMatched: [
         'Confirmed prior uptrend',
         'Small body located near peak',
@@ -345,7 +345,7 @@ const Patterns = (() => {
       timestamp: curr.time,
       index,
       price: curr.close,
-      explanation: `High-reliability institutional reversal: a large bullish green bar completely engulfs the prior bearish red body after a downtrend, signaling full buyer dominance.`,
+      explanation: `High-reliability reversal: a large bullish green bar completely engulfs the prior bearish red body after a downtrend, signaling full buyer dominance.`,
       rulesMatched: [
         'Prior candle was bearish red',
         'Current candle is strong bullish green',
@@ -382,7 +382,7 @@ const Patterns = (() => {
       timestamp: curr.time,
       index,
       price: curr.close,
-      explanation: `Institutional distribution pattern: a large bearish red candle completely engulfs the prior green candle at peak/resistance, signaling supply flooding the market.`,
+      explanation: `Distribution pattern: a large bearish red candle completely engulfs the prior green candle at peak/resistance, signaling supply flooding the market.`,
       rulesMatched: [
         'Prior candle was bullish green',
         'Current candle is strong bearish red',
@@ -713,6 +713,7 @@ const Patterns = (() => {
 
   return {
     scan,
+    detectAll: scan,
     scanLatest,
     detectDoji,
     detectHammer,

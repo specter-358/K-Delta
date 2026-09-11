@@ -150,7 +150,47 @@ const Indicators = (() => {
       }
     }
 
-    return { macd: macdLine, signal: signalLine, histogram };
+    return {
+      macd: macdLine,
+      signal: signalLine,
+      histogram,
+      macdLine,
+      signalLine,
+    };
+  }
+
+  /**
+   * RSI Status Helper
+   */
+  function rsiStatus(rsiVal) {
+    if (rsiVal == null) return { status: 'Neutral', signal: 'neutral' };
+    if (rsiVal >= 70) return { status: 'Overbought', signal: 'sell' };
+    if (rsiVal <= 30) return { status: 'Oversold', signal: 'buy' };
+    if (rsiVal > 50) return { status: 'Bullish Momentum', signal: 'buy' };
+    return { status: 'Bearish Momentum', signal: 'sell' };
+  }
+
+  /**
+   * MACD Status Helper
+   */
+  function macdStatus(macdVal, sigVal, histVal) {
+    if (macdVal == null || sigVal == null) return { status: 'Neutral', signal: 'neutral' };
+    if (macdVal > sigVal && (histVal || 0) > 0) return { status: 'Bullish Momentum', signal: 'buy' };
+    if (macdVal < sigVal && (histVal || 0) < 0) return { status: 'Bearish Momentum', signal: 'sell' };
+    if (macdVal > sigVal) return { status: 'Bullish Bias', signal: 'buy' };
+    return { status: 'Bearish Bias', signal: 'sell' };
+  }
+
+  /**
+   * Bollinger Squeeze Helper
+   */
+  function bbSqueeze(upper, lower, middle) {
+    if (!upper || !lower || !middle || upper.length < 2) return { status: 'Normal Bandwidth' };
+    const lastIdx = upper.length - 1;
+    const bandWidth = (upper[lastIdx] - lower[lastIdx]) / (middle[lastIdx] || 1);
+    if (bandWidth < 0.04) return { status: 'Volatility Squeeze' };
+    if (bandWidth > 0.15) return { status: 'High Volatility' };
+    return { status: 'Normal Channel' };
   }
 
   /**
@@ -328,6 +368,9 @@ const Indicators = (() => {
     atr,
     supportResistance,
     trendlines,
+    rsiStatus,
+    macdStatus,
+    bbSqueeze,
   };
 })();
 
