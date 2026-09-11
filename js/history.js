@@ -161,7 +161,7 @@ function renderHistoryTable() {
     const badgeClass = isBuy ? 'signal-badge--buy' : isSell ? 'signal-badge--sell' : 'signal-badge--hold';
     const badgeIcon = isBuy ? '▲' : isSell ? '▼' : '■';
 
-    const cleanSymbol = (r.symbol || '').replace('.NS', '').replace('.BO', '');
+    const cleanSymbol = (r.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
     const firstChar = cleanSymbol ? cleanSymbol.charAt(0) : 'E';
 
     return `
@@ -171,8 +171,8 @@ function renderHistoryTable() {
           <div class="instrument-cell">
             <div class="instrument-icon">${firstChar}</div>
             <div>
-              <div class="instrument-symbol">${r.symbol}</div>
-              <div class="instrument-name">${r.name || ''}</div>
+              <div class="instrument-symbol">${cleanSymbol}</div>
+              <div class="instrument-name">${r.name || cleanSymbol}</div>
             </div>
           </div>
         </td>
@@ -250,12 +250,13 @@ async function deleteRecord(id) {
  * Confirm and clear all history
  */
 async function confirmClearHistory() {
-  if (allHistoryRecords.length === 0) {
+  if (!allHistoryRecords || allHistoryRecords.length === 0) {
     showToast('History is already empty', 'info');
     return;
   }
 
-  if (confirm('Are you sure you want to clear all analysis history records? This cannot be undone.')) {
+  const userConfirmed = window.confirm ? window.confirm('Are you sure you want to clear all analysis history records? This cannot be undone.') : true;
+  if (userConfirmed) {
     const success = await API.clearAllHistory();
     if (success) {
       allHistoryRecords = [];
@@ -266,3 +267,13 @@ async function confirmClearHistory() {
     }
   }
 }
+
+// Global window bindings
+if (typeof window !== 'undefined') {
+  window.loadHistoryRecords = loadHistoryRecords;
+  window.confirmClearHistory = confirmClearHistory;
+  window.filterHistory = filterHistory;
+  window.launchTerminal = launchTerminal;
+  window.deleteRecord = deleteRecord;
+}
+
