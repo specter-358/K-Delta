@@ -50,6 +50,14 @@
     <!-- ── Left Sidebar ── -->
     <aside class="sidebar-left">
 
+      <!-- Left Sidebar Header with Minimize Button on the Box -->
+      <div class="sidebar-left__header">
+        <span class="sidebar-left__title">MARKET EXPLORER</span>
+        <button class="panel-collapse-btn" onclick="toggleSidebarLeft()" title="Minimize Left Sidebar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+      </div>
+
       <!-- Search -->
       <div class="sidebar-left__search">
         <div class="search-box">
@@ -186,6 +194,9 @@
         <button class="inspector-tab" data-tab="patterns" onclick="switchInspectorTab('patterns')">Patterns</button>
         <button class="inspector-tab" data-tab="backtest" onclick="switchInspectorTab('backtest')">Accuracy (Backtest)</button>
         <button class="inspector-tab" data-tab="forecast" onclick="switchInspectorTab('forecast')">5-Bar Forecast</button>
+        <button class="panel-collapse-btn" onclick="toggleSidebarRight()" title="Minimize Technical Inspector">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
       </div>
 
       <!-- Overall Signal & Action Card -->

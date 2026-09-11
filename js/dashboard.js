@@ -1124,6 +1124,24 @@ function setupCompanySwitcher() {
 /**
  * Sidebar Edge Minimize / Expand Toggles
  */
+function triggerSmoothChartResize() {
+  const start = performance.now();
+  function animate() {
+    if (window.ChartManager && window.ChartManager.handleResize) {
+      window.ChartManager.handleResize();
+    }
+    if (performance.now() - start < 300) {
+      requestAnimationFrame(animate);
+    } else {
+      if (window.ChartManager && window.ChartManager.handleResize) {
+        window.ChartManager.handleResize();
+      }
+      window.dispatchEvent(new Event('resize'));
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
 function toggleSidebarLeft() {
   const dashboard = document.querySelector('.dashboard');
   const btn = document.getElementById('btn-toggle-sidebar-left');
@@ -1137,11 +1155,7 @@ function toggleSidebarLeft() {
       : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
   }
 
-  if (window.ChartManager && window.ChartManager.handleResize) window.ChartManager.handleResize();
-  setTimeout(() => {
-    if (window.ChartManager && window.ChartManager.handleResize) window.ChartManager.handleResize();
-    window.dispatchEvent(new Event('resize'));
-  }, 260);
+  triggerSmoothChartResize();
 }
 
 function toggleSidebarRight() {
@@ -1157,11 +1171,7 @@ function toggleSidebarRight() {
       : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
   }
 
-  if (window.ChartManager && window.ChartManager.handleResize) window.ChartManager.handleResize();
-  setTimeout(() => {
-    if (window.ChartManager && window.ChartManager.handleResize) window.ChartManager.handleResize();
-    window.dispatchEvent(new Event('resize'));
-  }, 260);
+  triggerSmoothChartResize();
 }
 
 // Global Exports
