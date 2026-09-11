@@ -1,5 +1,362 @@
 [
   {
+    "id": "hist_1789125165725_q3mu3",
+    "symbol": "INFY.NS",
+    "name": "INFOSYS LIMITED",
+    "exchange": "NSI",
+    "price": 1037.7,
+    "change": 1.2,
+    "percentChange": 0.12,
+    "volume": 6164796,
+    "signal": "SELL STOCK",
+    "action": "SELL STOCK ON RALLY",
+    "confidence": 61,
+    "trend": "sideways",
+    "tradeSetup": {
+      "hasSetup": true,
+      "type": "SELL STOCK",
+      "actionHeadline": "SELL STOCK ON RALLY — Exit long positions or short into resistance at ₹1046.16",
+      "timingAdvice": "Sell stock into current mini-bounces between ₹1037.70 - ₹1046.16. Overhead supply is high.",
+      "entryPrice": 1037.7,
+      "entryZone": "₹1032.06 – ₹1046.16",
+      "stopLoss": 1080.02,
+      "stopLossPct": "+4.08%",
+      "target1": 981.28,
+      "target1Pct": "-5.44%",
+      "target2": 938.97,
+      "target2Pct": "-9.51%",
+      "riskReward": "1 : 1.3",
+      "timeHorizon": "1 – 5 Days (Swing)",
+      "checklist": [
+        {
+          "type": "enter",
+          "label": "WHEN TO SELL STOCK",
+          "text": "Sell stock or enter short around **₹1037.70** (Rally Zone: ₹1037.70 – ₹1046.16)."
+        },
+        {
+          "type": "target",
+          "label": "WHEN TO BUY BACK (COVER)",
+          "text": "Buy back (cover) 50% short at **Target 1 (₹981.28 / -5.44%)**. Take remaining profit at **Target 2 (₹938.97 / -9.51%)**."
+        },
+        {
+          "type": "exit",
+          "label": "STOP LOSS FOR SHORTS",
+          "text": "Exit short if price closes above **Stop Loss (₹1080.02 / +4.08%)**."
+        }
+      ]
+    },
+    "summary": "SELL STOCK ON RALLY — Exit long positions or short into resistance at ₹1046.16",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-11T11:12:45.724Z",
+    "timestampIST": "11 Sept 2026, 4:42:45 pm IST"
+  },
+  {
+    "id": "hist_1789125163856_r05ry",
+    "symbol": "RELIANCE.NS",
+    "name": "RELIANCE INDUSTRIES LTD",
+    "exchange": "NSI",
+    "price": 1257.5,
+    "change": -16.5,
+    "percentChange": -1.3,
+    "volume": 8776602,
+    "signal": "HOLD STOCK",
+    "action": "HOLD STOCK / WAIT",
+    "confidence": 50,
+    "trend": "sideways",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD STOCK",
+      "actionHeadline": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+      "timingAdvice": "Do not buy stock right now. Wait for a clear breakout above ₹1282.84 (Buy stock trigger) or breakdown below ₹1232.16 (Sell stock trigger).",
+      "entryPrice": 1257.5,
+      "entryZone": "Consolidation (₹1232.16 – ₹1282.84)",
+      "stopLoss": 1232.16,
+      "stopLossPct": "Trigger",
+      "target1": 1282.84,
+      "target1Pct": "Trigger",
+      "target2": 1303.96,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY STOCK (TRIGGER)",
+          "text": "Buy stock only if candle breaks out and closes above **₹1282.84** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL STOCK (TRIGGER)",
+          "text": "Sell stock / Short only if candle breaks down below **₹1232.16** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. Wait for clear buy stock or sell stock trigger."
+        }
+      ]
+    },
+    "summary": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-11T11:12:43.855Z",
+    "timestampIST": "11 Sept 2026, 4:42:43 pm IST"
+  },
+  {
+    "id": "hist_1789125159625_hndjq",
+    "symbol": "HDFCBANK.NS",
+    "name": "HDFC BANK LTD",
+    "exchange": "NSI",
+    "price": 708.25,
+    "change": 14.45,
+    "percentChange": 2.08,
+    "volume": 31400075,
+    "signal": "HOLD STOCK",
+    "action": "HOLD STOCK / WAIT",
+    "confidence": 48,
+    "trend": "sideways",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD STOCK",
+      "actionHeadline": "HOLD STOCK / WAIT — Market is in consolidation at ₹708.25",
+      "timingAdvice": "Do not buy stock right now. Wait for a clear breakout above ₹723.45 (Buy stock trigger) or breakdown below ₹693.05 (Sell stock trigger).",
+      "entryPrice": 708.25,
+      "entryZone": "Consolidation (₹693.05 – ₹723.45)",
+      "stopLoss": 693.05,
+      "stopLossPct": "Trigger",
+      "target1": 723.45,
+      "target1Pct": "Trigger",
+      "target2": 736.12,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY STOCK (TRIGGER)",
+          "text": "Buy stock only if candle breaks out and closes above **₹723.45** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL STOCK (TRIGGER)",
+          "text": "Sell stock / Short only if candle breaks down below **₹693.05** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. Wait for clear buy stock or sell stock trigger."
+        }
+      ]
+    },
+    "summary": "HOLD STOCK / WAIT — Market is in consolidation at ₹708.25",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-11T11:12:39.624Z",
+    "timestampIST": "11 Sept 2026, 4:42:39 pm IST"
+  },
+  {
+    "id": "hist_1789125041487_36cqy",
+    "symbol": "RELIANCE.NS",
+    "name": "RELIANCE INDUSTRIES LTD",
+    "exchange": "NSI",
+    "price": 1257.5,
+    "change": -16.5,
+    "percentChange": -1.3,
+    "volume": 8776602,
+    "signal": "HOLD STOCK",
+    "action": "HOLD STOCK / WAIT",
+    "confidence": 50,
+    "trend": "sideways",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD STOCK",
+      "actionHeadline": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+      "timingAdvice": "Do not buy stock right now. Wait for a clear breakout above ₹1282.84 (Buy stock trigger) or breakdown below ₹1232.16 (Sell stock trigger).",
+      "entryPrice": 1257.5,
+      "entryZone": "Consolidation (₹1232.16 – ₹1282.84)",
+      "stopLoss": 1232.16,
+      "stopLossPct": "Trigger",
+      "target1": 1282.84,
+      "target1Pct": "Trigger",
+      "target2": 1303.96,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY STOCK (TRIGGER)",
+          "text": "Buy stock only if candle breaks out and closes above **₹1282.84** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL STOCK (TRIGGER)",
+          "text": "Sell stock / Short only if candle breaks down below **₹1232.16** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. Wait for clear buy stock or sell stock trigger."
+        }
+      ]
+    },
+    "summary": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-11T11:10:41.487Z",
+    "timestampIST": "11 Sept 2026, 4:40:41 pm IST"
+  },
+  {
+    "id": "hist_1789124166076_yfxau",
+    "symbol": "RELIANCE.NS",
+    "name": "RELIANCE INDUSTRIES LTD",
+    "exchange": "NSI",
+    "price": 1257.5,
+    "change": -16.5,
+    "percentChange": -1.3,
+    "volume": 8776602,
+    "signal": "HOLD STOCK",
+    "action": "HOLD STOCK / WAIT",
+    "confidence": 49,
+    "trend": "sideways",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD STOCK",
+      "actionHeadline": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+      "timingAdvice": "Do not buy stock right now. Wait for a clear breakout above ₹1259.85 (Buy stock trigger) or breakdown below ₹1255.15 (Sell stock trigger).",
+      "entryPrice": 1257.5,
+      "entryZone": "Consolidation (₹1255.15 – ₹1259.85)",
+      "stopLoss": 1255.15,
+      "stopLossPct": "Trigger",
+      "target1": 1259.85,
+      "target1Pct": "Trigger",
+      "target2": 1261.81,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY STOCK (TRIGGER)",
+          "text": "Buy stock only if candle breaks out and closes above **₹1259.85** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL STOCK (TRIGGER)",
+          "text": "Sell stock / Short only if candle breaks down below **₹1255.15** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. Wait for clear buy stock or sell stock trigger."
+        }
+      ]
+    },
+    "summary": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-11T10:56:06.075Z",
+    "timestampIST": "11 Sept 2026, 4:26:06 pm IST"
+  },
+  {
+    "id": "hist_1789123982577_19fdu",
+    "symbol": "RELIANCE.NS",
+    "name": "RELIANCE INDUSTRIES LTD",
+    "exchange": "NSI",
+    "price": 1257.5,
+    "change": -16.5,
+    "percentChange": -1.3,
+    "volume": 8776602,
+    "signal": "HOLD STOCK",
+    "action": "HOLD STOCK / WAIT",
+    "confidence": 50,
+    "trend": "sideways",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD STOCK",
+      "actionHeadline": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+      "timingAdvice": "Do not buy stock right now. Wait for a clear breakout above ₹1282.84 (Buy stock trigger) or breakdown below ₹1232.16 (Sell stock trigger).",
+      "entryPrice": 1257.5,
+      "entryZone": "Consolidation (₹1232.16 – ₹1282.84)",
+      "stopLoss": 1232.16,
+      "stopLossPct": "Trigger",
+      "target1": 1282.84,
+      "target1Pct": "Trigger",
+      "target2": 1303.96,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY STOCK (TRIGGER)",
+          "text": "Buy stock only if candle breaks out and closes above **₹1282.84** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL STOCK (TRIGGER)",
+          "text": "Sell stock / Short only if candle breaks down below **₹1232.16** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. Wait for clear buy stock or sell stock trigger."
+        }
+      ]
+    },
+    "summary": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-11T10:53:02.576Z",
+    "timestampIST": "11 Sept 2026, 4:23:02 pm IST"
+  },
+  {
+    "id": "hist_1789123902107_avm44",
+    "symbol": "RELIANCE.NS",
+    "name": "RELIANCE INDUSTRIES LTD",
+    "exchange": "NSI",
+    "price": 1257.5,
+    "change": -16.5,
+    "percentChange": -1.3,
+    "volume": 8776602,
+    "signal": "HOLD STOCK",
+    "action": "HOLD STOCK / WAIT",
+    "confidence": 50,
+    "trend": "sideways",
+    "tradeSetup": {
+      "hasSetup": false,
+      "type": "HOLD STOCK",
+      "actionHeadline": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+      "timingAdvice": "Do not buy stock right now. Wait for a clear breakout above ₹1282.84 (Buy stock trigger) or breakdown below ₹1232.16 (Sell stock trigger).",
+      "entryPrice": 1257.5,
+      "entryZone": "Consolidation (₹1232.16 – ₹1282.84)",
+      "stopLoss": 1232.16,
+      "stopLossPct": "Trigger",
+      "target1": 1282.84,
+      "target1Pct": "Trigger",
+      "target2": 1303.96,
+      "target2Pct": "Trigger",
+      "riskReward": "N/A",
+      "timeHorizon": "Wait for Breakout",
+      "checklist": [
+        {
+          "type": "wait",
+          "label": "WHEN TO BUY STOCK (TRIGGER)",
+          "text": "Buy stock only if candle breaks out and closes above **₹1282.84** with rising volume."
+        },
+        {
+          "type": "wait",
+          "label": "WHEN TO SELL STOCK (TRIGGER)",
+          "text": "Sell stock / Short only if candle breaks down below **₹1232.16** support."
+        },
+        {
+          "type": "hold",
+          "label": "CURRENT ACTION",
+          "text": "Stay in cash or hold existing position with a trailing stop. Wait for clear buy stock or sell stock trigger."
+        }
+      ]
+    },
+    "summary": "HOLD STOCK / WAIT — Market is in consolidation at ₹1257.50",
+    "marketStatus": "Market Closed",
+    "timestamp": "2026-09-11T10:51:42.106Z",
+    "timestampIST": "11 Sept 2026, 4:21:42 pm IST"
+  },
+  {
     "id": "hist_1789121600586_00p27",
     "symbol": "TATASTEEL.NS",
     "name": "TATA STEEL LIMITED",
@@ -2293,57 +2650,6 @@
     "marketStatus": "Market Closed",
     "timestamp": "2026-09-10T18:44:28.613Z",
     "timestampIST": "11 Sept 2026, 12:14:28 am IST"
-  },
-  {
-    "id": "hist_1789065856484_pkttp",
-    "symbol": "TCS.NS",
-    "name": "TATA CONSULTANCY SERV LT",
-    "exchange": "NSI",
-    "price": 2204.1,
-    "change": -3.9,
-    "percentChange": -0.18,
-    "volume": 2490349,
-    "signal": "HOLD",
-    "action": "WAIT / NO TRADE",
-    "confidence": 49,
-    "trend": "sideways",
-    "tradeSetup": {
-      "hasSetup": false,
-      "type": "HOLD",
-      "actionHeadline": "WAIT / NO CLEAR SETUP — Market is in consolidation at ₹2208.00",
-      "timingAdvice": "Do not take new positions right now. Wait for a clear breakout above ₹2277.36 (Buy trigger) or breakdown below ₹2138.64 (Sell trigger).",
-      "entryPrice": 2208,
-      "entryZone": "Consolidation (₹2138.64 – ₹2277.36)",
-      "stopLoss": 2138.64,
-      "stopLossPct": "Trigger",
-      "target1": 2277.36,
-      "target1Pct": "Trigger",
-      "target2": 2335.16,
-      "target2Pct": "Trigger",
-      "riskReward": "N/A",
-      "timeHorizon": "Wait for Breakout",
-      "checklist": [
-        {
-          "type": "wait",
-          "label": "WHEN TO BUY (TRIGGER)",
-          "text": "Buy only if candle breaks out and closes above **₹2277.36** with rising volume."
-        },
-        {
-          "type": "wait",
-          "label": "WHEN TO SELL (TRIGGER)",
-          "text": "Sell / Short only if candle breaks down below **₹2138.64** support."
-        },
-        {
-          "type": "hold",
-          "label": "CURRENT ACTION",
-          "text": "Stay in cash or hold existing position with a trailing stop. No high-probability edge detected currently."
-        }
-      ]
-    },
-    "summary": "WAIT / NO CLEAR SETUP — Market is in consolidation at ₹2208.00",
-    "marketStatus": "Market Closed",
-    "timestamp": "2026-09-10T18:44:16.483Z",
-    "timestampIST": "11 Sept 2026, 12:14:16 am IST"
   },
   {
     "id": "hist_1789065818288_2qm6t",
