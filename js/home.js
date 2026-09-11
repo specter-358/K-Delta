@@ -354,3 +354,8 @@ async function updateMarketStatus() {
   dot.className = `status-dot ${status.isOpen ? 'open' : ''}`;
   text.textContent = status.statusText || (status.isOpen ? 'NSE / BSE — Market Open' : 'NSE / BSE — Market Closed');
 }
+
+// Global window bindings
+if (typeof window !== 'undefined') {
+  window.navigateToDashboard = navigateToDashboard;
+}
