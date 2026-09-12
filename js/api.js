@@ -267,55 +267,103 @@ const API = (() => {
   }
 
   /**
-   * History API Methods
+   * Watchlist API Methods
    */
-  async function fetchHistory() {
+  async function fetchWatchlist() {
     try {
-      const response = await fetch('/api/history');
-      if (!response.ok) throw new Error('Failed to load history');
-      return await response.json();
+      const response = await fetch('/api/watchlist');
+      if (!response.ok) throw new Error('Failed to load watchlist');
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        localStorage.setItem('kdelta_watchlist', JSON.stringify(data));
+        return data;
+      }
+      return getWatchlist();
     } catch (err) {
-      console.error('fetchHistory error:', err);
-      return [];
+      console.warn('fetchWatchlist error (using local storage):', err);
+      return getWatchlist();
     }
   }
 
-  async function saveHistoryRecord(record) {
+  async function syncWatchlist(symbols) {
     try {
-      const response = await fetch('/api/history', {
+      const response = await fetch('/api/watchlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record),
+        body: JSON.stringify({ symbols }),
       });
-      if (!response.ok) throw new Error('Failed to save history record');
+      if (!response.ok) throw new Error('Failed to sync watchlist');
       return await response.json();
     } catch (err) {
-      console.error('saveHistoryRecord error:', err);
-      return null;
+      console.warn('syncWatchlist error:', err);
+      return symbols;
     }
   }
 
-  async function deleteHistoryRecord(id) {
+  async function addToWatchlistAPI(symbol) {
     try {
-      const response = await fetch(`/api/history/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
+      const response = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol }),
       });
-      return response.ok;
+      if (response.ok) {
+        return await response.json();
+      }
     } catch (err) {
-      console.error('deleteHistoryRecord error:', err);
-      return false;
+      console.warn('addToWatchlistAPI error:', err);
     }
+    return addToWatchlist(symbol);
   }
 
-  async function clearAllHistory() {
+  async function removeFromWatchlistAPI(symbol) {
     try {
-      const response = await fetch('/api/history', {
+      const response = await fetch(`/api/watchlist/${encodeURIComponent(symbol)}`, {
         method: 'DELETE',
       });
-      return response.ok;
+      if (response.ok) {
+        return await response.json();
+      }
     } catch (err) {
-      console.error('clearAllHistory error:', err);
-      return false;
+      console.warn('removeFromWatchlistAPI error:', err);
+    }
+    return removeFromWatchlist(symbol);
+  }
+
+  /**
+   * Fetch all quotes for the rolling ticker strip
+   */
+  async function fetchRollingTickerQuotes() {
+    try {
+      const symbols = CONFIG.ROLLING_TICKER_SYMBOLS || [
+        '^NSEI', '^BSESN', '^NSEBANK', '^CNXIT', '^INDIAVIX',
+        'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS', 'SBIN.NS', 'BHARTIARTL.NS'
+      ];
+
+      // Split into indices and equities
+      const indexSymbols = symbols.filter(s => s.startsWith('^'));
+      const equitySymbols = symbols.filter(s => !s.startsWith('^'));
+
+      const [indices, equities] = await Promise.all([
+        fetchMarketIndices().catch(() => []),
+        fetchMultipleQuotes(equitySymbols).catch(() => []),
+      ]);
+
+      const map = new Map();
+      indices.forEach(idx => map.set(idx.symbol, idx));
+      equities.forEach(eq => map.set(eq.symbol, eq));
+
+      // Return ordered list
+      const combined = [];
+      for (const sym of symbols) {
+        if (map.has(sym)) {
+          combined.push(map.get(sym));
+        }
+      }
+      return combined.length > 0 ? combined : indices;
+    } catch (err) {
+      console.warn('fetchRollingTickerQuotes error:', err);
+      return [];
     }
   }
 
@@ -335,9 +383,10 @@ const API = (() => {
     fetchMarketIndices,
     fetchMovers,
     searchSymbol,
-    fetchHistory,
-    saveHistoryRecord,
-    deleteHistoryRecord,
-    clearAllHistory,
+    fetchWatchlist,
+    syncWatchlist,
+    addToWatchlistAPI,
+    removeFromWatchlistAPI,
+    fetchRollingTickerQuotes,
   };
 })();

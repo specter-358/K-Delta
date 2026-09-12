@@ -13,10 +13,12 @@
 </head>
 <body class="dark-theme">
 
-  <!-- ═══ Top Market Ticker Tape ═══ -->
+  <!-- ═══ Top Continuous Rolling Market Ticker Tape ═══ -->
   <div class="market-ticker-tape" id="market-ticker-tape">
-    <div class="ticker-tape__items" id="ticker-tape-items">
-      <!-- Populated dynamically with real Indian indices & stocks -->
+    <div class="ticker-tape__wrapper">
+      <div class="ticker-tape__items" id="ticker-tape-items">
+        <!-- Populated dynamically with real Indian indices & stocks -->
+      </div>
     </div>
     <div class="ticker-tape__status">
       <span class="status-dot" id="market-status-dot"></span>
@@ -29,10 +31,12 @@
     <a href="index.html" class="navbar__brand">
       <span class="logo-icon">K</span>
       <span class="logo-k">K-DELTA</span>
+      <span class="logo-sub">TERMINAL</span>
     </a>
     <div class="navbar__links">
       <a href="index.html">Overview</a>
-      <a href="history.html">Analysis History</a>
+      <a href="watchlist.html">Watchlist</a>
+      <a href="dashboard.html" class="active">Live Terminal</a>
     </div>
     <div class="navbar__market-status">
       <span class="live-clock-badge" id="stream-status-badge">

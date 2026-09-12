@@ -16,7 +16,42 @@ const CONFIG = {
     'ICICIBANK.NS',
     'SBIN.NS',
     'BHARTIARTL.NS',
+    'TATAMOTORS.NS',
     'TATASTEEL.NS',
+    'ITC.NS',
+    'LT.NS',
+    'MARUTI.NS',
+    '^NSEI',
+    '^BSESN',
+  ],
+
+  // Comprehensive list of symbols for the rolling ticker tape
+  ROLLING_TICKER_SYMBOLS: [
+    '^NSEI',
+    '^BSESN',
+    '^NSEBANK',
+    '^CNXIT',
+    '^INDIAVIX',
+    'RELIANCE.NS',
+    'TCS.NS',
+    'HDFCBANK.NS',
+    'INFY.NS',
+    'ICICIBANK.NS',
+    'SBIN.NS',
+    'BHARTIARTL.NS',
+    'TATAMOTORS.NS',
+    'TATASTEEL.NS',
+    'ITC.NS',
+    'LT.NS',
+    'MARUTI.NS',
+    'SUNPHARMA.NS',
+    'BAJFINANCE.NS',
+    'HINDUNILVR.NS',
+    'KOTAKBANK.NS',
+    'AXISBANK.NS',
+    'ASIANPAINT.NS',
+    'TITAN.NS',
+    'WIPRO.NS',
   ],
 
   // Indian Market Indices
@@ -42,6 +77,12 @@ const CONFIG = {
     { symbol: 'LT.NS', name: 'Larsen & Toubro Ltd.' },
     { symbol: 'MARUTI.NS', name: 'Maruti Suzuki India' },
     { symbol: 'SUNPHARMA.NS', name: 'Sun Pharmaceutical' },
+    { symbol: 'BAJFINANCE.NS', name: 'Bajaj Finance Ltd.' },
+    { symbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever' },
+    { symbol: 'KOTAKBANK.NS', name: 'Kotak Mahindra Bank' },
+    { symbol: 'AXISBANK.NS', name: 'Axis Bank Ltd.' },
+    { symbol: 'ASIANPAINT.NS', name: 'Asian Paints Ltd.' },
+    { symbol: 'TITAN.NS', name: 'Titan Company Ltd.' },
   ],
 
   // Available timeframes
@@ -72,6 +113,105 @@ const CONFIG = {
   MARKET_CLOSE_MIN: 30,
 };
 
+/* ═════════════════════════════════════════════════════════════
+   STATE PERSISTENCE HELPERS
+   ═════════════════════════════════════════════════════════════ */
+
+/**
+ * Get saved timeframe / resolution preference
+ */
+function getSavedTimeframe() {
+  try {
+    const saved = localStorage.getItem('kdelta_selected_timeframe');
+    if (saved && CONFIG.TIMEFRAMES.some(t => t.value === saved)) {
+      return saved;
+    }
+  } catch (e) {}
+  return CONFIG.DEFAULT_TIMEFRAME;
+}
+
+/**
+ * Save selected timeframe / resolution preference
+ */
+function saveTimeframe(timeframe) {
+  try {
+    if (timeframe) {
+      localStorage.setItem('kdelta_selected_timeframe', timeframe);
+    }
+  } catch (e) {}
+}
+
+/**
+ * Get saved last viewed symbol
+ */
+function getSavedSymbol() {
+  try {
+    const saved = localStorage.getItem('kdelta_last_symbol');
+    if (saved && typeof saved === 'string' && saved.trim().length > 0) {
+      return saved.trim().toUpperCase();
+    }
+  } catch (e) {}
+  return 'RELIANCE.NS';
+}
+
+/**
+ * Save last viewed symbol
+ */
+function saveSymbol(symbol) {
+  try {
+    if (symbol) {
+      localStorage.setItem('kdelta_last_symbol', symbol.trim().toUpperCase());
+    }
+  } catch (e) {}
+}
+
+/**
+ * Get saved inspector tab
+ */
+function getSavedInspectorTab() {
+  try {
+    const saved = localStorage.getItem('kdelta_inspector_tab');
+    if (saved && ['plan', 'patterns', 'backtest', 'forecast'].includes(saved)) {
+      return saved;
+    }
+  } catch (e) {}
+  return 'plan';
+}
+
+/**
+ * Save active inspector tab
+ */
+function saveInspectorTab(tab) {
+  try {
+    if (tab) {
+      localStorage.setItem('kdelta_inspector_tab', tab);
+    }
+  } catch (e) {}
+}
+
+/**
+ * Get saved sidebar collapse states
+ */
+function getSavedSidebarStates() {
+  try {
+    const left = localStorage.getItem('kdelta_left_collapsed') === 'true';
+    const right = localStorage.getItem('kdelta_right_collapsed') === 'true';
+    return { leftCollapsed: left, rightCollapsed: right };
+  } catch (e) {
+    return { leftCollapsed: false, rightCollapsed: false };
+  }
+}
+
+/**
+ * Save sidebar collapse states
+ */
+function saveSidebarStates(leftCollapsed, rightCollapsed) {
+  try {
+    localStorage.setItem('kdelta_left_collapsed', String(!!leftCollapsed));
+    localStorage.setItem('kdelta_right_collapsed', String(!!rightCollapsed));
+  } catch (e) {}
+}
+
 /**
  * Get recently visited stocks from localStorage
  */
@@ -90,45 +230,65 @@ function addRecentStock(symbol, name) {
   const recent = getRecentStocks().filter(s => s.symbol !== symbol);
   recent.unshift({ symbol, name, timestamp: Date.now() });
   if (recent.length > CONFIG.MAX_RECENT) recent.pop();
-  localStorage.setItem('kdelta_recent', JSON.stringify(recent));
+  try {
+    localStorage.setItem('kdelta_recent', JSON.stringify(recent));
+  } catch (e) {}
 }
 
 /**
- * Get watchlist from localStorage
+ * Get watchlist from localStorage / defaults
  */
 function getWatchlist() {
   try {
     const saved = localStorage.getItem('kdelta_watchlist');
-    return saved ? JSON.parse(saved) : [...CONFIG.DEFAULT_WATCHLIST];
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+    return [...CONFIG.DEFAULT_WATCHLIST];
   } catch {
     return [...CONFIG.DEFAULT_WATCHLIST];
   }
 }
 
 /**
- * Save watchlist to localStorage
+ * Save watchlist to localStorage and sync with server
  */
 function saveWatchlist(list) {
-  localStorage.setItem('kdelta_watchlist', JSON.stringify(list));
+  try {
+    const unique = Array.from(new Set(list.map(s => s.trim().toUpperCase()).filter(Boolean)));
+    localStorage.setItem('kdelta_watchlist', JSON.stringify(unique));
+    if (typeof API !== 'undefined' && API.syncWatchlist) {
+      API.syncWatchlist(unique).catch(() => {});
+    }
+  } catch (e) {}
 }
 
 /**
  * Add symbol to watchlist
  */
 function addToWatchlist(symbol) {
+  if (!symbol) return getWatchlist();
+  const cleanSym = symbol.trim().toUpperCase();
   const list = getWatchlist();
-  if (!list.includes(symbol)) {
-    list.push(symbol);
+  if (!list.includes(cleanSym)) {
+    list.push(cleanSym);
     saveWatchlist(list);
   }
+  return list;
 }
 
 /**
  * Remove symbol from watchlist
  */
 function removeFromWatchlist(symbol) {
-  const list = getWatchlist().filter(s => s !== symbol);
+  if (!symbol) return getWatchlist();
+  const cleanSym = symbol.trim().toUpperCase();
+  const list = getWatchlist().filter(s => s !== cleanSym);
   saveWatchlist(list);
+  return list;
 }
 
 /**
@@ -255,7 +415,9 @@ function getSavedTheme() {
 function applyTheme(theme = 'dark') {
   document.documentElement.setAttribute('data-theme', 'dark');
   if (document.body) document.body.classList.add('dark-theme');
-  localStorage.setItem('kdelta_theme', 'dark');
+  try {
+    localStorage.setItem('kdelta_theme', 'dark');
+  } catch (e) {}
 
   // Update chart if initialized
   if (typeof ChartManager !== 'undefined' && ChartManager.updateTheme) {

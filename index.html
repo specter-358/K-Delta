@@ -13,11 +13,9 @@
 
   <!-- ═══ Top Market Ticker Tape ═══ -->
   <div class="market-ticker-tape" id="market-ticker-tape">
-    <div class="ticker-tape__items" id="ticker-tape-items">
-      <!-- Populated dynamically with real Indian indices & stocks -->
-      <div class="ticker-tape__item">
-        <span class="ticker-tape__symbol">NIFTY 50</span>
-        <span class="ticker-tape__price">Loading...</span>
+    <div class="ticker-tape__wrapper">
+      <div class="ticker-tape__items" id="ticker-tape-items">
+        <!-- Populated dynamically with rolling Indian indices & stocks -->
       </div>
     </div>
     <div class="ticker-tape__status">
@@ -31,10 +29,12 @@
     <a href="index.html" class="navbar__brand">
       <span class="logo-icon">K</span>
       <span class="logo-k">K-DELTA</span>
+      <span class="logo-sub">TERMINAL</span>
     </a>
     <div class="navbar__links">
       <a href="index.html" class="active">Overview</a>
-      <a href="history.html">Analysis History</a>
+      <a href="watchlist.html">Watchlist</a>
+      <a href="dashboard.html">Live Terminal</a>
     </div>
     <div class="navbar__market-status">
       <span class="live-feed-badge">
@@ -149,8 +149,8 @@
             </svg>
           </div>
           <div>
-            <div class="capability-item__title">Persistent History</div>
-            <div class="capability-item__desc">Full audit log of analyzed setups & signals</div>
+            <div class="capability-item__title">Persistent Watchlist</div>
+            <div class="capability-item__desc">Real-time tracking of curated portfolios & stocks</div>
           </div>
         </div>
       </div>

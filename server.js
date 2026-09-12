@@ -228,63 +228,52 @@ app.get('/api/movers', async (req, res) => {
 });
 
 // ==========================================
-// PERSISTENT HISTORY ENDPOINTS
+// PERSISTENT WATCHLIST ENDPOINTS
 // ==========================================
 
 /**
- * GET /api/history
+ * GET /api/watchlist
  */
-app.get('/api/history', (req, res) => {
+app.get('/api/watchlist', (req, res) => {
   try {
-    const history = storage.getHistory();
-    res.json(history);
+    const list = storage.getWatchlist();
+    res.json(list);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to retrieve history', details: err.message });
+    res.status(500).json({ error: 'Failed to retrieve watchlist', details: err.message });
   }
 });
 
 /**
- * POST /api/history
+ * POST /api/watchlist
+ * Body: { symbol: 'TCS.NS' } or { symbols: ['RELIANCE.NS', 'TCS.NS'] }
  */
-app.post('/api/history', (req, res) => {
+app.post('/api/watchlist', (req, res) => {
   try {
-    const record = req.body;
-    if (!record || !record.symbol) {
-      return res.status(400).json({ error: 'Symbol is required to record history' });
+    const body = req.body;
+    if (body.symbols && Array.isArray(body.symbols)) {
+      storage.saveWatchlist(body.symbols);
+      return res.status(200).json(storage.getWatchlist());
+    }
+    if (!body || !body.symbol) {
+      return res.status(400).json({ error: 'Symbol is required to add to watchlist' });
     }
 
-    const saved = storage.addHistoryRecord(record);
-    res.status(201).json(saved);
+    const updated = storage.addToWatchlist(body.symbol);
+    res.status(201).json(updated);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to save history record', details: err.message });
+    res.status(500).json({ error: 'Failed to add to watchlist', details: err.message });
   }
 });
 
 /**
- * DELETE /api/history/:id
+ * DELETE /api/watchlist/:symbol
  */
-app.delete('/api/history/:id', (req, res) => {
+app.delete('/api/watchlist/:symbol', (req, res) => {
   try {
-    const success = storage.deleteHistoryRecord(req.params.id);
-    if (success) {
-      res.json({ message: 'Record deleted successfully', id: req.params.id });
-    } else {
-      res.status(404).json({ error: 'Record not found' });
-    }
+    const updated = storage.removeFromWatchlist(req.params.symbol);
+    res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete record', details: err.message });
-  }
-});
-
-/**
- * DELETE /api/history (Clear all)
- */
-app.delete('/api/history', (req, res) => {
-  try {
-    storage.clearHistory();
-    res.json({ message: 'History cleared successfully' });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to clear history', details: err.message });
+    res.status(500).json({ error: 'Failed to remove from watchlist', details: err.message });
   }
 });
 

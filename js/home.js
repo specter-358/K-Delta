@@ -17,28 +17,35 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Load Live Ticker Tape for Indian Market (Indices Only: NIFTY 50, SENSEX, BANK NIFTY, NIFTY IT, INDIA VIX)
+ * Load Continuous Rolling Market Ticker Tape (20+ Indices & Equities)
  */
 async function loadLiveTickerTape() {
   const tape = document.getElementById('ticker-tape-items');
   if (!tape) return;
 
   try {
-    const indices = await API.fetchMarketIndices();
-    if (!indices || indices.length === 0) return;
+    const quotes = await API.fetchRollingTickerQuotes();
+    if (!quotes || quotes.length === 0) return;
 
-    tape.innerHTML = indices.map(item => {
+    const renderItems = (itemsList) => itemsList.map(item => {
       const isUp = (item.change || item.percentChange) >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
-      const displayName = item.displayName || item.name || item.symbol.replace('^', '');
+      const cleanSym = (item.displayName || item.name || item.symbol)
+        .replace('.NS', '')
+        .replace('.BO', '')
+        .replace('^', '');
+
       return `
-        <div class="ticker-tape__item" onclick="navigateToDashboard('${item.symbol}')">
-          <span class="ticker-tape__symbol">${displayName}</span>
+        <div class="ticker-tape__item" onclick="navigateToDashboard('${item.symbol}', '${(item.name || cleanSym).replace(/'/g, "\\'")}')">
+          <span class="ticker-tape__symbol">${cleanSym}</span>
           <span class="ticker-tape__price">${formatPrice(item.price)}</span>
           <span class="ticker-tape__change ${changeClass}">${formatPercent(item.percentChange)}</span>
         </div>
       `;
     }).join('');
+
+    // Duplicate list once to allow infinite seamless marquee scroll
+    tape.innerHTML = renderItems(quotes) + renderItems(quotes);
   } catch (err) {
     console.error('Ticker tape error:', err);
   }

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Delta — Indian Equity Watchlist & Market Monitor (NSE/BSE)</title>
+  <meta name="description" content="Persistent Indian stock market watchlist and real-time equity monitor for NSE & BSE securities.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><path d='M30 70 L30 30 M30 40 L45 40 L45 60 L30 60 M55 80 L55 20 M55 30 L70 30 L70 55 L55 55' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round' fill='%2338bdf8' fill-opacity='0.2'/></svg>">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/watchlist.css">
+</head>
+<body class="dark-theme">
+
+  <!-- ═══ Top Continuous Rolling Market Ticker Tape ═══ -->
+  <div class="market-ticker-tape" id="market-ticker-tape">
+    <div class="ticker-tape__wrapper">
+      <div class="ticker-tape__items" id="ticker-tape-items">
+        <!-- Populated dynamically with rolling Indian indices & equities -->
+      </div>
+    </div>
+    <div class="ticker-tape__status">
+      <span class="status-dot" id="market-status-dot"></span>
+      <span id="market-status-text">NSE / BSE — Connecting...</span>
+    </div>
+  </div>
+
+  <!-- ═══ Navbar ═══ -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="navbar__brand">
+      <span class="logo-icon">K</span>
+      <span class="logo-k">K-DELTA</span>
+      <span class="logo-sub">TERMINAL</span>
+    </a>
+    <div class="navbar__links">
+      <a href="index.html">Overview</a>
+      <a href="watchlist.html" class="active">Watchlist</a>
+      <a href="dashboard.html">Live Terminal</a>
+    </div>
+    <div class="navbar__market-status">
+      <span class="live-clock-badge" id="live-ist-clock">Loading IST...</span>
+    </div>
+  </nav>
+
+  <!-- ═══ Main Content ═══ -->
+  <main class="watchlist-main container">
+
+    <!-- Watchlist Header & Summary Bar -->
+    <div class="watchlist-header">
+      <div>
+        <div class="hero__badge" style="margin-bottom:8px">
+          <span class="badge-dot"></span>
+          <span>PERSISTENT EQUITY RADAR • REAL-TIME FEED (IST)</span>
+        </div>
+        <h1 class="watchlist-title">Market Watchlist & Portfolios</h1>
+        <p class="watchlist-subtitle">
+          Real-time tracking of high-liquidity Indian equities and benchmark indices with persistent storage.
+        </p>
+      </div>
+
+      <!-- Quick Add Search Wrap -->
+      <div class="watchlist-actions">
+        <div class="watchlist-search-add">
+          <div class="search-box">
+            <span class="search-box__icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
+            <input 
+              type="text" 
+              id="watchlist-add-input" 
+              class="search-box__input" 
+              placeholder="Search and add stock (e.g. TATAMOTORS, INFY, SBIN)..."
+              autocomplete="off"
+            >
+            <div class="search-box__results" id="watchlist-add-results"></div>
+          </div>
+        </div>
+        <button class="btn btn--primary btn--sm" onclick="triggerSearchAdd()" id="btn-add-symbol">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Add Stock
+        </button>
+        <button class="btn btn--ghost btn--sm" onclick="loadWatchlistData()" title="Refresh Watchlist Prices">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Watchlist Overview Stat Strip -->
+    <div class="watchlist-stats-strip">
+      <div class="stat-card">
+        <div class="stat-card__label">TOTAL WATCHED</div>
+        <div class="stat-card__val" id="stat-total-count">0</div>
+        <div class="stat-card__sub">Active Securities</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">ADVANCES (GAINERS)</div>
+        <div class="stat-card__val price-up" id="stat-gainers-count">0</div>
+        <div class="stat-card__sub" id="stat-gainers-pct">0% of watched</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">DECLINES (LOSERS)</div>
+        <div class="stat-card__val price-down" id="stat-losers-count">0</div>
+        <div class="stat-card__sub" id="stat-losers-pct">0% of watched</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">TOP PERFORMER TODAY</div>
+        <div class="stat-card__val price-up" id="stat-top-mover">—</div>
+        <div class="stat-card__sub" id="stat-top-mover-sub">Highest daily return</div>
+      </div>
+    </div>
+
+    <!-- Filter & Filter Pills -->
+    <div class="watchlist-controls">
+      <div class="watchlist-filter-wrap">
+        <span class="search-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </span>
+        <input 
+          type="text" 
+          id="watchlist-filter-input" 
+          class="watchlist-filter-input" 
+          placeholder="Filter watched list by symbol or name..."
+        >
+      </div>
+      <div class="watchlist-filter-pills">
+        <button class="filter-pill active" data-filter="ALL" onclick="filterWatchlist('ALL')">All Securities</button>
+        <button class="filter-pill" data-filter="GAINERS" onclick="filterWatchlist('GAINERS')">
+          <span class="badge-dot bullish"></span> Gainers
+        </button>
+        <button class="filter-pill" data-filter="LOSERS" onclick="filterWatchlist('LOSERS')">
+          <span class="badge-dot bearish"></span> Decliners
+        </button>
+        <button class="filter-pill" data-filter="INDICES" onclick="filterWatchlist('INDICES')">
+          <span class="badge-dot neutral"></span> Indices
+        </button>
+      </div>
+    </div>
+
+    <!-- Watchlist Table Container -->
+    <div class="watchlist-table-container">
+      <table class="watchlist-table">
+        <thead>
+          <tr>
+            <th>Security / Instrument</th>
+            <th>Exchange</th>
+            <th>Last Price (LTP)</th>
+            <th>Change (₹)</th>
+            <th>% Change</th>
+            <th>Day High / Low</th>
+            <th>Volume</th>
+            <th>Market Status</th>
+            <th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="watchlist-table-body">
+          <!-- Populated dynamically by js/watchlist.js -->
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <div class="watchlist-empty-state hidden" id="watchlist-empty-state">
+        <div class="empty-icon-wrap">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <div class="empty-title">Watchlist is currently empty</div>
+        <div class="empty-desc">
+          Search and add Indian stocks or indices using the search box above. Added securities will remain persistently saved across sessions.
+        </div>
+        <button class="btn btn--primary" style="margin-top:16px" onclick="restoreDefaultWatchlist()">
+          Restore Default Watchlist
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Terminal Footer -->
+  <footer class="footer">
+    <div class="container footer__container">
+      <div class="footer__left">
+        <span class="logo-k" style="font-weight:800">K-DELTA ANALYTICS</span>
+        <span class="footer__divider">•</span>
+        <span class="footer__version">NSE/BSE Production Watchlist</span>
+        <span class="footer__divider">•</span>
+        <span class="footer__status"><span class="status-dot open"></span> Real-Time Feed Active (IST)</span>
+      </div>
+      <div class="footer__right">
+        <span>© 2026 K-Delta Research Group. All rights reserved.</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/watchlist.js"></script>
+
+</body>
+</html>

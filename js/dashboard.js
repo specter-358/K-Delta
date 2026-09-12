@@ -19,8 +19,8 @@ function saveActiveOverlays() {
   } catch (e) {}
 }
 
-let currentSymbol = 'RELIANCE.NS';
-let currentInterval = '1day';
+let currentSymbol = getSavedSymbol() || 'RELIANCE.NS';
+let currentInterval = getSavedTimeframe() || '1day';
 let currentCandles = [];
 let currentPrediction = null;
 let currentPatterns = [];
@@ -28,10 +28,18 @@ let activeOverlays = getSavedOverlays();
 let refreshTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Get symbol from URL
+  // Get symbol from URL or restore from state
   const params = new URLSearchParams(window.location.search);
   const sym = params.get('symbol');
-  if (sym) currentSymbol = sym.toUpperCase();
+  if (sym) {
+    currentSymbol = sym.toUpperCase();
+    saveSymbol(currentSymbol);
+  } else {
+    currentSymbol = getSavedSymbol() || 'RELIANCE.NS';
+  }
+
+  // Restore saved timeframe preference
+  currentInterval = getSavedTimeframe() || '1day';
 
   // Initialize UI & Components
   initChart();
@@ -45,14 +53,22 @@ document.addEventListener('DOMContentLoaded', () => {
   startLiveClock();
   setupWebSocketListeners();
 
+  // Restore saved inspector tab
+  switchInspectorTab(getSavedInspectorTab());
+
+  // Restore saved sidebar states
+  const { leftCollapsed, rightCollapsed } = getSavedSidebarStates();
+  if (leftCollapsed) toggleSidebarLeft(true);
+  if (rightCollapsed) toggleSidebarRight(true);
+
   // Load initial symbol
   loadSymbol(currentSymbol);
 
-  // Background ticker polling every 3 seconds during market hours
+  // Background ticker polling every 15 seconds during market hours
   refreshTimer = setInterval(() => {
     loadLiveTickerTape();
     updateMarketStatus();
-  }, 3000);
+  }, 15000);
 });
 
 /**
@@ -143,20 +159,24 @@ function initChart() {
 const prevTickerPrices = new Map();
 
 /**
- * Load Live Ticker Tape for Indian Market
+ * Load Continuous Rolling Market Ticker Tape (20+ Indices & Equities)
  */
 async function loadLiveTickerTape() {
   const tape = document.getElementById('ticker-tape-items');
   if (!tape) return;
 
   try {
-    const indices = await API.fetchMarketIndices();
-    if (!indices || indices.length === 0) return;
+    const quotes = await API.fetchRollingTickerQuotes();
+    if (!quotes || quotes.length === 0) return;
 
-    tape.innerHTML = indices.map(item => {
+    const renderItems = (itemsList) => itemsList.map(item => {
       const isUp = (item.change || item.percentChange) >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
-      const displayName = item.displayName || item.name || item.symbol.replace('^', '');
+      const cleanSym = (item.displayName || item.name || item.symbol)
+        .replace('.NS', '')
+        .replace('.BO', '')
+        .replace('^', '');
+
       const prevPrice = prevTickerPrices.get(item.symbol);
       let flashClass = '';
       if (prevPrice != null && item.price !== prevPrice) {
@@ -166,14 +186,17 @@ async function loadLiveTickerTape() {
 
       return `
         <div class="ticker-tape__item" onclick="loadSymbol('${item.symbol}')">
-          <span class="ticker-tape__symbol">${displayName}</span>
+          <span class="ticker-tape__symbol">${cleanSym}</span>
           <span class="ticker-tape__price ${flashClass}">${formatPrice(item.price)}</span>
           <span class="ticker-tape__change ${changeClass}">${formatPercent(item.percentChange)}</span>
         </div>
       `;
     }).join('');
+
+    // Duplicate list once to allow infinite seamless marquee scroll
+    tape.innerHTML = renderItems(quotes) + renderItems(quotes);
   } catch (err) {
-    console.error('Ticker tape error:', err);
+    console.warn('Ticker tape error:', err);
   }
 }
 
@@ -182,6 +205,7 @@ async function loadLiveTickerTape() {
  */
 async function loadSymbol(symbol, isRefresh = false) {
   currentSymbol = symbol.toUpperCase();
+  saveSymbol(currentSymbol);
 
   // Update URL and history
   if (!isRefresh) {
@@ -217,11 +241,6 @@ async function loadSymbol(symbol, isRefresh = false) {
 
       // Run Analysis, Indicators & Pattern Detection
       runAnalysisAndRender(true);
-
-      // Record to Persistent History Audit Log (if valid setup)
-      if (currentPrediction && currentPrediction.tradeSetup) {
-        saveAnalysisToHistory(quote, currentPrediction);
-      }
     } else {
       showToast(`No candle data available for resolution ${currentInterval}`, 'info');
     }
@@ -720,11 +739,14 @@ function setupTimeframeSelector() {
       buttons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentInterval = btn.dataset.interval;
+      saveTimeframe(currentInterval);
       loadSymbol(currentSymbol);
     });
 
     if (btn.dataset.interval === currentInterval) {
       btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
     }
   });
 }
@@ -820,6 +842,9 @@ function setupIndicatorButtons() {
  * Switch Technical Inspector Tabs
  */
 function switchInspectorTab(tabName) {
+  if (!tabName) return;
+  saveInspectorTab(tabName);
+
   document.querySelectorAll('.inspector-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.tab === tabName);
   });
@@ -1142,35 +1167,43 @@ function triggerSmoothChartResize() {
   requestAnimationFrame(animate);
 }
 
-function toggleSidebarLeft() {
+function toggleSidebarLeft(forceState) {
   const dashboard = document.querySelector('.dashboard');
   const btn = document.getElementById('btn-toggle-sidebar-left');
   if (!dashboard) return;
 
-  const isCollapsed = dashboard.classList.toggle('left-collapsed');
+  const isCollapsed = typeof forceState === 'boolean'
+    ? (forceState ? dashboard.classList.add('left-collapsed') || true : dashboard.classList.remove('left-collapsed') || false)
+    : dashboard.classList.toggle('left-collapsed');
+
   if (btn) {
-    btn.title = isCollapsed ? 'Expand Watchlist' : 'Minimize Watchlist';
+    btn.title = isCollapsed ? 'Expand Market Explorer' : 'Minimize Market Explorer';
     btn.innerHTML = isCollapsed
       ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>`
       : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
   }
 
+  saveSidebarStates(dashboard.classList.contains('left-collapsed'), dashboard.classList.contains('right-collapsed'));
   triggerSmoothChartResize();
 }
 
-function toggleSidebarRight() {
+function toggleSidebarRight(forceState) {
   const dashboard = document.querySelector('.dashboard');
   const btn = document.getElementById('btn-toggle-sidebar-right');
   if (!dashboard) return;
 
-  const isCollapsed = dashboard.classList.toggle('right-collapsed');
+  const isCollapsed = typeof forceState === 'boolean'
+    ? (forceState ? dashboard.classList.add('right-collapsed') || true : dashboard.classList.remove('right-collapsed') || false)
+    : dashboard.classList.toggle('right-collapsed');
+
   if (btn) {
-    btn.title = isCollapsed ? 'Expand Technical Inspector' : 'Minimize Technical Inspector';
+    btn.title = isCollapsed ? 'Expand Trade Plan' : 'Minimize Trade Plan';
     btn.innerHTML = isCollapsed
       ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>`
       : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
   }
 
+  saveSidebarStates(dashboard.classList.contains('left-collapsed'), dashboard.classList.contains('right-collapsed'));
   triggerSmoothChartResize();
 }
 
