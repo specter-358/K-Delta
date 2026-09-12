@@ -30,14 +30,11 @@ async function loadLiveTickerTape() {
     const renderItems = (itemsList) => itemsList.map(item => {
       const isUp = (item.change || item.percentChange) >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
-      const cleanSym = (item.displayName || item.name || item.symbol)
-        .replace('.NS', '')
-        .replace('.BO', '')
-        .replace('^', '');
+      const displayInfo = formatInstrumentDisplay(item.symbol, item.displayName || item.name, item.exchange);
 
       return `
-        <div class="ticker-tape__item" onclick="navigateToDashboard('${item.symbol}', '${(item.name || cleanSym).replace(/'/g, "\\'")}')">
-          <span class="ticker-tape__symbol">${cleanSym}</span>
+        <div class="ticker-tape__item" onclick="navigateToDashboard('${item.symbol}', '${(displayInfo.symbolDisplay).replace(/'/g, "\\'")}')">
+          <span class="ticker-tape__symbol">${displayInfo.symbolDisplay}</span>
           <span class="ticker-tape__price">${formatPrice(item.price)}</span>
           <span class="ticker-tape__change ${changeClass}">${formatPercent(item.percentChange)}</span>
         </div>
@@ -101,12 +98,11 @@ async function loadMarketOverview() {
     grid.innerHTML = indices.map(idx => {
       const isUp = (idx.change || idx.percentChange) >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
-      const arrow = isUp ? '+' : '';
-      const displayName = idx.displayName || idx.name || idx.symbol.replace('^', '');
+      const displayInfo = formatInstrumentDisplay(idx.symbol, idx.name, idx.exchange);
       return `
-        <div class="market-card" onclick="navigateToDashboard('${idx.symbol}', '${idx.name}')">
+        <div class="market-card" onclick="navigateToDashboard('${idx.symbol}', '${(displayInfo.symbolDisplay).replace(/'/g, "\\'")}')">
           <div>
-            <div class="market-card__symbol">${displayName}</div>
+            <div class="market-card__symbol">${displayInfo.symbolDisplay}</div>
             <div class="market-card__price">${formatPrice(idx.price)}</div>
           </div>
           <div class="market-card__change ${changeClass}">
@@ -308,14 +304,17 @@ function setupSearch() {
       searchResults.innerHTML = results
         .slice(0, 8)
         .map(
-          r => `
-        <div class="search-result-item" onclick="navigateToDashboard('${r.symbol}', '${(r.name || '').replace(/'/g, "\\'")}')">
+          r => {
+            const displayInfo = formatInstrumentDisplay(r.symbol, r.name, r.exchange);
+            return `
+        <div class="search-result-item" onclick="navigateToDashboard('${r.symbol}', '${(displayInfo.nameDisplay || '').replace(/'/g, "\\'")}')">
           <div>
-            <div class="search-result-item__symbol">${r.symbol}</div>
-            <div class="search-result-item__name">${r.name || ''}</div>
+            <div class="search-result-item__symbol">${displayInfo.symbolDisplay}</div>
+            <div class="search-result-item__name">${displayInfo.nameDisplay}</div>
           </div>
-          <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
-        </div>`
+          <span class="search-result-item__exchange">${displayInfo.exchangeDisplay}</span>
+        </div>`;
+          }
         )
         .join('');
 

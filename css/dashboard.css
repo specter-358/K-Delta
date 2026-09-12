@@ -262,11 +262,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: visible;
+  flex-wrap: wrap;
+  overflow: visible;
   position: relative;
-  z-index: 100;
+  z-index: 1000;
 }
 
 /* Toolbar Divider */
@@ -358,7 +357,7 @@
   font-weight: 800;
 }
 
-/* Indicators Dropdown */
+/* Indicators Dropdown & Quickbar */
 .indicators-dropdown-container {
   position: relative;
   flex-shrink: 0;
@@ -394,12 +393,19 @@
   background: #0f172a;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8);
   padding: 8px;
   display: none;
   flex-direction: column;
   gap: 3px;
-  z-index: 1000;
+  z-index: 9999;
+}
+
+.header-indicators-quickbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
 }
 
 .indicators-dropdown-container.active .indicators-dropdown-menu {

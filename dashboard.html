@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>K-Delta — Live Indian Technical Analysis Terminal (NSE/BSE)</title>
-  <meta name="description" content="Candlestick chart with real-time pattern recognition, multi-indicator confluence scoring, and execution targets for Indian equities and indices.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><path d='M30 70 L30 30 M30 40 L45 40 L45 60 L30 60 M55 80 L55 20 M55 30 L70 30 L70 55 L55 55' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round' fill='%2338bdf8' fill-opacity='0.2'/></svg>">
+  <title>K-Delta</title>
+  <meta name="description"
+    content="Candlestick chart with real-time pattern recognition, multi-indicator confluence scoring, and execution targets for Indian equities and indices.">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><path d='M30 70 L30 30 M30 40 L45 40 L45 60 L30 60 M55 80 L55 20 M55 30 L70 30 L70 55 L55 55' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round' fill='%2338bdf8' fill-opacity='0.2'/></svg>">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <!-- TradingView Lightweight Charts -->
   <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
+
 <body class="dark-theme">
 
   <!-- ═══ Top Continuous Rolling Market Ticker Tape ═══ -->
@@ -55,16 +59,25 @@
       <div class="chart-header">
 
         <!-- Stock Selector / Quick Switcher -->
-        <div class="chart-toolbar__search-btn" id="chart-company-selector" title="Search NSE/BSE stock or switch company">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <div class="chart-toolbar__search-btn" id="chart-company-selector"
+          title="Search NSE/BSE stock or switch company">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
           <span class="chart-header__symbol" id="chart-symbol">RELIANCE</span>
           <span class="chart-header__company" id="chart-company">Reliance Industries Ltd.</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="company-dropdown-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            class="company-dropdown-arrow">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
 
           <!-- Quick Company Switcher Dropdown -->
           <div class="company-switcher-dropdown" id="company-switcher-dropdown">
             <div class="company-switcher-search">
-              <input type="text" id="company-switcher-input" placeholder="Search Indian stock (e.g. RELIANCE, TCS, INFY)..." autocomplete="off">
+              <input type="text" id="company-switcher-input"
+                placeholder="Search Indian stock (e.g. RELIANCE, TCS, INFY)..." autocomplete="off">
             </div>
             <div class="company-switcher-list" id="company-switcher-list">
               <!-- Top companies populated dynamically -->
@@ -90,16 +103,21 @@
 
         <!-- Chart Type Icon -->
         <button class="toolbar-icon-btn active" title="Candlestick Chart">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="2" x2="9" y2="22"></line><rect x="6" y="6" width="6" height="12" fill="currentColor" fill-opacity="0.3"></rect><line x1="17" y1="2" x2="17" y2="22"></line><rect x="14" y="10" width="6" height="7" fill="currentColor" fill-opacity="0.3"></rect></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="9" y1="2" x2="9" y2="22"></line>
+            <rect x="6" y="6" width="6" height="12" fill="currentColor" fill-opacity="0.3"></rect>
+            <line x1="17" y1="2" x2="17" y2="22"></line>
+            <rect x="14" y="10" width="6" height="7" fill="currentColor" fill-opacity="0.3"></rect>
+          </svg>
         </button>
 
         <div class="toolbar-divider"></div>
 
         <!-- ƒx Indicators Dropdown Button & Menu -->
         <div class="indicators-dropdown-container">
-          <button class="indicators-dropdown-btn" id="btn-indicators-dropdown" onclick="toggleIndicatorsDropdown(event)" title="Technical Indicators & Overlays">
-            <span style="font-style:italic;font-family:serif;font-weight:bold;margin-right:2px">ƒx</span> Indicators
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <button class="indicators-dropdown-btn" id="btn-indicators-dropdown" onclick="toggleIndicatorsDropdown(event)"
+            title="Technical Indicators & Overlays">
+            <span style="font-style:italic;font-family:serif;font-weight:bold;margin-right:2px">ƒx</span> Indicators ▾
           </button>
 
           <div class="indicators-dropdown-menu" id="indicators-dropdown-menu">
@@ -153,10 +171,28 @@
             <div class="dropdown-menu-divider"></div>
 
             <button class="dropdown-action-btn" onclick="copyTradeSetupToClipboard()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
               Copy Trade Setup Plan
             </button>
           </div>
+        </div>
+
+        <!-- Quick Indicator Toggle Buttons -->
+        <div class="header-indicators-quickbar" id="header-indicators-quickbar">
+          <button class="chart-header__indicator-btn active" data-overlay="targets">Targets</button>
+          <button class="chart-header__indicator-btn active" data-overlay="patterns">Patterns</button>
+          <button class="chart-header__indicator-btn active" data-overlay="volume">Volume</button>
+          <button class="chart-header__indicator-btn active" data-overlay="vwap">VWAP</button>
+          <button class="chart-header__indicator-btn active" data-overlay="sma20">SMA 20</button>
+          <button class="chart-header__indicator-btn active" data-overlay="sma50">SMA 50</button>
+          <button class="chart-header__indicator-btn" data-overlay="ema12">EMA 12</button>
+          <button class="chart-header__indicator-btn" data-overlay="ema26">EMA 26</button>
+          <button class="chart-header__indicator-btn" data-overlay="bb">Bollinger</button>
+          <button class="chart-header__indicator-btn" data-overlay="sr">S/R</button>
+          <button class="chart-header__indicator-btn" data-overlay="trendlines">Trendlines</button>
         </div>
 
         <!-- Live Price & Change Readout -->
@@ -166,13 +202,16 @@
         </div>
 
         <!-- Live Crosshair OHLC readout -->
-        <div class="chart-live-ohlc" id="chart-live-ohlc" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary)"></div>
+        <div class="chart-live-ohlc" id="chart-live-ohlc"
+          style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary)"></div>
 
         <div class="toolbar-divider"></div>
 
         <!-- Screenshot Button -->
-        <button class="toolbar-icon-btn toolbar-icon-btn--camera" id="btn-chart-screenshot" onclick="takeChartScreenshot()" title="Take Chart Screenshot">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button class="toolbar-icon-btn toolbar-icon-btn--camera" id="btn-chart-screenshot"
+          onclick="takeChartScreenshot()" title="Take Chart Screenshot">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
             <circle cx="12" cy="13" r="4"></circle>
           </svg>
@@ -181,15 +220,19 @@
       </div>
 
       <!-- Right Sidebar Edge Minimize/Expand Toggle -->
-      <button class="sidebar-edge-toggle sidebar-edge-toggle--right" id="btn-toggle-sidebar-right" title="Minimize Technical Inspector" onclick="toggleSidebarRight()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      <button class="sidebar-edge-toggle sidebar-edge-toggle--right" id="btn-toggle-sidebar-right"
+        title="Minimize Technical Inspector" onclick="toggleSidebarRight()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
       </button>
 
       <!-- Action Setup Callout Banner -->
       <div class="action-alert-banner" id="action-alert-banner">
         <div class="action-alert-banner__content">
           <span class="action-alert-banner__badge" id="banner-action-badge">ANALYZING</span>
-          <span class="action-alert-banner__text" id="banner-action-text">Calculating optimal entry and exit price targets...</span>
+          <span class="action-alert-banner__text" id="banner-action-text">Calculating optimal entry and exit price
+            targets...</span>
         </div>
         <div class="action-alert-banner__levels" id="banner-action-levels">
           <!-- Populated by JS -->
@@ -215,10 +258,14 @@
       <div class="inspector-tabs">
         <button class="inspector-tab active" data-tab="plan" onclick="switchInspectorTab('plan')">Trade Plan</button>
         <button class="inspector-tab" data-tab="patterns" onclick="switchInspectorTab('patterns')">Patterns</button>
-        <button class="inspector-tab" data-tab="backtest" onclick="switchInspectorTab('backtest')">Accuracy (Backtest)</button>
-        <button class="inspector-tab" data-tab="forecast" onclick="switchInspectorTab('forecast')">5-Bar Forecast</button>
+        <button class="inspector-tab" data-tab="backtest" onclick="switchInspectorTab('backtest')">Accuracy
+          (Backtest)</button>
+        <button class="inspector-tab" data-tab="forecast" onclick="switchInspectorTab('forecast')">5-Bar
+          Forecast</button>
         <button class="panel-collapse-btn" onclick="toggleSidebarRight()" title="Minimize Technical Inspector">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
         </button>
       </div>
 
@@ -323,7 +370,8 @@
             </div>
           </div>
 
-          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">
+          <div
+            style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">
             Recent Backtested Signals Log
           </div>
           <div class="backtest-log-table" id="backtest-log-table">
@@ -447,9 +495,9 @@
       <div style="padding: 0 var(--space-lg) var(--space-lg)">
         <div class="disclaimer">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
           <span>For educational & quantitative analysis only. Not SEBI registered financial advice.</span>
         </div>
@@ -480,4 +528,5 @@
   <script src="js/dashboard.js"></script>
 
 </body>
+
 </html>

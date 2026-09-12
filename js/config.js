@@ -7,23 +7,8 @@ const CONFIG = {
   // Backend API Base URL
   API_BASE: '', // Relative URL routes to Express backend on the same origin
 
-  // Default Indian stocks for the watchlist
-  DEFAULT_WATCHLIST: [
-    'RELIANCE.NS',
-    'TCS.NS',
-    'HDFCBANK.NS',
-    'INFY.NS',
-    'ICICIBANK.NS',
-    'SBIN.NS',
-    'BHARTIARTL.NS',
-    'TATAMOTORS.NS',
-    'TATASTEEL.NS',
-    'ITC.NS',
-    'LT.NS',
-    'MARUTI.NS',
-    '^NSEI',
-    '^BSESN',
-  ],
+  // Default Indian stocks for the watchlist (empty by default)
+  DEFAULT_WATCHLIST: [],
 
   // List of market & sectoral index symbols for the scrolling header ticker tape
   ROLLING_TICKER_SYMBOLS: [
@@ -426,6 +411,85 @@ function showToast(message, type = 'info') {
     toast.style.transform = 'translateX(40px)';
     setTimeout(() => toast.remove(), 300);
   }, 3500);
+}
+
+/**
+ * Format Instrument Display Information
+ * Returns { symbolDisplay, nameDisplay, exchangeDisplay, isIndex }
+ *
+ * Rules:
+ * 1. For Indices (e.g. ^NSEI, ^BSESN):
+ *    - symbolDisplay: Real Index Name (e.g. 'NIFTY 50', 'BSE Sensex')
+ *    - nameDisplay: Exchange ('NSE' or 'BSE')
+ *    - exchangeDisplay: Exchange ('NSE' or 'BSE')
+ * 2. For Equities / Stocks:
+ *    - symbolDisplay: Clean Ticker Symbol (e.g. 'RELIANCE', 'TATASTEEL')
+ *    - nameDisplay: Company Full Name (e.g. 'Reliance Industries Ltd.')
+ *    - exchangeDisplay: Exchange ('NSE' or 'BSE', never NS/BO/NSI)
+ */
+function formatInstrumentDisplay(symbol, name, exchange) {
+  const sym = symbol ? String(symbol).trim().toUpperCase() : '';
+  const isIndex = sym.startsWith('^') || ['NSEI', 'BSESN', 'NSEBANK', 'CNXIT', 'INDIAVIX', 'NIFTY', 'SENSEX', 'BANKNIFTY', 'BSEBANK', 'BSEMID', 'BSESML'].some(k => sym.includes(k));
+
+  const cleanSym = sym.replace('.NS', '').replace('.BO', '').replace('^', '');
+  let cleanName = name || cleanSym;
+
+  // Determine correct exchange label (NSE or BSE, never NS/BO/NSI)
+  let cleanExchange = 'NSE';
+  if (sym.endsWith('.BO') || sym.includes('BSE') || (exchange && String(exchange).toUpperCase().includes('BSE'))) {
+    cleanExchange = 'BSE';
+  } else {
+    cleanExchange = 'NSE';
+  }
+
+  if (isIndex) {
+    let indexTitle = cleanName;
+    if (sym === '^NSEI' || sym === 'NSEI' || cleanSym === 'NSEI') indexTitle = 'NIFTY 50';
+    else if (sym === '^BSESN' || sym === 'BSESN' || cleanSym === 'BSESN') indexTitle = 'BSE Sensex';
+    else if (sym === '^NSEBANK' || sym === 'NSEBANK' || cleanSym === 'NSEBANK') indexTitle = 'NIFTY Bank';
+    else if (sym === '^CNXIT' || sym === 'CNXIT' || cleanSym === 'CNXIT') indexTitle = 'NIFTY IT';
+    else if (sym === '^INDIAVIX' || sym === 'INDIAVIX' || cleanSym === 'INDIAVIX') indexTitle = 'India Vix';
+    else if (sym === '^CNXAUTO' || cleanSym === 'CNXAUTO') indexTitle = 'NIFTY Auto';
+    else if (sym === '^CNXFMCG' || cleanSym === 'CNXFMCG') indexTitle = 'Nifty FMCG';
+    else if (sym === '^CNXPHARMA' || cleanSym === 'CNXPHARMA') indexTitle = 'NIFTY Pharma';
+    else if (sym === '^CNXMETAL' || cleanSym === 'CNXMETAL') indexTitle = 'NIFTY Metal';
+    else if (sym === '^CNXPSUBANK' || cleanSym === 'CNXPSUBANK') indexTitle = 'NIFTY PSU Bank';
+    else if (sym === '^CNXREALTY' || cleanSym === 'CNXREALTY') indexTitle = 'NIFTY Realty';
+    else if (sym === '^CNXFIN' || cleanSym === 'CNXFIN') indexTitle = 'Nifty Financial Services';
+    else if (sym === '^CNXMEDIA' || cleanSym === 'CNXMEDIA') indexTitle = 'Nifty Media Index';
+    else if (sym === '^CNXCOMMODITIES' || cleanSym === 'CNXCOMMODITIES') indexTitle = 'NIFTY Commodities';
+    else if (sym === '^CNX100' || cleanSym === 'CNX100') indexTitle = 'NIFTY 100';
+    else if (sym === '^CNX500' || cleanSym === 'CNX500') indexTitle = 'NIFTY 500';
+    else if (sym === '^NSEMDCP100' || cleanSym === 'NSEMDCP100') indexTitle = 'NIFTY Midcap 100';
+    else if (sym === '^CNXSMALLCAP' || cleanSym === 'CNXSMALLCAP') indexTitle = 'NIFTY Smallcap 100';
+    else if (sym === '^NSEMDCP50' || cleanSym === 'NSEMDCP50') indexTitle = 'NIFTY MIDCAP 50';
+    else if (sym === '^NIFTYMIDCAP150' || cleanSym === 'NIFTYMIDCAP150') indexTitle = 'NIFTY MIDCAP 150';
+    else if (sym === '^NIFTYSMLCAP250' || cleanSym === 'NIFTYSMLCAP250') indexTitle = 'NIFTY SMALLCAP 250';
+    else if (sym === '^NSEMDCPSEL' || cleanSym === 'NSEMDCPSEL') indexTitle = 'Nifty Midcap Select';
+    else if (sym === '^NIFTYTOTALMKT' || cleanSym === 'NIFTYTOTALMKT') indexTitle = 'Nifty Total Market';
+    else if (sym === '^BSEBANK' || cleanSym === 'BSEBANK') indexTitle = 'Bse Bankex';
+    else if (sym === '^BSEMID' || cleanSym === 'BSEMID') indexTitle = 'Bse Midcap';
+    else if (sym === '^BSESML' || cleanSym === 'BSESML') indexTitle = 'Bse Smallcap';
+    else if (sym === '^BSE100' || cleanSym === 'BSE100') indexTitle = 'Bse 100';
+    else if (sym === '^BSEIT' || cleanSym === 'BSEIT') indexTitle = 'BSE FOCUSED IT';
+    else if (sym === '^BSEIPO' || cleanSym === 'BSEIPO') indexTitle = 'Bse IPO';
+    else if (sym === '^NIFTYPVTBANK' || cleanSym === 'NIFTYPVTBANK') indexTitle = 'NIFTY Private Bank';
+
+    return {
+      symbolDisplay: indexTitle,
+      nameDisplay: cleanExchange,
+      exchangeDisplay: cleanExchange,
+      isIndex: true,
+    };
+  }
+
+  const stockName = (typeof getCleanStockName === 'function' ? getCleanStockName(sym, cleanName) : cleanName);
+  return {
+    symbolDisplay: cleanSym,
+    nameDisplay: stockName,
+    exchangeDisplay: cleanExchange,
+    isIndex: false,
+  };
 }
 
 /* ═════════════════════════════════════════════════════════════

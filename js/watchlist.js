@@ -49,14 +49,11 @@ async function loadLiveTickerTape() {
     const renderItems = (itemsList) => itemsList.map(item => {
       const isUp = (item.change || item.percentChange) >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
-      const cleanSym = (item.displayName || item.name || item.symbol)
-        .replace('.NS', '')
-        .replace('.BO', '')
-        .replace('^', '');
+      const displayInfo = formatInstrumentDisplay(item.symbol, item.displayName || item.name, item.exchange);
 
       return `
         <div class="ticker-tape__item" onclick="launchTerminal('${item.symbol}')">
-          <span class="ticker-tape__symbol">${cleanSym}</span>
+          <span class="ticker-tape__symbol">${displayInfo.symbolDisplay}</span>
           <span class="ticker-tape__price">${formatPrice(item.price)}</span>
           <span class="ticker-tape__change ${changeClass}">${formatPercent(item.percentChange)}</span>
         </div>
@@ -261,8 +258,9 @@ function renderWatchlistTable() {
   tbody.innerHTML = filtered.map(q => {
     const isUp = (q.change || q.percentChange) >= 0;
     const changeClass = isUp ? 'price-up' : 'price-down';
-    const cleanSym = (q.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
-    const firstChar = cleanSym ? cleanSym.charAt(0) : 'E';
+    const displayInfo = formatInstrumentDisplay(q.symbol, q.name, q.exchange);
+
+    const firstChar = displayInfo.symbolDisplay ? displayInfo.symbolDisplay.charAt(0) : 'E';
 
     const rangeText = (q.high != null && q.low != null)
       ? `H: ${q.high.toFixed(1)} / L: ${q.low.toFixed(1)}`
@@ -272,7 +270,7 @@ function renderWatchlistTable() {
       ? (q.volume > 1000000 ? `${(q.volume / 1000000).toFixed(2)}M` : `${(q.volume / 1000).toFixed(1)}k`)
       : '—';
 
-    const exchangeBadge = q.symbol.startsWith('^') ? 'INDEX' : (q.exchange || 'NSE');
+    const exchangeBadge = displayInfo.isIndex ? `INDEX (${displayInfo.exchangeDisplay})` : displayInfo.exchangeDisplay;
 
     return `
       <tr id="row-${q.symbol.replace(/[^A-Z0-9]/g, '_')}">
@@ -280,8 +278,8 @@ function renderWatchlistTable() {
           <div class="instrument-cell">
             <div class="instrument-icon">${firstChar}</div>
             <div>
-              <div class="instrument-symbol">${cleanSym}</div>
-              <div class="instrument-name">${q.name || cleanSym}</div>
+              <div class="instrument-symbol">${displayInfo.symbolDisplay}</div>
+              <div class="instrument-name">${displayInfo.nameDisplay}</div>
             </div>
           </div>
         </td>

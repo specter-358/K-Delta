@@ -172,10 +172,7 @@ async function loadLiveTickerTape() {
     const renderItems = (itemsList) => itemsList.map(item => {
       const isUp = (item.change || item.percentChange) >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
-      const cleanSym = (item.displayName || item.name || item.symbol)
-        .replace('.NS', '')
-        .replace('.BO', '')
-        .replace('^', '');
+      const displayInfo = formatInstrumentDisplay(item.symbol, item.displayName || item.name, item.exchange);
 
       const prevPrice = prevTickerPrices.get(item.symbol);
       let flashClass = '';
@@ -186,7 +183,7 @@ async function loadLiveTickerTape() {
 
       return `
         <div class="ticker-tape__item" onclick="loadSymbol('${item.symbol}')">
-          <span class="ticker-tape__symbol">${cleanSym}</span>
+          <span class="ticker-tape__symbol">${displayInfo.symbolDisplay}</span>
           <span class="ticker-tape__price ${flashClass}">${formatPrice(item.price)}</span>
           <span class="ticker-tape__change ${changeClass}">${formatPercent(item.percentChange)}</span>
         </div>
@@ -299,17 +296,13 @@ function renderHeader(quote) {
   const changeEl = document.getElementById('chart-change');
   const exchEl = document.getElementById('chart-exchange');
 
-  const cleanSym = (quote.symbol || '')
-    .replace('.NS', '')
-    .replace('.BO', '')
-    .replace('^', '');
+  const displayInfo = formatInstrumentDisplay(quote.symbol, quote.name, quote.exchange);
 
-  if (symEl) symEl.textContent = cleanSym;
-  if (compEl) compEl.textContent = quote.name || cleanSym;
+  if (symEl) symEl.textContent = displayInfo.symbolDisplay;
+  if (compEl) compEl.textContent = displayInfo.nameDisplay;
   if (exchEl) {
-    // Hide or display clean exchange without raw NSI codes
-    exchEl.textContent = 'NSE';
-    exchEl.style.display = 'none';
+    exchEl.textContent = displayInfo.exchangeDisplay;
+    exchEl.style.display = 'inline-block';
   }
 
   if (priceEl && quote.price != null) {
@@ -810,6 +803,30 @@ function getCleanStockName(sym, fallbackName) {
  * Setup Technical Indicator Overlay Buttons & Dropdown
  */
 function setupIndicatorButtons() {
+  const pillButtons = document.querySelectorAll('.chart-header__indicator-btn[data-overlay]');
+  pillButtons.forEach(btn => {
+    const overlay = btn.dataset.overlay;
+    if (!overlay) return;
+
+    btn.classList.toggle('active', activeOverlays.has(overlay));
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (activeOverlays.has(overlay)) {
+        activeOverlays.delete(overlay);
+        btn.classList.remove('active');
+        showToast(`${overlay.toUpperCase()} hidden`, 'info');
+      } else {
+        activeOverlays.add(overlay);
+        btn.classList.add('active');
+        showToast(`${overlay.toUpperCase()} active`, 'success');
+      }
+      saveActiveOverlays();
+      updateIndicatorCheckboxes();
+      updateOverlays(currentPrediction);
+    });
+  });
+
   updateIndicatorCheckboxes();
 
   // Close dropdown on outside click
@@ -823,11 +840,18 @@ function setupIndicatorButtons() {
 
 function updateIndicatorCheckboxes() {
   const menu = document.getElementById('indicators-dropdown-menu');
-  if (!menu) return;
-  const checkboxes = menu.querySelectorAll('input[type="checkbox"][data-overlay]');
-  checkboxes.forEach(cb => {
-    const overlay = cb.dataset.overlay;
-    cb.checked = activeOverlays.has(overlay);
+  if (menu) {
+    const checkboxes = menu.querySelectorAll('input[type="checkbox"][data-overlay]');
+    checkboxes.forEach(cb => {
+      const overlay = cb.dataset.overlay;
+      cb.checked = activeOverlays.has(overlay);
+    });
+  }
+
+  const pillButtons = document.querySelectorAll('.chart-header__indicator-btn[data-overlay]');
+  pillButtons.forEach(btn => {
+    const overlay = btn.dataset.overlay;
+    btn.classList.toggle('active', activeOverlays.has(overlay));
   });
 }
 
@@ -844,6 +868,7 @@ function toggleOverlayFromMenu(checkbox) {
   }
 
   saveActiveOverlays();
+  updateIndicatorCheckboxes();
   updateOverlays(currentPrediction);
 }
 
@@ -1080,15 +1105,14 @@ function setupCompanySwitcher() {
   function renderList(items) {
     if (!list) return;
     list.innerHTML = items.map(c => {
-      const cleanSym = (c.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
-      const cleanName = getCleanStockName(c.symbol, c.name);
+      const displayInfo = formatInstrumentDisplay(c.symbol, c.name, c.exchange);
       return `
         <div class="company-switcher-item" data-symbol="${c.symbol}">
           <div>
-            <div class="company-switcher-item__symbol">${cleanSym}</div>
-            <div class="company-switcher-item__name">${cleanName}</div>
+            <div class="company-switcher-item__symbol">${displayInfo.symbolDisplay}</div>
+            <div class="company-switcher-item__name">${displayInfo.nameDisplay}</div>
           </div>
-          <span class="company-switcher-item__exchange">${c.exchange || 'NSE'}</span>
+          <span class="company-switcher-item__exchange">${displayInfo.exchangeDisplay}</span>
         </div>
       `;
     }).join('');

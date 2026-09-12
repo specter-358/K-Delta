@@ -9,22 +9,7 @@ const path = require('path');
 const DATA_DIR = path.join(__dirname);
 const WATCHLIST_FILE = path.join(DATA_DIR, 'watchlist.json');
 
-const DEFAULT_WATCHLIST = [
-  'RELIANCE.NS',
-  'TCS.NS',
-  'HDFCBANK.NS',
-  'INFY.NS',
-  'ICICIBANK.NS',
-  'SBIN.NS',
-  'BHARTIARTL.NS',
-  'TATAMOTORS.NS',
-  'TATASTEEL.NS',
-  'ITC.NS',
-  'LT.NS',
-  'MARUTI.NS',
-  '^NSEI',
-  '^BSESN',
-];
+const DEFAULT_WATCHLIST = [];
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {

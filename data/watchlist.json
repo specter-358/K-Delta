@@ -11,6 +11,7 @@
   "ITC.NS",
   "LT.NS",
   "MARUTI.NS",
-  "^NSEI",
-  "^BSESN"
+  "^BSESN",
+  "TATASTEEL.BO",
+  "^NSEI"
 ]
