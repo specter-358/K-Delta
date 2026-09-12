@@ -6,11 +6,11 @@
   "ICICIBANK.NS",
   "SBIN.NS",
   "BHARTIARTL.NS",
-  "TATAMOTORS.NS",
   "TATASTEEL.NS",
   "ITC.NS",
   "LT.NS",
   "MARUTI.NS",
   "^NSEI",
-  "^BSESN"
+  "^BSESN",
+  "HINDCOPPER.NS"
 ]

@@ -236,14 +236,14 @@ function addRecentStock(symbol, name) {
 }
 
 /**
- * Get watchlist from localStorage / defaults
+ * Get watchlist strictly as saved by user in localStorage / server
  */
 function getWatchlist() {
   try {
     const saved = localStorage.getItem('kdelta_watchlist');
-    if (saved) {
+    if (saved !== null) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }

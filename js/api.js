@@ -274,7 +274,7 @@ const API = (() => {
       const response = await fetch('/api/watchlist');
       if (!response.ok) throw new Error('Failed to load watchlist');
       const data = await response.json();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         localStorage.setItem('kdelta_watchlist', JSON.stringify(data));
         return data;
       }

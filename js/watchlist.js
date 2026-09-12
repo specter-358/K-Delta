@@ -104,7 +104,7 @@ async function loadWatchlistData(isBackground = false) {
 
   try {
     watchlistSymbols = await API.fetchWatchlist();
-    if (!watchlistSymbols || watchlistSymbols.length === 0) {
+    if (!watchlistSymbols || !Array.isArray(watchlistSymbols)) {
       watchlistSymbols = getWatchlist();
     }
 

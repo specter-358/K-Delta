@@ -31,7 +31,7 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Ensure watchlist.json exists with valid JSON array
+// Ensure watchlist.json exists with valid JSON array on initial run
 if (!fs.existsSync(WATCHLIST_FILE)) {
   try {
     fs.writeFileSync(WATCHLIST_FILE, JSON.stringify(DEFAULT_WATCHLIST, null, 2), 'utf8');
@@ -41,7 +41,7 @@ if (!fs.existsSync(WATCHLIST_FILE)) {
 }
 
 /**
- * Read all watchlist symbols
+ * Read all watchlist symbols strictly as saved by user
  */
 function getWatchlist() {
   try {
@@ -53,15 +53,15 @@ function getWatchlist() {
       data = data.slice(1);
     }
     const parsed = JSON.parse(data.trim() || '[]');
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [...DEFAULT_WATCHLIST];
+    return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
     console.error('Error reading watchlist file:', err);
-    return [...DEFAULT_WATCHLIST];
+    return [];
   }
 }
 
 /**
- * Save complete watchlist array
+ * Save complete watchlist array strictly as requested by user
  */
 function saveWatchlist(list) {
   try {
