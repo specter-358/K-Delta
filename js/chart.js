@@ -597,6 +597,33 @@ const ChartManager = (() => {
     return null;
   }
 
+  function handleResize() {
+    if (!chart || !containerEl) return;
+    try {
+      chart.applyOptions({
+        width: containerEl.clientWidth || 800,
+        height: containerEl.clientHeight || 560,
+      });
+    } catch (e) {
+      console.warn('handleResize error:', e);
+    }
+  }
+
+  function destroy() {
+    if (chart) {
+      try {
+        chart.remove();
+      } catch (e) {}
+      chart = null;
+    }
+    candleSeries = null;
+    volumeSeries = null;
+    overlayLines = {};
+    tradePriceLines = [];
+    srPriceLines = [];
+    currentCandles = [];
+  }
+
   return {
     init,
     setData,
