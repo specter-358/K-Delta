@@ -681,12 +681,19 @@ function injectProfileModalHTML() {
           <label class="form-label" for="profile-current-password">Current Password (Required to change password)</label>
           <div class="password-input-wrap">
             <input type="password" id="profile-current-password" class="form-input" placeholder="Enter current password">
-            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('profile-current-password', this)" title="Toggle password visibility">
-              <svg class="eye-icon eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button type="button" class="password-toggle-btn"
+              onmousedown="holdShowPassword('profile-current-password', this)"
+              onmouseup="holdHidePassword('profile-current-password', this)"
+              onmouseleave="holdHidePassword('profile-current-password', this)"
+              ontouchstart="holdShowPassword('profile-current-password', this, event)"
+              ontouchend="holdHidePassword('profile-current-password', this)"
+              ontouchcancel="holdHidePassword('profile-current-password', this)"
+              title="Press and hold to view password">
+              <svg class="eye-icon eye-off" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
                 <line x1="1" y1="1" x2="23" y2="23"></line>
               </svg>
-              <svg class="eye-icon eye-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+              <svg class="eye-icon eye-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
@@ -699,12 +706,19 @@ function injectProfileModalHTML() {
           <label class="form-label" for="profile-new-password">New Password (Optional)</label>
           <div class="password-input-wrap">
             <input type="password" id="profile-new-password" class="form-input" placeholder="Leave blank to keep current password" minlength="8">
-            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('profile-new-password', this)" title="Toggle password visibility">
-              <svg class="eye-icon eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button type="button" class="password-toggle-btn"
+              onmousedown="holdShowPassword('profile-new-password', this)"
+              onmouseup="holdHidePassword('profile-new-password', this)"
+              onmouseleave="holdHidePassword('profile-new-password', this)"
+              ontouchstart="holdShowPassword('profile-new-password', this, event)"
+              ontouchend="holdHidePassword('profile-new-password', this)"
+              ontouchcancel="holdHidePassword('profile-new-password', this)"
+              title="Press and hold to view password">
+              <svg class="eye-icon eye-off" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
                 <line x1="1" y1="1" x2="23" y2="23"></line>
               </svg>
-              <svg class="eye-icon eye-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+              <svg class="eye-icon eye-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
@@ -839,25 +853,59 @@ function handleAvatarUrlInput(url) {
   }
 }
 
-function togglePasswordVisibility(inputId, btn) {
+function holdShowPassword(inputId, btn, e) {
+  if (e && e.type === 'touchstart' && e.cancelable) {
+    e.preventDefault();
+  }
   const input = document.getElementById(inputId);
   if (!input) return;
-
-  const eyeOff = btn.querySelector('.eye-off');
-  const eyeOn = btn.querySelector('.eye-on');
-
-  if (input.type === 'password') {
-    input.type = 'text';
+  input.type = 'text';
+  if (btn) {
+    btn.classList.add('active');
+    const eyeOff = btn.querySelector('.eye-off');
+    const eyeOn = btn.querySelector('.eye-on');
     if (eyeOff) eyeOff.style.display = 'none';
-    if (eyeOn) eyeOn.style.display = 'inline';
-  } else {
-    input.type = 'password';
-    if (eyeOff) eyeOff.style.display = 'inline';
+    if (eyeOn) eyeOn.style.display = 'inline-block';
+  }
+}
+
+function holdHidePassword(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = 'password';
+  if (btn) {
+    btn.classList.remove('active');
+    const eyeOff = btn.querySelector('.eye-off');
+    const eyeOn = btn.querySelector('.eye-on');
+    if (eyeOff) eyeOff.style.display = 'inline-block';
     if (eyeOn) eyeOn.style.display = 'none';
   }
 }
 
+function togglePasswordVisibility(inputId, btn) {
+  // Legacy toggle fallback
+  const input = document.getElementById(inputId);
+  if (!input) return;
+
+  if (input.type === 'password') {
+    holdShowPassword(inputId, btn);
+  } else {
+    holdHidePassword(inputId, btn);
+  }
+}
+
 window.requireAuthPage = requireAuthPage;
+window.renderNavbarAuth = renderNavbarAuth;
+window.toggleProfileDropdown = toggleProfileDropdown;
+window.openProfileModal = openProfileModal;
+window.closeProfileModal = closeProfileModal;
+window.handleSaveProfile = handleSaveProfile;
+window.handleAvatarFileSelect = handleAvatarFileSelect;
+window.handleAvatarUrlInput = handleAvatarUrlInput;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.holdShowPassword = holdShowPassword;
+window.holdHidePassword = holdHidePassword;
+window.handleLogout = handleLogout;
 window.renderNavbarAuth = renderNavbarAuth;
 window.toggleProfileDropdown = toggleProfileDropdown;
 window.openProfileModal = openProfileModal;
