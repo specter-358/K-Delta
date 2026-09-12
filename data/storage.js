@@ -1,6 +1,6 @@
 /* ============================================================
-   K-Delta — Persistent Storage Module
-   Saves user watchlists and terminal preferences to disk.
+   K-Delta — Isolated User Watchlist Storage Module
+   Supports user data isolation per userId & backward compatibility
    ============================================================ */
 
 const fs = require('fs');
@@ -8,51 +8,80 @@ const path = require('path');
 
 const DATA_DIR = path.join(__dirname);
 const WATCHLIST_FILE = path.join(DATA_DIR, 'watchlist.json');
+const USER_WATCHLISTS_FILE = path.join(DATA_DIR, 'user_watchlists.json');
 
 const DEFAULT_WATCHLIST = [];
 
-// Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Ensure watchlist.json exists with valid JSON array on initial run
-if (!fs.existsSync(WATCHLIST_FILE)) {
+function loadUserWatchlists() {
   try {
-    fs.writeFileSync(WATCHLIST_FILE, JSON.stringify(DEFAULT_WATCHLIST, null, 2), 'utf8');
+    if (fs.existsSync(USER_WATCHLISTS_FILE)) {
+      return JSON.parse(fs.readFileSync(USER_WATCHLISTS_FILE, 'utf8'));
+    }
   } catch (err) {
-    console.error('Error creating initial watchlist file:', err);
+    console.error('Error loading user watchlists:', err);
+  }
+  return {};
+}
+
+function saveUserWatchlists(map) {
+  try {
+    fs.writeFileSync(USER_WATCHLISTS_FILE, JSON.stringify(map, null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    console.error('Error saving user watchlists:', err);
+    return false;
   }
 }
 
 /**
- * Read all watchlist symbols strictly as saved by user
+ * Get Watchlist for specific user or guest default
  */
-function getWatchlist() {
+function getWatchlist(userId = 'guest') {
   try {
-    if (!fs.existsSync(WATCHLIST_FILE)) {
-      return [...DEFAULT_WATCHLIST];
+    if (!userId || userId === 'guest') {
+      if (!fs.existsSync(WATCHLIST_FILE)) return [...DEFAULT_WATCHLIST];
+      let data = fs.readFileSync(WATCHLIST_FILE, 'utf8');
+      if (data.charCodeAt(0) === 0xFEFF) data = data.slice(1);
+      const parsed = JSON.parse(data.trim() || '[]');
+      return Array.isArray(parsed) ? parsed : [];
     }
-    let data = fs.readFileSync(WATCHLIST_FILE, 'utf8');
-    if (data.charCodeAt(0) === 0xFEFF) {
-      data = data.slice(1);
-    }
-    const parsed = JSON.parse(data.trim() || '[]');
-    return Array.isArray(parsed) ? parsed : [];
+
+    const map = loadUserWatchlists();
+    return Array.isArray(map[userId]) ? map[userId] : [];
   } catch (err) {
-    console.error('Error reading watchlist file:', err);
+    console.error('Error reading watchlist:', err);
     return [];
   }
 }
 
 /**
- * Save complete watchlist array strictly as requested by user
+ * Save Watchlist for specific user or guest
  */
-function saveWatchlist(list) {
+function saveWatchlist(userIdOrList, listParam) {
+  let userId = 'guest';
+  let list = [];
+
+  if (Array.isArray(userIdOrList)) {
+    list = userIdOrList;
+  } else {
+    userId = userIdOrList || 'guest';
+    list = listParam || [];
+  }
+
   try {
-    if (!Array.isArray(list)) return false;
-    const unique = Array.from(new Set(list.map(s => s.trim().toUpperCase()).filter(Boolean)));
-    fs.writeFileSync(WATCHLIST_FILE, JSON.stringify(unique, null, 2), 'utf8');
+    const unique = Array.from(new Set(list.map(s => String(s).trim().toUpperCase()).filter(Boolean)));
+
+    if (userId === 'guest') {
+      fs.writeFileSync(WATCHLIST_FILE, JSON.stringify(unique, null, 2), 'utf8');
+    } else {
+      const map = loadUserWatchlists();
+      map[userId] = unique;
+      saveUserWatchlists(map);
+    }
     return true;
   } catch (err) {
     console.error('Error saving watchlist:', err);
@@ -60,42 +89,46 @@ function saveWatchlist(list) {
   }
 }
 
-/**
- * Add a symbol to the persistent watchlist
- * @param {string} symbol - Stock symbol
- */
-function addToWatchlist(symbol) {
-  try {
-    if (!symbol) return getWatchlist();
-    const cleanSym = symbol.trim().toUpperCase();
-    const list = getWatchlist();
-    if (!list.includes(cleanSym)) {
-      list.push(cleanSym);
-      saveWatchlist(list);
-    }
-    return list;
-  } catch (err) {
-    console.error('Error adding to watchlist:', err);
-    throw err;
+function addToWatchlist(userIdOrSymbol, symbolParam) {
+  let userId = 'guest';
+  let symbol = '';
+
+  if (typeof symbolParam === 'undefined') {
+    symbol = userIdOrSymbol;
+  } else {
+    userId = userIdOrSymbol || 'guest';
+    symbol = symbolParam;
   }
+
+  if (!symbol) return getWatchlist(userId);
+  const cleanSym = String(symbol).trim().toUpperCase();
+  const list = getWatchlist(userId);
+
+  if (!list.includes(cleanSym)) {
+    list.push(cleanSym);
+    saveWatchlist(userId, list);
+  }
+  return list;
 }
 
-/**
- * Remove a symbol from the persistent watchlist
- * @param {string} symbol - Stock symbol
- */
-function removeFromWatchlist(symbol) {
-  try {
-    if (!symbol) return getWatchlist();
-    const cleanSym = symbol.trim().toUpperCase();
-    const list = getWatchlist();
-    const filtered = list.filter(s => s !== cleanSym);
-    saveWatchlist(filtered);
-    return filtered;
-  } catch (err) {
-    console.error('Error removing from watchlist:', err);
-    throw err;
+function removeFromWatchlist(userIdOrSymbol, symbolParam) {
+  let userId = 'guest';
+  let symbol = '';
+
+  if (typeof symbolParam === 'undefined') {
+    symbol = userIdOrSymbol;
+  } else {
+    userId = userIdOrSymbol || 'guest';
+    symbol = symbolParam;
   }
+
+  if (!symbol) return getWatchlist(userId);
+  const cleanSym = String(symbol).trim().toUpperCase();
+  const list = getWatchlist(userId);
+  const filtered = list.filter(s => s !== cleanSym);
+
+  saveWatchlist(userId, filtered);
+  return filtered;
 }
 
 module.exports = {

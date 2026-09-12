@@ -1,3 +1,11 @@
 node_modules/
 .env
+.env.local
+.env.production
+.env.staging
+*.pem
+*.key
+*.log
+data/users.json
 .DS_Store
+

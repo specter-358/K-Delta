@@ -173,6 +173,41 @@
   gap: var(--space-md);
 }
 
+.market-grid-extra {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.indices-view-more-wrap {
+  text-align: center;
+  margin-top: var(--space-lg);
+}
+
+.btn-indices-toggle {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 10px 28px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.btn-indices-toggle:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-active);
+  transform: translateY(-1px);
+}
+
 .market-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);

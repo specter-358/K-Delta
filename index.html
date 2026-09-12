@@ -164,7 +164,16 @@
           </div>
         </div>
         <div class="market-grid" id="market-grid">
-          <!-- Populated dynamically by JS with real Indian index quotes -->
+          <!-- Populated dynamically by JS with first row of benchmark indices -->
+        </div>
+        <div class="market-grid-extra" id="market-grid-extra" style="display: none;">
+          <!-- Populated dynamically by JS with remaining sector indices -->
+        </div>
+        <div class="indices-view-more-wrap" id="indices-view-more-wrap" style="display: none;">
+          <button class="btn-indices-toggle" id="toggle-indices-btn" onclick="toggleSectorIndices()">
+            <span>View More Sector Indices</span>
+            <span id="toggle-indices-icon">▾</span>
+          </button>
         </div>
       </div>
     </section>
@@ -284,7 +293,7 @@
           <line x1="12" y1="17" x2="12.01" y2="17"/>
         </svg>
         <span>
-          <strong>Risk Disclaimer:</strong> K-Delta analytics are for technical and algorithmic study. Technical patterns and indicators do not guarantee future performance. Manage risk prudently with strict stop-losses.
+          <strong>Financial Safety Disclaimer:</strong> K-Delta provides probabilistic market analysis for informational and research purposes only. K-Delta does not provide financial advice, execution services, or guaranteed trading outcomes. Always consult a certified financial advisor before trading.
         </span>
       </div>
     </div>

@@ -122,27 +122,46 @@ const API = (() => {
   }
 
   /**
-   * Internal fetch with caching
+   * Internal fetch with caching & Auth header
    */
-  async function apiFetch(endpoint, params = {}) {
+  async function apiFetch(endpoint, params = {}, options = {}) {
     const queryString = new URLSearchParams(params).toString();
     const url = `${CONFIG.API_BASE}${endpoint}${queryString ? '?' + queryString : ''}`;
     const cacheKey = url;
 
-    // Check client-side memory cache
-    const cached = cache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < CONFIG.CACHE_DURATION) {
-      return cached.data;
+    // Check client-side memory cache if method is GET
+    if (!options.method || options.method === 'GET') {
+      const cached = cache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < CONFIG.CACHE_DURATION) {
+        return cached.data;
+      }
     }
 
-    const response = await fetch(url);
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    };
+
+    const token = localStorage.getItem('kdelta_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const fetchOpts = {
+      ...options,
+      headers,
+    };
+
+    const response = await fetch(url, fetchOpts);
     if (!response.ok) {
       const errBody = await response.json().catch(() => ({}));
       throw new Error(errBody.error || `API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    cache.set(cacheKey, { data, timestamp: Date.now() });
+    if (!options.method || options.method === 'GET') {
+      cache.set(cacheKey, { data, timestamp: Date.now() });
+    }
     return data;
   }
 

@@ -1,16 +1,30 @@
 /* ============================================================
-   K-Delta — Indian Stock Market Backend Server
-   Real-Time Data Engine (NSE/BSE), WebSocket Streaming & Storage
+   K-Delta — Production-Grade Indian Stock Market Backend Server
+   OWASP Web Security, Auth & RBAC, Real-Time WebSocket Engine & Health Monitor
    ============================================================ */
 
 require('dotenv').config();
 const http = require('http');
 const express = require('express');
-const cors = require('cors');
 const path = require('path');
 const storage = require('./data/storage');
+const authStore = require('./data/authStore');
 const { provider, normalizeSymbol } = require('./data/marketProvider');
 const { wsHub } = require('./data/wsHub');
+
+const {
+  securityHeaders,
+  corsPolicy,
+  rateLimiter,
+  sanitizeInput,
+  errorHandler,
+} = require('./middleware/security');
+
+const {
+  requireAuth,
+  requireAdmin,
+  optionalAuth,
+} = require('./middleware/auth');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,9 +33,17 @@ const PORT = process.env.PORT || 3000;
 // Initialize WebSocket Streaming Engine
 wsHub.init(server);
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Security & Core Middleware
+app.disable('x-powered-by');
+app.use(securityHeaders);
+app.use(corsPolicy);
+app.use(express.json({ limit: '1mb' }));
+app.use(sanitizeInput);
+
+// Global API Rate Limiter (120 req/min)
+app.use('/api/', rateLimiter({ windowMs: 60000, maxRequests: 120 }));
+
+// Static Assets
 app.use(express.static(path.join(__dirname)));
 
 /**
@@ -30,7 +52,6 @@ app.use(express.static(path.join(__dirname)));
 function getIndianMarketStatus() {
   const now = new Date();
   
-  // Format current time in Asia/Kolkata
   const istFormatter = new Intl.DateTimeFormat('en-IN', {
     timeZone: 'Asia/Kolkata',
     hour12: false,
@@ -54,10 +75,6 @@ function getIndianMarketStatus() {
 
   const isWeekend = weekday === 'Sat' || weekday === 'Sun';
 
-  // Trading Sessions (IST):
-  // Pre-Open: 09:00 - 09:15 (540 - 555 mins)
-  // Regular Market: 09:15 - 15:30 (555 - 930 mins)
-  // Post-Market: 15:30 - 16:00 (930 - 960 mins)
   const isPreOpen = !isWeekend && (totalMinutes >= 540 && totalMinutes < 555);
   const isOpen = !isWeekend && (totalMinutes >= 555 && totalMinutes < 930);
   const isPostMarket = !isWeekend && (totalMinutes >= 930 && totalMinutes < 960);
@@ -100,32 +117,96 @@ function getIndianMarketStatus() {
     currentTimeIST: `${istDisplay} IST`,
     tradingHours: '09:15 – 15:30 IST (Mon–Fri)',
     timezone: 'Asia/Kolkata (IST)',
+    disclaimer: 'Informational analysis only. Not financial advice.',
   };
 }
 
 // ==========================================
-// REST API ROUTES
+// AUTHENTICATION & USER ENDPOINTS
+// Strict Rate Limiter (10 req/min for auth)
+// ==========================================
+const authLimiter = rateLimiter({
+  windowMs: 60000,
+  maxRequests: 10,
+  message: 'Too many authentication attempts. Please wait 1 minute.',
+});
+
+/**
+ * POST /api/auth/signup
+ */
+app.post('/api/auth/signup', authLimiter, (req, res, next) => {
+  try {
+    const result = authStore.registerUser(req.body, req.ip);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/auth/login
+ */
+app.post('/api/auth/login', authLimiter, (req, res, next) => {
+  try {
+    const result = authStore.loginUser(req.body, req.ip);
+    res.json(result);
+  } catch (err) {
+    res.status(401).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/auth/me
+ */
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  const user = authStore.getUserById(req.user.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ user });
+});
+
+/**
+ * POST /api/auth/2fa/setup
+ */
+app.post('/api/auth/2fa/setup', requireAuth, (req, res, next) => {
+  try {
+    const result = authStore.setup2FA(req.user.userId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/auth/2fa/verify
+ */
+app.post('/api/auth/2fa/verify', requireAuth, (req, res, next) => {
+  try {
+    const result = authStore.verify2FA(req.user.userId, req.body.code, req.ip);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// REST MARKET DATA ROUTES
 // ==========================================
 
 /**
  * GET /api/market/status
  */
 app.get('/api/market/status', (req, res) => {
-  try {
-    const status = getIndianMarketStatus();
-    res.json(status);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to calculate market status', details: err.message });
-  }
+  const status = getIndianMarketStatus();
+  res.json(status);
 });
 
 /**
  * GET /api/quote?symbol=RELIANCE.NS
  */
-app.get('/api/quote', async (req, res) => {
-  const rawSymbol = req.query.symbol;
+app.get('/api/quote', async (req, res, next) => {
+  const rawSymbol = String(req.query.symbol || '').replace(/[^a-zA-Z0-9^.-]/g, '').slice(0, 30);
   if (!rawSymbol) {
-    return res.status(400).json({ error: 'Symbol query parameter is required' });
+    return res.status(400).json({ error: 'Valid symbol query parameter is required' });
   }
 
   try {
@@ -135,47 +216,50 @@ app.get('/api/quote', async (req, res) => {
     }
     res.json(quote);
   } catch (err) {
-    res.status(502).json({ error: `Failed to fetch quote for ${rawSymbol}`, details: err.message });
+    next(err);
   }
 });
 
 /**
  * GET /api/quotes?symbols=RELIANCE.NS,TCS.NS
  */
-app.get('/api/quotes', async (req, res) => {
+app.get('/api/quotes', async (req, res, next) => {
   const rawSymbols = req.query.symbols;
   if (!rawSymbols) {
     return res.status(400).json({ error: 'Symbols query parameter is required' });
   }
 
-  const symbolsList = rawSymbols.split(',').map(s => normalizeSymbol(s)).filter(Boolean);
-  if (symbolsList.length === 0) return res.json([]);
+  try {
+    const symbolsList = rawSymbols.split(',').map(s => normalizeSymbol(s)).filter(Boolean);
+    if (symbolsList.length === 0) return res.json([]);
 
-  const results = [];
-  for (const sym of symbolsList) {
-    const q = await provider.getQuote(sym);
-    if (q) results.push(q);
+    const results = [];
+    for (const sym of symbolsList) {
+      const q = await provider.getQuote(sym);
+      if (q) results.push(q);
+    }
+    res.json(results);
+  } catch (err) {
+    next(err);
   }
-
-  res.json(results);
 });
 
 /**
  * GET /api/market/indices
  */
-app.get('/api/market/indices', async (req, res) => {
+app.get('/api/market/indices', async (req, res, next) => {
   try {
     const indices = await provider.getMarketIndices();
     res.json(indices || []);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch indices', details: err.message });
+    next(err);
   }
 });
 
 /**
  * GET /api/candles?symbol=RELIANCE.NS&interval=1d&outputsize=120
  */
-app.get('/api/candles', async (req, res) => {
+app.get('/api/candles', async (req, res, next) => {
   const rawSymbol = req.query.symbol;
   if (!rawSymbol) {
     return res.status(400).json({ error: 'Symbol query parameter is required' });
@@ -191,14 +275,14 @@ app.get('/api/candles', async (req, res) => {
     }
     res.json(candles);
   } catch (err) {
-    res.status(502).json({ error: `Failed to fetch candles for ${rawSymbol}`, details: err.message });
+    next(err);
   }
 });
 
 /**
  * GET /api/search?q=Tata
  */
-app.get('/api/search', async (req, res) => {
+app.get('/api/search', async (req, res, next) => {
   const query = req.query.q;
   if (!query || query.trim().length < 1) {
     return res.json([]);
@@ -208,14 +292,14 @@ app.get('/api/search', async (req, res) => {
     const results = await provider.searchSymbols(query);
     res.json(results);
   } catch (err) {
-    res.status(500).json({ error: 'Search failed', details: err.message });
+    next(err);
   }
 });
 
 /**
  * GET /api/movers
  */
-app.get('/api/movers', async (req, res) => {
+app.get('/api/movers', async (req, res, next) => {
   try {
     const movers = await provider.getMarketMovers();
     if (!movers) {
@@ -223,61 +307,106 @@ app.get('/api/movers', async (req, res) => {
     }
     res.json(movers);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch movers', details: err.message });
+    next(err);
   }
 });
 
 // ==========================================
-// PERSISTENT WATCHLIST ENDPOINTS
+// ISOLATED USER WATCHLIST ENDPOINTS
 // ==========================================
 
 /**
  * GET /api/watchlist
  */
-app.get('/api/watchlist', (req, res) => {
+app.get('/api/watchlist', optionalAuth, (req, res, next) => {
   try {
-    const list = storage.getWatchlist();
+    const userId = req.user ? req.user.userId : 'guest';
+    const list = storage.getWatchlist(userId);
     res.json(list);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to retrieve watchlist', details: err.message });
+    next(err);
   }
 });
 
 /**
  * POST /api/watchlist
- * Body: { symbol: 'TCS.NS' } or { symbols: ['RELIANCE.NS', 'TCS.NS'] }
  */
-app.post('/api/watchlist', (req, res) => {
+app.post('/api/watchlist', optionalAuth, (req, res, next) => {
   try {
+    const userId = req.user ? req.user.userId : 'guest';
     const body = req.body;
     if (body.symbols && Array.isArray(body.symbols)) {
-      storage.saveWatchlist(body.symbols);
-      return res.status(200).json(storage.getWatchlist());
+      storage.saveWatchlist(userId, body.symbols);
+      return res.status(200).json(storage.getWatchlist(userId));
     }
     if (!body || !body.symbol) {
       return res.status(400).json({ error: 'Symbol is required to add to watchlist' });
     }
 
-    const updated = storage.addToWatchlist(body.symbol);
+    const updated = storage.addToWatchlist(userId, body.symbol);
     res.status(201).json(updated);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to add to watchlist', details: err.message });
+    next(err);
   }
 });
 
 /**
  * DELETE /api/watchlist/:symbol
  */
-app.delete('/api/watchlist/:symbol', (req, res) => {
+app.delete('/api/watchlist/:symbol', optionalAuth, (req, res, next) => {
   try {
-    const updated = storage.removeFromWatchlist(req.params.symbol);
+    const userId = req.user ? req.user.userId : 'guest';
+    const updated = storage.removeFromWatchlist(userId, req.params.symbol);
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to remove from watchlist', details: err.message });
+    next(err);
   }
 });
 
-// SPA Fallback
+// ==========================================
+// ADMIN SYSTEM HEALTH & SECURITY MONITORING
+// Protected by requireAdmin RBAC
+// ==========================================
+
+/**
+ * GET /api/admin/health
+ */
+app.get('/api/admin/health', requireAdmin, (req, res) => {
+  const wsStats = wsHub.getActiveStats ? wsHub.getActiveStats() : {};
+  const memUsage = process.memoryUsage();
+
+  res.json({
+    status: 'HEALTHY',
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    system: {
+      memoryRssMB: +(memUsage.rss / 1024 / 1024).toFixed(2),
+      heapTotalMB: +(memUsage.heapTotal / 1024 / 1024).toFixed(2),
+      heapUsedMB: +(memUsage.heapUsed / 1024 / 1024).toFixed(2),
+    },
+    webSockets: wsStats,
+    marketDataEngine: {
+      provider: 'NSE / BSE Multi-Provider Engine',
+      status: 'OPERATIONAL',
+      cacheTTL: process.env.CACHE_TTL_SECONDS || '15',
+    },
+    security: {
+      headersEnabled: true,
+      corsRestricted: process.env.NODE_ENV === 'production',
+      rateLimitingActive: true,
+    }
+  });
+});
+
+/**
+ * GET /api/admin/audit
+ */
+app.get('/api/admin/audit', requireAdmin, (req, res) => {
+  res.json(authStore.getAuditLogs());
+});
+
+// SPA Fallback for HTML views
 app.use((req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API endpoint not found' });
@@ -285,13 +414,16 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Production Error Handler (catches all unhandled middleware errors)
+app.use(errorHandler);
+
 // Start Server
 server.listen(PORT, () => {
   console.log(`====================================================`);
-  console.log(`K-Delta Indian Market Live Server Online`);
+  console.log(`K-Delta Secure Indian Market Live Server Online`);
   console.log(`Local Web URL: http://localhost:${PORT}`);
   console.log(`WebSocket Stream: ws://localhost:${PORT}/ws`);
   console.log(`Market Timezone: Asia/Kolkata (IST)`);
-  console.log(`Trading Hours: 09:15 – 15:30 IST (Mon–Fri)`);
+  console.log(`Security: OWASP Headers | Rate Limiter | Auth & RBAC`);
   console.log(`====================================================`);
 });

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node -e \"console.log('Build and tests passed.')\""
+    "test": "node tests/security.test.js"
   },
   "repository": {
     "type": "git",
@@ -21,9 +21,11 @@
   },
   "homepage": "https://github.com/specter-358/K-Delta#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "ws": "^8.21.3",
     "yahoo-finance2": "^4.0.2"
   }

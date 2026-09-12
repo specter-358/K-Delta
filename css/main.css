@@ -202,7 +202,7 @@ img {
   align-items: center;
   gap: var(--space-xl);
   white-space: nowrap;
-  animation: tickerScroll 40s linear infinite;
+  animation: tickerScroll 360s linear infinite;
   will-change: transform;
 }
 

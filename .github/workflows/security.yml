@@ -1,0 +1,43 @@
+name: Security Scan & Vulnerability Test Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  security_audit:
+    name: Dependency & Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Secret Scanning (Check for accidentally committed secrets)
+        run: |
+          if grep -E "(eyJhbGciOi|AIzaSy|sk_live_|ghp_|xox[bapz]-)" . -r --exclude-dir={node_modules,.git}; then
+            echo "::error::Potential secret token detected in codebase!"
+            exit 1
+          fi
+
+      - name: Run npm security vulnerability audit
+        run: npm audit --audit-level=high
+
+      - name: Start server in background
+        run: |
+          npm start &
+          sleep 3
+
+      - name: Run automated security test suite
+        run: npm test

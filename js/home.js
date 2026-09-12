@@ -84,9 +84,13 @@ async function loadHomeData() {
  */
 async function loadMarketOverview() {
   const grid = document.getElementById('market-grid');
+  const extraGrid = document.getElementById('market-grid-extra');
+  const toggleWrap = document.getElementById('indices-view-more-wrap');
   if (!grid) return;
 
-  grid.innerHTML = Array(5).fill('<div class="market-card skeleton" style="height:90px"></div>').join('');
+  if (!grid.children.length) {
+    grid.innerHTML = Array(5).fill('<div class="market-card skeleton" style="height:90px"></div>').join('');
+  }
 
   try {
     const indices = await API.fetchMarketIndices();
@@ -95,7 +99,7 @@ async function loadMarketOverview() {
       return;
     }
 
-    grid.innerHTML = indices.map(idx => {
+    const renderCard = (idx) => {
       const isUp = (idx.change || idx.percentChange) >= 0;
       const changeClass = isUp ? 'price-up' : 'price-down';
       const displayInfo = formatInstrumentDisplay(idx.symbol, idx.name, idx.exchange);
@@ -111,10 +115,44 @@ async function loadMarketOverview() {
           </div>
         </div>
       `;
-    }).join('');
+    };
+
+    const firstRow = indices.slice(0, 5);
+    const extraRows = indices.slice(5);
+
+    grid.innerHTML = firstRow.map(renderCard).join('');
+
+    if (extraGrid) {
+      extraGrid.innerHTML = extraRows.map(renderCard).join('');
+    }
+
+    if (toggleWrap) {
+      toggleWrap.style.display = extraRows.length > 0 ? 'block' : 'none';
+    }
   } catch (err) {
     console.error('Market overview error:', err);
     grid.innerHTML = '<div style="color:var(--text-muted);padding:16px">Failed to load index data.</div>';
+  }
+}
+
+/**
+ * Toggle Visibility of Extra Sector Indices
+ */
+function toggleSectorIndices() {
+  const extraGrid = document.getElementById('market-grid-extra');
+  const btnLabel = document.querySelector('#toggle-indices-btn span:first-child');
+  const icon = document.getElementById('toggle-indices-icon');
+  if (!extraGrid || !btnLabel || !icon) return;
+
+  const isHidden = extraGrid.style.display === 'none' || !extraGrid.style.display;
+  if (isHidden) {
+    extraGrid.style.display = 'grid';
+    btnLabel.textContent = 'View Less Sector Indices';
+    icon.textContent = '▴';
+  } else {
+    extraGrid.style.display = 'none';
+    btnLabel.textContent = 'View More Sector Indices';
+    icon.textContent = '▾';
   }
 }
 
