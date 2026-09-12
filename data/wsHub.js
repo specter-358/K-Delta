@@ -147,7 +147,7 @@ class SecureWebSocketHub {
       });
     });
 
-    console.log('📡 K-Delta Secure WebSocket Stream Engine initialized on /ws');
+    console.log('[WS] K-Delta Secure WebSocket Stream Engine initialized on /ws');
   }
 
   handleClientMessage(ws, data) {

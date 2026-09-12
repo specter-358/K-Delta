@@ -31,7 +31,7 @@ function makeRequest(path, options = {}) {
 }
 
 async function runSecurityTests() {
-  console.log('🔒 Starting K-Delta Production Security Test Suite...\n');
+  console.log('[SECURITY] Starting K-Delta Production Security Test Suite...\n');
   let passed = 0;
   let failed = 0;
 

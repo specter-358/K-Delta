@@ -177,11 +177,11 @@ app.post('/api/auth/2fa/setup', requireAuth, (req, res, next) => {
 });
 
 /**
- * POST /api/auth/2fa/verify
+ * PUT /api/auth/profile
  */
-app.post('/api/auth/2fa/verify', requireAuth, (req, res, next) => {
+app.put('/api/auth/profile', requireAuth, (req, res, next) => {
   try {
-    const result = authStore.verify2FA(req.user.userId, req.body.code, req.ip);
+    const result = authStore.updateUserProfile(req.user.userId, req.body, req.ip);
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });

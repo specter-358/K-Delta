@@ -526,8 +526,345 @@ function initTheme() {
   applyTheme('dark');
 }
 
-// Run immediately
+/**
+ * Require Login to Access Website
+ */
+function requireAuthPage() {
+  const path = window.location.pathname;
+  const isLoginPage = path.endsWith('login.html');
+  const token = localStorage.getItem('kdelta_token');
+
+  if (!isLoginPage && !token) {
+    window.location.href = 'login.html';
+  }
+}
+
+// Enforce auth check immediately on script load
+requireAuthPage();
+
+// Run theme and auth render immediately
 initTheme();
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  renderNavbarAuth();
 });
+
+/**
+ * Render Navbar Auth State (Circular Avatar on right of Real-Time Feed Active (IST))
+ */
+function renderNavbarAuth() {
+  const statusContainer = document.querySelector('.navbar__market-status');
+  if (!statusContainer) return;
+
+  const token = localStorage.getItem('kdelta_token');
+  const user = JSON.parse(localStorage.getItem('kdelta_user') || 'null');
+
+  let avatarWrap = document.getElementById('navbar-avatar-wrap');
+  if (!avatarWrap) {
+    avatarWrap = document.createElement('div');
+    avatarWrap.id = 'navbar-avatar-wrap';
+    avatarWrap.style.display = 'inline-flex';
+    avatarWrap.style.alignItems = 'center';
+    statusContainer.appendChild(avatarWrap);
+  }
+
+  if (token && user) {
+    const name = user.name || 'Key';
+    const email = user.email || '';
+    const initial = name.charAt(0).toUpperCase();
+    const avatarContent = user.avatarUrl 
+      ? `<img src="${user.avatarUrl}" alt="${name}">` 
+      : initial;
+
+    avatarWrap.innerHTML = `
+      <button class="navbar-avatar-btn" id="navbar-avatar-btn" onclick="toggleProfileDropdown(event)" title="${name}">
+        ${avatarContent}
+      </button>
+      <div class="profile-dropdown-menu" id="profile-dropdown-menu">
+        <div class="profile-dropdown-header">
+          <div class="profile-dropdown-header__name">${name}</div>
+          <div class="profile-dropdown-header__email">${email}</div>
+        </div>
+        <button class="profile-dropdown-item" onclick="openProfileModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>Profile Settings</span>
+        </button>
+        <button class="profile-dropdown-item profile-dropdown-item--danger" onclick="handleLogout()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    `;
+
+    injectProfileModalHTML();
+  } else {
+    avatarWrap.innerHTML = '';
+  }
+}
+
+function toggleProfileDropdown(e) {
+  if (e) e.stopPropagation();
+  const dropdown = document.getElementById('profile-dropdown-menu');
+  if (!dropdown) return;
+  const isShown = dropdown.style.display === 'block';
+  dropdown.style.display = isShown ? 'none' : 'block';
+}
+
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('profile-dropdown-menu');
+  const avatarBtn = document.getElementById('navbar-avatar-btn');
+  if (dropdown && avatarBtn && !avatarBtn.contains(e.target) && !dropdown.contains(e.target)) {
+    dropdown.style.display = 'none';
+  }
+});
+
+function injectProfileModalHTML() {
+  if (document.getElementById('profile-modal-overlay')) return;
+
+  const modalOverlay = document.createElement('div');
+  modalOverlay.id = 'profile-modal-overlay';
+  modalOverlay.className = 'profile-modal-overlay';
+  modalOverlay.style.display = 'none';
+
+  modalOverlay.innerHTML = `
+    <div class="profile-modal-box">
+      <div class="profile-modal-header">
+        <div class="profile-modal-title">Edit Account Profile</div>
+        <button class="profile-modal-close" onclick="closeProfileModal()">✕</button>
+      </div>
+
+      <div id="profile-modal-alert" class="login-alert" style="display:none; margin-bottom:16px;"></div>
+
+      <form id="profile-edit-form" onsubmit="handleSaveProfile(event)">
+        <!-- Profile Picture Section -->
+        <div class="avatar-edit-section">
+          <div class="avatar-preview-circle" id="profile-avatar-preview">K</div>
+          <div style="flex:1;">
+            <label class="form-label">Profile Picture</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="file" id="profile-avatar-file" accept="image/*" style="display:none;" onchange="handleAvatarFileSelect(event)">
+              <button type="button" class="btn btn--secondary btn--sm" onclick="document.getElementById('profile-avatar-file').click()" style="padding:6px 14px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                Choose Image File
+              </button>
+              <span style="font-size:0.75rem; color:var(--text-muted)">or paste URL below</span>
+            </div>
+            <input type="text" id="profile-avatar-url" class="form-input" placeholder="https://example.com/avatar.jpg" style="margin-top:8px;" oninput="handleAvatarUrlInput(this.value)">
+          </div>
+        </div>
+
+        <!-- Full Name Field -->
+        <div class="form-group">
+          <label class="form-label" for="profile-name">Full Name</label>
+          <input type="text" id="profile-name" class="form-input" placeholder="Key" required>
+        </div>
+
+        <!-- Email Address Field -->
+        <div class="form-group">
+          <label class="form-label" for="profile-email">Email Address</label>
+          <input type="email" id="profile-email" class="form-input" placeholder="key@kdelta.com" required>
+        </div>
+
+        <!-- Current Password Field -->
+        <div class="form-group">
+          <label class="form-label" for="profile-current-password">Current Password (Required to change password)</label>
+          <div class="password-input-wrap">
+            <input type="password" id="profile-current-password" class="form-input" placeholder="Enter current password">
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('profile-current-password', this)" title="Toggle password visibility">
+              <svg class="eye-icon eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+              <svg class="eye-icon eye-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- New Password Field -->
+        <div class="form-group" style="margin-bottom:24px;">
+          <label class="form-label" for="profile-new-password">New Password (Optional)</label>
+          <div class="password-input-wrap">
+            <input type="password" id="profile-new-password" class="form-input" placeholder="Leave blank to keep current password" minlength="8">
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('profile-new-password', this)" title="Toggle password visibility">
+              <svg class="eye-icon eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+              <svg class="eye-icon eye-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; gap:12px; justify-content:flex-end;">
+          <button type="button" class="btn btn--secondary" onclick="closeProfileModal()">Cancel</button>
+          <button type="submit" id="profile-save-btn" class="btn btn--primary" style="padding:10px 24px; font-weight:700;">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modalOverlay);
+}
+
+function openProfileModal() {
+  const dropdown = document.getElementById('profile-dropdown-menu');
+  if (dropdown) dropdown.style.display = 'none';
+
+  const overlay = document.getElementById('profile-modal-overlay');
+  if (!overlay) return;
+
+  const user = JSON.parse(localStorage.getItem('kdelta_user') || '{}');
+  document.getElementById('profile-name').value = user.name || 'Key';
+  document.getElementById('profile-email').value = user.email || '';
+  document.getElementById('profile-avatar-url').value = user.avatarUrl || '';
+  document.getElementById('profile-current-password').value = '';
+  document.getElementById('profile-new-password').value = '';
+
+  const preview = document.getElementById('profile-avatar-preview');
+  if (preview) {
+    const initial = (user.name || 'Key').charAt(0).toUpperCase();
+    preview.innerHTML = user.avatarUrl ? `<img src="${user.avatarUrl}" alt="${user.name}">` : initial;
+  }
+
+  const alertBox = document.getElementById('profile-modal-alert');
+  if (alertBox) alertBox.style.display = 'none';
+
+  overlay.style.display = 'flex';
+}
+
+function closeProfileModal() {
+  const overlay = document.getElementById('profile-modal-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+async function handleSaveProfile(event) {
+  event.preventDefault();
+  const name = document.getElementById('profile-name').value.trim();
+  const email = document.getElementById('profile-email').value.trim();
+  const avatarUrl = document.getElementById('profile-avatar-url').value.trim();
+  const currentPassword = document.getElementById('profile-current-password').value;
+  const newPassword = document.getElementById('profile-new-password').value;
+  const saveBtn = document.getElementById('profile-save-btn');
+  const alertBox = document.getElementById('profile-modal-alert');
+
+  try {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    const token = localStorage.getItem('kdelta_token');
+    const response = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name, email, avatarUrl, currentPassword, newPassword }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to update profile');
+    }
+
+    // Save updated token & user
+    localStorage.setItem('kdelta_token', data.token);
+    localStorage.setItem('kdelta_user', JSON.stringify(data.user));
+
+    if (alertBox) {
+      alertBox.className = 'login-alert login-alert--success';
+      alertBox.textContent = 'Profile updated successfully!';
+      alertBox.style.display = 'block';
+    }
+
+    renderNavbarAuth();
+    setTimeout(closeProfileModal, 900);
+  } catch (err) {
+    if (alertBox) {
+      alertBox.className = 'login-alert login-alert--error';
+      alertBox.textContent = err.message;
+      alertBox.style.display = 'block';
+    }
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Changes';
+  }
+}
+
+function handleLogout() {
+  localStorage.removeItem('kdelta_token');
+  localStorage.removeItem('kdelta_user');
+  window.location.href = 'login.html';
+}
+
+function handleAvatarFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    document.getElementById('profile-avatar-url').value = dataUrl;
+    handleAvatarUrlInput(dataUrl);
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleAvatarUrlInput(url) {
+  const preview = document.getElementById('profile-avatar-preview');
+  if (!preview) return;
+
+  if (url && url.trim()) {
+    preview.innerHTML = `<img src="${url.trim()}" alt="Avatar">`;
+  } else {
+    const name = document.getElementById('profile-name') ? document.getElementById('profile-name').value : 'Key';
+    preview.innerHTML = (name || 'Key').charAt(0).toUpperCase();
+  }
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+
+  const eyeOff = btn.querySelector('.eye-off');
+  const eyeOn = btn.querySelector('.eye-on');
+
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (eyeOff) eyeOff.style.display = 'none';
+    if (eyeOn) eyeOn.style.display = 'inline';
+  } else {
+    input.type = 'password';
+    if (eyeOff) eyeOff.style.display = 'inline';
+    if (eyeOn) eyeOn.style.display = 'none';
+  }
+}
+
+window.requireAuthPage = requireAuthPage;
+window.renderNavbarAuth = renderNavbarAuth;
+window.toggleProfileDropdown = toggleProfileDropdown;
+window.openProfileModal = openProfileModal;
+window.closeProfileModal = closeProfileModal;
+window.handleSaveProfile = handleSaveProfile;
+window.handleAvatarFileSelect = handleAvatarFileSelect;
+window.handleAvatarUrlInput = handleAvatarUrlInput;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.handleLogout = handleLogout;
+

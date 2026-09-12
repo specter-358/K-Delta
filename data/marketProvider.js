@@ -476,7 +476,14 @@ class YahooMarketProvider extends BaseMarketProvider {
     const cached = this._getCached(cacheKey);
     if (cached) return cached;
 
-    const symbols = this.activeStockWatchlist.slice(0, 18);
+    const symbols = [
+      'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'INFY.NS',
+      'BHARTIARTL.NS', 'ITC.NS', 'SBIN.NS', 'LT.NS', 'HINDUNILVR.NS',
+      'TATAMOTORS.NS', 'MARUTI.NS', 'TATASTEEL.NS', 'SUNPHARMA.NS', 'BAJFINANCE.NS',
+      'KOTAKBANK.NS', 'NTPC.NS', 'AXISBANK.NS', 'TITAN.NS', 'ADANIENT.NS',
+      'WIPRO.NS', 'HCLTECH.NS', 'ULTRACEMCO.NS', 'POWERGRID.NS', 'ASIANPAINT.NS'
+    ];
+
     const quotePromises = symbols.map(async sym => {
       try {
         const q = await yf.quote(sym);
@@ -501,11 +508,16 @@ class YahooMarketProvider extends BaseMarketProvider {
     const quotes = quoteResults.filter(Boolean);
     if (quotes.length === 0) return null;
 
-    const sorted = [...quotes].sort((a, b) => b.percentChange - a.percentChange);
+    const gainers = [...quotes].sort((a, b) => b.percentChange - a.percentChange).slice(0, 8);
+    const losers = [...quotes].sort((a, b) => a.percentChange - b.percentChange).slice(0, 8);
+    const top4Gainers = gainers.slice(0, 4);
+    const top4Losers = losers.slice(0, 4);
+    const allMovers = [...top4Gainers, ...top4Losers];
+
     const payload = {
-      gainers: sorted.filter(s => s.percentChange > 0).slice(0, 8),
-      losers: [...quotes].sort((a, b) => a.percentChange - b.percentChange).filter(s => s.percentChange < 0).slice(0, 8),
-      allMovers: [...quotes].sort((a, b) => Math.abs(b.percentChange) - Math.abs(a.percentChange)).slice(0, 10),
+      gainers,
+      losers,
+      allMovers,
       timestampIST: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', timeStyle: 'medium' }) + ' IST',
     };
 

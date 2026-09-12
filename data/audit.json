@@ -1,5 +1,193 @@
 [
   {
+    "id": "audit_1789248049073_6kndr",
+    "timestamp": "2026-09-12T21:20:49.073Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789248044585_0ws22",
+    "timestamp": "2026-09-12T21:20:44.585Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247899941_vq7uc",
+    "timestamp": "2026-09-12T21:18:19.941Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_admin_001",
+    "ip": "::1",
+    "details": {
+      "email": "admin@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247874101_qg3ap",
+    "timestamp": "2026-09-12T21:17:54.101Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247853037_yp6ai",
+    "timestamp": "2026-09-12T21:17:33.037Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247817565_popnr",
+    "timestamp": "2026-09-12T21:16:57.565Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247766471_l8k95",
+    "timestamp": "2026-09-12T21:16:06.471Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247759678_c60r2",
+    "timestamp": "2026-09-12T21:15:59.678Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247620247_sfin9",
+    "timestamp": "2026-09-12T21:13:40.247Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247613384_3vket",
+    "timestamp": "2026-09-12T21:13:33.384Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247613168_2ta00",
+    "timestamp": "2026-09-12T21:13:33.168Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247612009_2ndqk",
+    "timestamp": "2026-09-12T21:13:32.009Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247578755_yhqiz",
+    "timestamp": "2026-09-12T21:12:58.755Z",
+    "eventType": "PROFILE_UPDATED",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {}
+  },
+  {
+    "id": "audit_1789247425639_e6seb",
+    "timestamp": "2026-09-12T21:10:25.639Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247083857_5yeae",
+    "timestamp": "2026-09-12T21:04:43.857Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789247009374_9qbuc",
+    "timestamp": "2026-09-12T21:03:29.374Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789246973680_cgcly",
+    "timestamp": "2026-09-12T21:02:53.680Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789246748739_y21ly",
+    "timestamp": "2026-09-12T20:59:08.739Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789246528482_2ulyd",
+    "timestamp": "2026-09-12T20:55:28.482Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "trader@kdelta.com"
+    }
+  },
+  {
     "id": "audit_1789245407781_15kbe",
     "timestamp": "2026-09-12T20:36:47.781Z",
     "eventType": "LOGIN_FAILED_NOT_FOUND",

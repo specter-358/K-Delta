@@ -31,7 +31,7 @@ function loadData() {
         {
           userId: 'usr_admin_001',
           email: 'admin@kdelta.com',
-          name: 'K-Delta Administrator',
+          name: 'Key',
           passwordHash: adminHash,
           role: 'admin',
           twoFactorEnabled: false,
@@ -41,7 +41,7 @@ function loadData() {
         {
           userId: 'usr_demo_002',
           email: 'trader@kdelta.com',
-          name: 'Demo Trader',
+          name: 'Key',
           passwordHash: bcrypt.hashSync('TraderPass2026!', 10),
           role: 'user',
           twoFactorEnabled: false,
@@ -115,7 +115,7 @@ module.exports = {
     const newUser = {
       userId,
       email: cleanEmail,
-      name: name ? String(name).trim() : cleanEmail.split('@')[0],
+      name: name ? String(name).trim() : 'Key',
       passwordHash,
       role: 'user',
       twoFactorEnabled: false,
@@ -224,6 +224,48 @@ module.exports = {
     } catch (err) {
       return null;
     }
+  },
+
+  /**
+   * Update User Profile (Picture, Name, Email, Password)
+   */
+  updateUserProfile(userId, { name, email, avatarUrl, currentPassword, newPassword }, ip) {
+    const user = users.find(u => u.userId === userId);
+    if (!user) throw new Error('User not found');
+
+    if (email && email.trim().toLowerCase() !== user.email) {
+      const cleanEmail = email.trim().toLowerCase();
+      const existing = users.find(u => u.email === cleanEmail && u.userId !== userId);
+      if (existing) throw new Error('Email address is already in use.');
+      user.email = cleanEmail;
+    }
+
+    if (name) {
+      user.name = String(name).trim();
+    }
+
+    if (typeof avatarUrl !== 'undefined') {
+      user.avatarUrl = String(avatarUrl).trim();
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        throw new Error('Current password is required to change password.');
+      }
+      const isValid = bcrypt.compareSync(currentPassword, user.passwordHash);
+      if (!isValid) {
+        throw new Error('Current password is incorrect.');
+      }
+      if (newPassword.length < 8) {
+        throw new Error('New password must be at least 8 characters long.');
+      }
+      user.passwordHash = bcrypt.hashSync(newPassword, 10);
+    }
+
+    saveUsers();
+    recordAudit('PROFILE_UPDATED', user.userId, ip);
+    const newToken = this.generateToken(user);
+    return { user: this.sanitizeUser(user), token: newToken };
   },
 
   /**

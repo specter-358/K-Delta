@@ -165,15 +165,22 @@ async function loadRecentSetups() {
 
   grid.innerHTML = Array(3).fill('<div class="stock-card skeleton" style="height:190px"></div>').join('');
 
-  const featuredStocks = [
-    { symbol: 'RELIANCE.NS', name: 'Reliance Industries Ltd.' },
-    { symbol: 'TCS.NS', name: 'Tata Consultancy Services' },
-    { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.' },
-  ];
+  const recents = getRecentStocks();
+  let targetStocks = [];
+
+  if (recents && recents.length > 0) {
+    targetStocks = recents.slice(0, 6);
+  } else {
+    targetStocks = [
+      { symbol: 'RELIANCE.NS', name: 'Reliance Industries Ltd.' },
+      { symbol: 'TCS.NS', name: 'Tata Consultancy Services' },
+      { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.' },
+    ];
+  }
 
   const cards = [];
 
-  for (const stock of featuredStocks) {
+  for (const stock of targetStocks) {
     try {
       const [quote, candles] = await Promise.all([
         API.fetchQuote(stock.symbol),
@@ -192,16 +199,17 @@ async function loadRecentSetups() {
         ? `Target: ₹${prediction.tradeSetup.target1.toFixed(2)} (${prediction.tradeSetup.target1Pct})`
         : 'Consolidation Zone';
 
-      const cleanSymbol = stock.symbol.replace('.NS', '').replace('.BO', '');
+      const displayInfo = formatInstrumentDisplay(stock.symbol, quote.name || stock.name, quote.exchange);
+      const firstChar = displayInfo.symbolDisplay.charAt(0);
 
       cards.push(`
-        <a class="stock-card" href="dashboard.html?symbol=${encodeURIComponent(stock.symbol)}" onclick="addRecentStock('${stock.symbol}', '${(quote.name || stock.name || '').replace(/'/g, "\\'")}')">
+        <a class="stock-card" href="dashboard.html?symbol=${encodeURIComponent(stock.symbol)}" onclick="addRecentStock('${stock.symbol}', '${(displayInfo.symbolDisplay).replace(/'/g, "\\'")}')">
           <div class="stock-card__header">
             <div class="stock-card__symbol-wrap">
-              <div class="stock-card__icon">${cleanSymbol.charAt(0)}</div>
+              <div class="stock-card__icon">${firstChar}</div>
               <div>
-                <div class="stock-card__symbol">${stock.symbol}</div>
-                <div class="stock-card__name">${quote.name || stock.name || ''}</div>
+                <div class="stock-card__symbol">${displayInfo.symbolDisplay}</div>
+                <div class="stock-card__name">${displayInfo.nameDisplay}</div>
               </div>
             </div>
             <span class="badge ${badgeClass} stock-card__prediction-badge">
@@ -218,19 +226,19 @@ async function loadRecentSetups() {
             ${targetText}
           </div>
           <div class="stock-card__footer">
-            <span class="stock-card__visit-time">${stock.timestamp ? timeAgo(stock.timestamp) : 'Live Analysis'}</span>
+            <span class="stock-card__visit-time">${stock.timestamp ? 'Searched ' + timeAgo(stock.timestamp) : 'Live Analysis'}</span>
             <span class="stock-card__action">Trade Plan →</span>
           </div>
         </a>`);
     } catch (e) {
-      console.warn('Error loading stock card for', stock.symbol, e);
+      console.warn(`Failed to render setup card for ${stock.symbol}:`, e);
     }
   }
 
   if (cards.length > 0) {
     grid.innerHTML = cards.join('');
   } else {
-    grid.innerHTML = '<div style="color:var(--text-muted);padding:16px">No stock setups available.</div>';
+    grid.innerHTML = '<div style="color:var(--text-muted);padding:16px">No recent stock searches found. Search any stock above to analyze setups!</div>';
   }
 }
 
