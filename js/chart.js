@@ -581,12 +581,20 @@ const ChartManager = (() => {
     });
   }
 
-  function destroy() {
-    if (chart) {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-      chart = null;
+  function takeScreenshot() {
+    if (!chart) return null;
+    try {
+      if (typeof chart.takeScreenshot === 'function') {
+        return chart.takeScreenshot();
+      }
+    } catch (e) {
+      console.warn('chart.takeScreenshot error:', e);
     }
+    // Fallback to container canvas element
+    if (containerEl) {
+      return containerEl.querySelector('canvas');
+    }
+    return null;
   }
 
   return {
@@ -603,6 +611,7 @@ const ChartManager = (() => {
     clearTradeLevels,
     setSupportResistanceLevels,
     clearSupportResistanceLevels,
+    takeScreenshot,
     updateTheme,
     handleResize,
     destroy,

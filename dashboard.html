@@ -48,117 +48,139 @@
   <!-- ═══ Dashboard Layout ═══ -->
   <div class="dashboard">
 
-    <!-- ── Left Sidebar ── -->
-    <aside class="sidebar-left">
-
-      <!-- Left Sidebar Header with Minimize Button on the Box -->
-      <div class="sidebar-left__header">
-        <span class="sidebar-left__title">MARKET EXPLORER</span>
-        <button class="panel-collapse-btn" onclick="toggleSidebarLeft()" title="Minimize Left Sidebar">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        </button>
-      </div>
-
-      <!-- Search -->
-      <div class="sidebar-left__search">
-        <div class="search-box">
-          <span class="search-box__icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </span>
-          <input
-            type="text"
-            class="search-box__input"
-            id="dash-search-input"
-            placeholder="Search Indian stock (e.g. RELIANCE, TCS, INFY)..."
-            autocomplete="off"
-          >
-          <div class="search-box__results" id="dash-search-results"></div>
-        </div>
-      </div>
-
-      <!-- Timeframe Selector -->
-      <div class="timeframe-selector">
-        <div class="timeframe-selector__label">Resolution / Timeframe</div>
-        <div class="timeframe-selector__buttons">
-          <button class="timeframe-btn" data-interval="1min">1m</button>
-          <button class="timeframe-btn" data-interval="3min">3m</button>
-          <button class="timeframe-btn" data-interval="5min">5m</button>
-          <button class="timeframe-btn" data-interval="15min">15m</button>
-          <button class="timeframe-btn" data-interval="30min">30m</button>
-          <button class="timeframe-btn" data-interval="1h">1h</button>
-          <button class="timeframe-btn active" data-interval="1day">1D</button>
-          <button class="timeframe-btn" data-interval="1week">1W</button>
-        </div>
-      </div>
-
-      <!-- Watchlist -->
-      <div class="watchlist">
-        <div class="watchlist__header">
-          <span class="watchlist__title">Market Watchlist (NSE)</span>
-        </div>
-        <div id="watchlist-items">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-
-    </aside>
-
     <!-- ── Main Chart Area ── -->
     <main class="chart-area">
 
-      <!-- Chart Header -->
+      <!-- Chart Header Toolbar -->
       <div class="chart-header">
-        <div class="chart-header__left">
-          <div class="chart-header__company-selector" id="chart-company-selector" title="Click to switch company">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="chart-header__symbol" id="chart-symbol">RELIANCE</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="company-dropdown-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </div>
-            <div class="chart-header__company" id="chart-company">Reliance Industries Ltd.</div>
 
-            <!-- Quick Company Switcher Dropdown -->
-            <div class="company-switcher-dropdown" id="company-switcher-dropdown">
-              <div class="company-switcher-search">
-                <input type="text" id="company-switcher-input" placeholder="Search NSE/BSE company..." autocomplete="off">
-              </div>
-              <div class="company-switcher-list" id="company-switcher-list">
-                <!-- Top companies populated dynamically -->
-              </div>
+        <!-- Stock Selector / Quick Switcher -->
+        <div class="chart-toolbar__search-btn" id="chart-company-selector" title="Search NSE/BSE stock or switch company">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="chart-header__symbol" id="chart-symbol">RELIANCE</span>
+          <span class="chart-header__company" id="chart-company">Reliance Industries Ltd.</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="company-dropdown-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
+
+          <!-- Quick Company Switcher Dropdown -->
+          <div class="company-switcher-dropdown" id="company-switcher-dropdown">
+            <div class="company-switcher-search">
+              <input type="text" id="company-switcher-input" placeholder="Search Indian stock (e.g. RELIANCE, TCS, INFY)..." autocomplete="off">
+            </div>
+            <div class="company-switcher-list" id="company-switcher-list">
+              <!-- Top companies populated dynamically -->
             </div>
           </div>
-          <div class="chart-header__price-info">
-            <span class="chart-header__price" id="chart-price">—</span>
-            <span class="chart-header__change" id="chart-change">—</span>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <!-- Resolution / Timeframe Selector Group -->
+        <div class="header-timeframe-group" id="header-timeframe-group">
+          <button class="header-timeframe-btn" data-interval="1min">1m</button>
+          <button class="header-timeframe-btn" data-interval="3min">3m</button>
+          <button class="header-timeframe-btn" data-interval="5min">5m</button>
+          <button class="header-timeframe-btn" data-interval="15min">15m</button>
+          <button class="header-timeframe-btn" data-interval="30min">30m</button>
+          <button class="header-timeframe-btn" data-interval="1h">1h</button>
+          <button class="header-timeframe-btn active" data-interval="1day">1D</button>
+          <button class="header-timeframe-btn" data-interval="1week">1W</button>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <!-- Chart Type Icon -->
+        <button class="toolbar-icon-btn active" title="Candlestick Chart">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="2" x2="9" y2="22"></line><rect x="6" y="6" width="6" height="12" fill="currentColor" fill-opacity="0.3"></rect><line x1="17" y1="2" x2="17" y2="22"></line><rect x="14" y="10" width="6" height="7" fill="currentColor" fill-opacity="0.3"></rect></svg>
+        </button>
+
+        <div class="toolbar-divider"></div>
+
+        <!-- ƒx Indicators Dropdown Button & Menu -->
+        <div class="indicators-dropdown-container">
+          <button class="indicators-dropdown-btn" id="btn-indicators-dropdown" onclick="toggleIndicatorsDropdown(event)" title="Technical Indicators & Overlays">
+            <span style="font-style:italic;font-family:serif;font-weight:bold;margin-right:2px">ƒx</span> Indicators
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+
+          <div class="indicators-dropdown-menu" id="indicators-dropdown-menu">
+            <div class="dropdown-menu-header">Technical Indicators & Overlays</div>
+
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="targets" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">Execution Targets (TP1, TP2, Stop)</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="patterns" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">Pattern Recognition Markers</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="volume" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">Volume Histogram</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="vwap" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">VWAP (Volume Weighted Avg Price)</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="sma20" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">SMA 20 (Simple Moving Average)</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="sma50" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">SMA 50 (Simple Moving Average)</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="ema12" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">EMA 12 (Exponential Moving Average)</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="ema26" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">EMA 26 (Exponential Moving Average)</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="bb" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">Bollinger Bands</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="sr" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">Support & Resistance Levels</span>
+            </label>
+            <label class="dropdown-item">
+              <input type="checkbox" data-overlay="trendlines" onchange="toggleOverlayFromMenu(this)">
+              <span class="dropdown-item-text">Algorithmic Trendlines</span>
+            </label>
+
+            <div class="dropdown-menu-divider"></div>
+
+            <button class="dropdown-action-btn" onclick="copyTradeSetupToClipboard()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              Copy Trade Setup Plan
+            </button>
           </div>
+        </div>
+
+        <!-- Live Price & Change Readout -->
+        <div class="chart-header__price-info">
+          <span class="chart-header__price" id="chart-price">—</span>
+          <span class="chart-header__change" id="chart-change">—</span>
         </div>
 
         <!-- Live Crosshair OHLC readout -->
         <div class="chart-live-ohlc" id="chart-live-ohlc" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary)"></div>
 
-        <!-- Overlays Bar -->
-        <div class="chart-header__right">
-          <button class="chart-header__indicator-btn active" id="btn-toggle-targets" data-overlay="targets">Targets</button>
-          <button class="chart-header__indicator-btn active" id="btn-toggle-patterns" data-overlay="patterns">Patterns</button>
-          <button class="chart-header__indicator-btn active" id="btn-toggle-volume" data-overlay="volume">Volume</button>
-          <button class="chart-header__indicator-btn active" data-overlay="vwap">VWAP</button>
-          <button class="chart-header__indicator-btn active" data-overlay="sma20">SMA 20</button>
-          <button class="chart-header__indicator-btn active" data-overlay="sma50">SMA 50</button>
-          <button class="chart-header__indicator-btn" data-overlay="ema12">EMA 12</button>
-          <button class="chart-header__indicator-btn" data-overlay="ema26">EMA 26</button>
-          <button class="chart-header__indicator-btn" data-overlay="bb">Bollinger</button>
-          <button class="chart-header__indicator-btn" data-overlay="sr">S/R Levels</button>
-          <button class="chart-header__indicator-btn" data-overlay="trendlines">Trendlines</button>
-          <button class="chart-header__indicator-btn" onclick="copyTradeSetupToClipboard()" title="Copy Trade Setup">Copy Plan</button>
-        </div>
+        <div class="toolbar-divider"></div>
+
+        <!-- Screenshot Button -->
+        <button class="toolbar-icon-btn toolbar-icon-btn--camera" id="btn-chart-screenshot" onclick="takeChartScreenshot()" title="Take Chart Screenshot">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </button>
+
       </div>
 
-      <!-- Left and Right Sidebar Edge Minimize/Expand Toggles -->
-      <button class="sidebar-edge-toggle sidebar-edge-toggle--left" id="btn-toggle-sidebar-left" title="Minimize Watchlist" onclick="toggleSidebarLeft()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
-      </button>
+      <!-- Right Sidebar Edge Minimize/Expand Toggle -->
       <button class="sidebar-edge-toggle sidebar-edge-toggle--right" id="btn-toggle-sidebar-right" title="Minimize Technical Inspector" onclick="toggleSidebarRight()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
       </button>

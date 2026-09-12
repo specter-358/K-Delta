@@ -733,7 +733,7 @@ async function saveAnalysisToHistory(quote, prediction) {
  * Setup Timeframe Selector
  */
 function setupTimeframeSelector() {
-  const buttons = document.querySelectorAll('.timeframe-btn');
+  const buttons = document.querySelectorAll('.header-timeframe-btn, .timeframe-btn');
   buttons.forEach(btn => {
     btn.addEventListener('click', () => {
       buttons.forEach(b => b.classList.remove('active'));
@@ -807,35 +807,54 @@ function getCleanStockName(sym, fallbackName) {
 }
 
 /**
- * Setup Technical Indicator Overlay Buttons
+ * Setup Technical Indicator Overlay Buttons & Dropdown
  */
 function setupIndicatorButtons() {
-  const buttons = document.querySelectorAll('.chart-header__indicator-btn[data-overlay]');
-  buttons.forEach(btn => {
-    const overlay = btn.dataset.overlay;
-    if (!overlay) return;
+  updateIndicatorCheckboxes();
 
-    if (activeOverlays.has(overlay)) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
+  // Close dropdown on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.indicators-dropdown-container')) {
+      const container = document.querySelector('.indicators-dropdown-container');
+      if (container) container.classList.remove('active');
     }
-
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (activeOverlays.has(overlay)) {
-        activeOverlays.delete(overlay);
-        btn.classList.remove('active');
-        showToast(`${overlay.toUpperCase()} hidden`, 'info');
-      } else {
-        activeOverlays.add(overlay);
-        btn.classList.add('active');
-        showToast(`${overlay.toUpperCase()} active`, 'success');
-      }
-      saveActiveOverlays();
-      updateOverlays(currentPrediction);
-    });
   });
+}
+
+function updateIndicatorCheckboxes() {
+  const menu = document.getElementById('indicators-dropdown-menu');
+  if (!menu) return;
+  const checkboxes = menu.querySelectorAll('input[type="checkbox"][data-overlay]');
+  checkboxes.forEach(cb => {
+    const overlay = cb.dataset.overlay;
+    cb.checked = activeOverlays.has(overlay);
+  });
+}
+
+function toggleOverlayFromMenu(checkbox) {
+  const overlay = checkbox.dataset.overlay;
+  if (!overlay) return;
+
+  if (checkbox.checked) {
+    activeOverlays.add(overlay);
+    showToast(`${overlay.toUpperCase()} active`, 'success');
+  } else {
+    activeOverlays.delete(overlay);
+    showToast(`${overlay.toUpperCase()} hidden`, 'info');
+  }
+
+  saveActiveOverlays();
+  updateOverlays(currentPrediction);
+}
+
+function toggleIndicatorsDropdown(e) {
+  if (e) e.stopPropagation();
+  const container = document.querySelector('.indicators-dropdown-container');
+  if (!container) return;
+  const isActive = container.classList.toggle('active');
+  if (isActive) {
+    updateIndicatorCheckboxes();
+  }
 }
 
 /**
@@ -1207,6 +1226,38 @@ function toggleSidebarRight(forceState) {
   triggerSmoothChartResize();
 }
 
+/**
+ * Take & Download Chart Screenshot
+ */
+function takeChartScreenshot() {
+  if (!ChartManager || typeof ChartManager.takeScreenshot !== 'function') {
+    showToast('Chart screenshot engine not ready', 'error');
+    return;
+  }
+
+  const canvas = ChartManager.takeScreenshot();
+  if (!canvas) {
+    showToast('Unable to capture chart screenshot', 'error');
+    return;
+  }
+
+  try {
+    const dataUrl = typeof canvas.toDataURL === 'function' ? canvas.toDataURL('image/png') : canvas;
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `${currentSymbol.replace(/[^A-Z0-9]/g, '_')}_${currentInterval}_${dateStr}.png`;
+    link.download = filename;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Chart screenshot saved as ${filename}`, 'success');
+  } catch (err) {
+    console.error('Screenshot download error:', err);
+    showToast('Failed to download chart screenshot', 'error');
+  }
+}
+
 // Global Exports
 if (typeof window !== 'undefined') {
   window.loadSymbol = loadSymbol;
@@ -1214,5 +1265,8 @@ if (typeof window !== 'undefined') {
   window.copyTradeSetupToClipboard = copyTradeSetupToClipboard;
   window.toggleSidebarLeft = toggleSidebarLeft;
   window.toggleSidebarRight = toggleSidebarRight;
+  window.toggleIndicatorsDropdown = toggleIndicatorsDropdown;
+  window.toggleOverlayFromMenu = toggleOverlayFromMenu;
+  window.takeChartScreenshot = takeChartScreenshot;
 }
 

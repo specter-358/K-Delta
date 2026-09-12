@@ -5,7 +5,7 @@
 
 .dashboard {
   display: grid;
-  grid-template-columns: 270px 1fr 370px;
+  grid-template-columns: 1fr 370px;
   min-height: calc(100vh - 86px);
   background: var(--bg-primary);
   border-top: 1px solid var(--border-color);
@@ -13,16 +13,8 @@
   position: relative;
 }
 
-.dashboard.left-collapsed {
-  grid-template-columns: 0px 1fr 370px;
-}
-
 .dashboard.right-collapsed {
-  grid-template-columns: 270px 1fr 0px;
-}
-
-.dashboard.left-collapsed.right-collapsed {
-  grid-template-columns: 0px 1fr 0px;
+  grid-template-columns: 1fr 0px;
 }
 
 /* ═════════════════════════════════════════════════════════════
@@ -262,49 +254,52 @@
   min-height: 580px;
 }
 
-/* ── Chart Header ── */
+/* ── Chart Header Toolbar ── */
 .chart-header {
-  padding: 8px 12px;
+  padding: 6px 12px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: visible;
+  position: relative;
+  z-index: 100;
 }
 
-.chart-header__left {
+/* Toolbar Divider */
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-color);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Stock Selector Button in Header */
+.chart-toolbar__search-btn {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.chart-header__company-selector {
+  gap: 8px;
   position: relative;
   cursor: pointer;
-  padding: 3px 6px;
+  padding: 4px 8px;
   border-radius: var(--radius-xs);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   transition: all var(--transition-fast);
-  border: 1px solid transparent;
+  flex-shrink: 0;
 }
 
-.chart-header__company-selector:hover {
+.chart-toolbar__search-btn:hover {
   background: var(--bg-card-hover);
-  border-color: var(--border-active);
-}
-
-.company-dropdown-arrow {
-  color: var(--text-muted);
-  transition: transform var(--transition-fast);
-}
-
-.chart-header__company-selector.active .company-dropdown-arrow {
-  transform: rotate(180deg);
+  border-color: var(--accent-blue);
 }
 
 .chart-header__symbol {
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 900;
   font-family: var(--font-mono);
   color: var(--text-primary);
@@ -315,58 +310,218 @@
   font-size: 0.72rem;
   color: var(--text-muted);
   white-space: nowrap;
-  max-width: 180px;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.company-dropdown-arrow {
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.chart-toolbar__search-btn.active .company-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Header Timeframe Group */
+.header-timeframe-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.header-timeframe-btn {
+  padding: 3px 7px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.header-timeframe-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.header-timeframe-btn.active {
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  font-weight: 800;
+}
+
+/* Indicators Dropdown */
+.indicators-dropdown-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.indicators-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.indicators-dropdown-btn:hover,
+.indicators-dropdown-container.active .indicators-dropdown-btn {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.indicators-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 290px;
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  z-index: 1000;
+}
+
+.indicators-dropdown-container.active .indicators-dropdown-menu {
+  display: flex;
+}
+
+.dropdown-menu-header {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 4px;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  transition: background var(--transition-fast);
+}
+
+.dropdown-item:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.dropdown-item input[type="checkbox"] {
+  accent-color: var(--accent-blue);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.dropdown-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+.dropdown-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+  background: var(--accent-blue-dim);
+  border: 1px solid var(--accent-blue);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.dropdown-action-btn:hover {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+/* Generic Toolbar Icon Buttons */
+.toolbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.toolbar-icon-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-active);
+}
+
+.toolbar-icon-btn.active {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-dim);
+}
+
+.toolbar-icon-btn--camera:hover {
+  color: #10b981;
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
 }
 
 .chart-header__price-info {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  margin-left: auto;
 }
 
 .chart-header__price {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 800;
   font-family: var(--font-mono);
   color: var(--text-primary);
 }
 
 .chart-header__change {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   font-family: var(--font-mono);
-}
-
-.chart-header__right {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  flex-wrap: wrap;
-}
-
-.chart-header__indicator-btn {
-  padding: 3px 7px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--text-muted);
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-xs);
-  transition: all var(--transition-fast);
-}
-
-.chart-header__indicator-btn:hover {
-  color: var(--text-primary);
-  border-color: var(--border-active);
-}
-
-.chart-header__indicator-btn.active {
-  background: var(--accent-blue-dim);
-  color: var(--accent-blue);
-  border-color: var(--accent-blue);
 }
 
 /* ── Edge Minimize/Expand Toggles ── */
