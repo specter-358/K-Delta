@@ -456,14 +456,22 @@ async function handleRemoveSymbol(symbol) {
   // Update local list immediately
   watchlistSymbols = watchlistSymbols.filter(s => s !== cleanSym);
   watchlistQuotes = watchlistQuotes.filter(q => q.symbol !== cleanSym);
-  saveWatchlist(watchlistSymbols);
+
+  // Save to localStorage immediately
+  try {
+    localStorage.setItem('kdelta_watchlist', JSON.stringify(watchlistSymbols));
+  } catch (e) {}
 
   renderWatchlistTable();
   updateWatchlistStats();
   showToast(`Removed ${cleanSym} from Watchlist`, 'info');
 
-  // Sync with backend API
-  API.removeFromWatchlistAPI(cleanSym).catch(() => {});
+  // Sync complete list to backend cleanly (prevents race conditions)
+  try {
+    await API.syncWatchlist(watchlistSymbols);
+  } catch (err) {
+    console.warn('Backend sync failed on remove:', err);
+  }
 }
 
 /**
