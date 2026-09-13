@@ -1,5 +1,85 @@
 [
   {
+    "id": "audit_1789291751933_ep6kt",
+    "timestamp": "2026-09-13T09:29:11.933Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_maari_001",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789291746919_fqy4z",
+    "timestamp": "2026-09-13T09:29:06.919Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta"
+    }
+  },
+  {
+    "id": "audit_1789291663436_nbhc5",
+    "timestamp": "2026-09-13T09:27:43.436Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_maari_001",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789291443707_msx9i",
+    "timestamp": "2026-09-13T09:24:03.707Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_4@test.com"
+    }
+  },
+  {
+    "id": "audit_1789291443699_ozngy",
+    "timestamp": "2026-09-13T09:24:03.699Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_3@test.com"
+    }
+  },
+  {
+    "id": "audit_1789291443688_ofjyy",
+    "timestamp": "2026-09-13T09:24:03.688Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_2@test.com"
+    }
+  },
+  {
+    "id": "audit_1789291443680_lgu9b",
+    "timestamp": "2026-09-13T09:24:03.680Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_1@test.com"
+    }
+  },
+  {
+    "id": "audit_1789291443672_clbat",
+    "timestamp": "2026-09-13T09:24:03.672Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_0@test.com"
+    }
+  },
+  {
     "id": "audit_1789291136814_xwao4",
     "timestamp": "2026-09-13T09:18:56.814Z",
     "eventType": "LOGIN_FAILED_NOT_FOUND",
