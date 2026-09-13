@@ -564,14 +564,29 @@ function requireAuthPage() {
   }
 }
 
-// Enforce auth check immediately on script load
-requireAuthPage();
+function updateGlobalISTClock() {
+  const clockEl = document.getElementById('live-ist-clock');
+  if (!clockEl) return;
+  const now = new Date();
+  clockEl.textContent = now.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }) + ' IST';
+}
 
-// Run theme and auth render immediately
+// Run theme, auth render and global clock immediately
 initTheme();
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   renderNavbarAuth();
+  updateGlobalISTClock();
+  setInterval(updateGlobalISTClock, 1000);
 });
 
 /**

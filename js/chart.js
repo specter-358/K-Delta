@@ -604,8 +604,19 @@ const ChartManager = (() => {
         width: containerEl.clientWidth || 800,
         height: containerEl.clientHeight || 560,
       });
+      autoFit();
     } catch (e) {
       console.warn('handleResize error:', e);
+    }
+  }
+
+  function autoFit() {
+    if (!chart) return;
+    try {
+      chart.priceScale('right').applyOptions({ autoScale: true });
+      chart.timeScale().fitContent();
+    } catch (e) {
+      console.warn('autoFit error:', e);
     }
   }
 
@@ -641,6 +652,7 @@ const ChartManager = (() => {
     takeScreenshot,
     updateTheme,
     handleResize,
+    autoFit,
     destroy,
   };
 })();

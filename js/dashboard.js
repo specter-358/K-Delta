@@ -284,6 +284,11 @@ function runAnalysisAndRender(updateMarkers = true) {
   renderIndicators(currentPrediction.indicators);
   renderReasoning(currentPrediction);
   renderBannerAction(currentPrediction);
+
+  // 6. Auto-fit chart time and price scales so new duration candles and indicator overlays fit full screen cleanly
+  if (window.ChartManager && typeof window.ChartManager.autoFit === 'function') {
+    window.ChartManager.autoFit();
+  }
 }
 
 /**
@@ -728,12 +733,15 @@ async function saveAnalysisToHistory(quote, prediction) {
 function setupTimeframeSelector() {
   const buttons = document.querySelectorAll('.header-timeframe-btn, .timeframe-btn');
   buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       buttons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentInterval = btn.dataset.interval;
       saveTimeframe(currentInterval);
-      loadSymbol(currentSymbol);
+      await loadSymbol(currentSymbol);
+      if (window.ChartManager && typeof window.ChartManager.autoFit === 'function') {
+        window.ChartManager.autoFit();
+      }
     });
 
     if (btn.dataset.interval === currentInterval) {
