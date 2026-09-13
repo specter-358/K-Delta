@@ -8,15 +8,15 @@
 
 /* ── Global Institutional Terminal Tokens ── */
 :root {
-  /* Deep Obsidian Void Surfaces */
-  --bg-primary: #0b0f17;
-  --bg-secondary: #111827;
-  --bg-tertiary: #181c24;
-  --bg-card: #151c2a;
-  --bg-card-hover: #1e2738;
-  --bg-surface: #141c2c;
-  --bg-input: #0d131f;
-  --bg-glass: rgba(11, 15, 23, 0.88);
+  /* Deep Pitch Black OLED Void Surfaces */
+  --bg-primary: #000000;
+  --bg-secondary: #05070a;
+  --bg-tertiary: #0b0e14;
+  --bg-card: #080b12;
+  --bg-card-hover: #101622;
+  --bg-surface: #06080d;
+  --bg-input: #030508;
+  --bg-glass: rgba(0, 0, 0, 0.94);
 
   /* Financial Hierarchy Typography */
   --text-primary: #f8fafc;
@@ -447,10 +447,10 @@ img {
   top: 42px;
   right: 0;
   width: 220px;
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #080c14;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 10px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9);
   z-index: 9999;
   padding: 8px 0;
   display: none;
@@ -510,8 +510,8 @@ img {
 .profile-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(5px);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   z-index: 10000;
   display: flex;
   align-items: center;
@@ -522,11 +522,11 @@ img {
 .profile-modal-box {
   width: 100%;
   max-width: 440px;
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #080c14;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
   padding: 24px 28px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.95);
 }
 
 .profile-modal-box .form-group {
@@ -549,8 +549,8 @@ img {
 .profile-modal-box .form-input {
   width: 100% !important;
   padding: 12px 14px !important;
-  background: #020617 !important;
-  border: 1.5px solid #334155 !important;
+  background: #000000 !important;
+  border: 1.5px solid #1e293b !important;
   border-radius: 8px !important;
   color: #f8fafc !important;
   font-size: 0.92rem !important;
