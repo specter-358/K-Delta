@@ -69,7 +69,7 @@
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #38bdf8 0%, #06b6d4 50%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #e9d5ff 0%, #c084fc 50%, #a855f7 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -94,22 +94,64 @@
   max-width: 640px;
   width: 100%;
   position: relative;
-  border-radius: var(--radius-md);
-  padding: 1.5px;
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.4), rgba(255, 255, 255, 0.08), rgba(139, 92, 246, 0.3));
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 24px rgba(6, 182, 212, 0.15);
+  border-radius: 10px;
+  padding: 1px;
+  background: #000000;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(168, 85, 247, 0.25);
   transition: all var(--transition-normal);
 }
 
+/* Rotating Violet Conic-Gradient Ring */
+.hero__search .search-box::before {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: -100%;
+  width: 300%;
+  height: 300%;
+  background: conic-gradient(
+    from 0deg,
+    #a855f7 0deg,
+    #c084fc 60deg,
+    rgba(168, 85, 247, 0.15) 120deg,
+    transparent 180deg,
+    #7c3aed 270deg,
+    #a855f7 360deg
+  );
+  animation: rotateVioletRing 9s linear infinite;
+  z-index: 0;
+}
+
+@keyframes rotateVioletRing {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 .hero__search .search-box:focus-within {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.85), rgba(59, 130, 246, 0.6), rgba(139, 92, 246, 0.7));
-  box-shadow: 0 12px 40px rgba(6, 182, 212, 0.3), 0 0 35px rgba(6, 182, 212, 0.25);
+  box-shadow: 0 12px 40px rgba(168, 85, 247, 0.4), 0 0 30px rgba(192, 132, 252, 0.3);
+}
+
+.hero__search .search-box:focus-within::before {
+  animation-duration: 5s;
 }
 
 .hero__search .search-box__input {
+  position: relative;
+  z-index: 2;
   background: var(--bg-secondary) !important;
   border: none !important;
-  border-radius: calc(var(--radius-md) - 1.5px) !important;
+  border-radius: 9px !important;
+  box-shadow: none !important;
+}
+
+.hero__search .search-box__icon,
+.hero__search .search-box__hotkey {
+  z-index: 3;
 }
 
 .hero__trending {
