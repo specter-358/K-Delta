@@ -526,13 +526,38 @@ function initTheme() {
   applyTheme('dark');
 }
 
+/* ═════════════════════════════════════════════════════════════
+   AUTH & SESSION MANAGEMENT
+   ═════════════════════════════════════════════════════════════ */
+
+function getAuthToken() {
+  return localStorage.getItem('kdelta_token') || sessionStorage.getItem('kdelta_token') || null;
+}
+
+function getAuthUser() {
+  try {
+    const raw = localStorage.getItem('kdelta_user') || sessionStorage.getItem('kdelta_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearAuth() {
+  localStorage.removeItem('kdelta_token');
+  localStorage.removeItem('kdelta_user');
+  localStorage.removeItem('kdelta_remember');
+  sessionStorage.removeItem('kdelta_token');
+  sessionStorage.removeItem('kdelta_user');
+}
+
 /**
  * Require Login to Access Website
  */
 function requireAuthPage() {
   const path = window.location.pathname;
   const isLoginPage = path.endsWith('login.html');
-  const token = localStorage.getItem('kdelta_token');
+  const token = getAuthToken();
 
   if (!isLoginPage && !token) {
     window.location.href = 'login.html';
@@ -556,8 +581,8 @@ function renderNavbarAuth() {
   const statusContainer = document.querySelector('.navbar__market-status');
   if (!statusContainer) return;
 
-  const token = localStorage.getItem('kdelta_token');
-  const user = JSON.parse(localStorage.getItem('kdelta_user') || 'null');
+  const token = getAuthToken();
+  const user = getAuthUser();
 
   let avatarWrap = document.getElementById('navbar-avatar-wrap');
   if (!avatarWrap) {
@@ -570,7 +595,7 @@ function renderNavbarAuth() {
 
   if (token && user) {
     const name = user.name || 'Key';
-    const email = user.email || '';
+    const email = user.email || 'maari@kdelta.com';
     const initial = name.charAt(0).toUpperCase();
     const avatarContent = user.avatarUrl 
       ? `<img src="${user.avatarUrl}" alt="${name}">` 
@@ -672,7 +697,7 @@ function injectProfileModalHTML() {
         <!-- Email Address Field -->
         <div class="form-group">
           <label class="form-label" for="profile-email">Email Address :</label>
-          <input type="email" id="profile-email" class="form-input" placeholder="key@kdelta.com" required>
+          <input type="email" id="profile-email" class="form-input" placeholder="name@example.com" required>
         </div>
 
         <!-- Current Password Field (Compulsory to save changes) -->
@@ -744,9 +769,9 @@ function openProfileModal() {
   const overlay = document.getElementById('profile-modal-overlay');
   if (!overlay) return;
 
-  const user = JSON.parse(localStorage.getItem('kdelta_user') || '{}');
+  const user = getAuthUser() || {};
   document.getElementById('profile-name').value = user.name || 'Key';
-  document.getElementById('profile-email').value = user.email || '';
+  document.getElementById('profile-email').value = user.email || 'maari@kdelta.com';
   document.getElementById('profile-avatar-url').value = user.avatarUrl || '';
   document.getElementById('profile-current-password').value = '';
   document.getElementById('profile-new-password').value = '';
@@ -791,7 +816,7 @@ async function handleSaveProfile(event) {
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving...';
 
-    const token = localStorage.getItem('kdelta_token');
+    const token = getAuthToken();
     const response = await fetch('/api/auth/profile', {
       method: 'PUT',
       headers: {
@@ -807,8 +832,13 @@ async function handleSaveProfile(event) {
     }
 
     // Save updated token & user
-    localStorage.setItem('kdelta_token', data.token);
-    localStorage.setItem('kdelta_user', JSON.stringify(data.user));
+    if (localStorage.getItem('kdelta_token')) {
+      localStorage.setItem('kdelta_token', data.token);
+      localStorage.setItem('kdelta_user', JSON.stringify(data.user));
+    } else {
+      sessionStorage.setItem('kdelta_token', data.token);
+      sessionStorage.setItem('kdelta_user', JSON.stringify(data.user));
+    }
 
     if (alertBox) {
       alertBox.className = 'login-alert login-alert--success';
@@ -831,8 +861,7 @@ async function handleSaveProfile(event) {
 }
 
 function handleLogout() {
-  localStorage.removeItem('kdelta_token');
-  localStorage.removeItem('kdelta_user');
+  clearAuth();
   window.location.href = 'login.html';
 }
 

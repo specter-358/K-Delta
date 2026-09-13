@@ -39,7 +39,7 @@
       <form id="form-login" onsubmit="handleLoginSubmit(event)">
         <div class="login-field">
           <label for="login-email">Email Address</label>
-          <input type="email" id="login-email" placeholder="trader@kdelta.com" required autocomplete="email">
+          <input type="email" id="login-email" placeholder="name@example.com" required autocomplete="email">
         </div>
 
         <div class="login-field">
@@ -74,7 +74,7 @@
 
         <div class="login-row-options">
           <label class="login-remember">
-            <input type="checkbox" checked>
+            <input type="checkbox" id="login-remember" checked>
             <span>Remember this device</span>
           </label>
           <span style="font-size:0.75rem; color:#64748b;">Protected Session</span>
@@ -82,12 +82,6 @@
 
         <button type="submit" id="login-submit-btn" class="btn-login-submit">Access Terminal →</button>
       </form>
-
-      <!-- Quick Demo Login Hint -->
-      <div class="demo-login-hint">
-        <span>Quick Demo Access:</span>
-        <button type="button" onclick="fillDemoCredentials('trader')">Fill Key Credentials</button>
-      </div>
 
     </div>
 

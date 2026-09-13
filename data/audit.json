@@ -1,5 +1,385 @@
 [
   {
+    "id": "audit_1789289903330_mp9pn",
+    "timestamp": "2026-09-13T08:58:23.330Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_4@test.com"
+    }
+  },
+  {
+    "id": "audit_1789289903321_86xpi",
+    "timestamp": "2026-09-13T08:58:23.321Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_3@test.com"
+    }
+  },
+  {
+    "id": "audit_1789289903313_j0ayz",
+    "timestamp": "2026-09-13T08:58:23.313Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_2@test.com"
+    }
+  },
+  {
+    "id": "audit_1789289903304_9wjnj",
+    "timestamp": "2026-09-13T08:58:23.304Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_1@test.com"
+    }
+  },
+  {
+    "id": "audit_1789289903296_crtp6",
+    "timestamp": "2026-09-13T08:58:23.296Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_0@test.com"
+    }
+  },
+  {
+    "id": "audit_1789289814075_nmbwo",
+    "timestamp": "2026-09-13T08:56:54.075Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_maari_001",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789289554729_2d02o",
+    "timestamp": "2026-09-13T08:52:34.729Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_maari_001",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789289494729_ay4lb",
+    "timestamp": "2026-09-13T08:51:34.729Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_2@test.com"
+    }
+  },
+  {
+    "id": "audit_1789289494724_gsjbz",
+    "timestamp": "2026-09-13T08:51:34.724Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_1@test.com"
+    }
+  },
+  {
+    "id": "audit_1789289494717_7806m",
+    "timestamp": "2026-09-13T08:51:34.717Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_0@test.com"
+    }
+  },
+  {
+    "id": "audit_1789289489446_taqqg",
+    "timestamp": "2026-09-13T08:51:29.446Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "other@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789289443465_7vk11",
+    "timestamp": "2026-09-13T08:50:43.465Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_maari_001",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789289323945_ptwlv",
+    "timestamp": "2026-09-13T08:48:43.945Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285900302_tx3fd",
+    "timestamp": "2026-09-13T07:51:40.302Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285867884_g6qbo",
+    "timestamp": "2026-09-13T07:51:07.884Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_admin_001",
+    "ip": "::1",
+    "details": {
+      "email": "admin@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285835862_4enid",
+    "timestamp": "2026-09-13T07:50:35.862Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285769232_104ro",
+    "timestamp": "2026-09-13T07:49:29.232Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285744917_bf8ar",
+    "timestamp": "2026-09-13T07:49:04.917Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285716232_4bo82",
+    "timestamp": "2026-09-13T07:48:36.232Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285654085_4a06o",
+    "timestamp": "2026-09-13T07:47:34.085Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285622485_j0auu",
+    "timestamp": "2026-09-13T07:47:02.485Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285602600_h323a",
+    "timestamp": "2026-09-13T07:46:42.600Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285574597_1m2t9",
+    "timestamp": "2026-09-13T07:46:14.597Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285516779_aywpe",
+    "timestamp": "2026-09-13T07:45:16.779Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_admin_001",
+    "ip": "::1",
+    "details": {
+      "email": "admin@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285476694_miztr",
+    "timestamp": "2026-09-13T07:44:36.694Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285427441_bvt5f",
+    "timestamp": "2026-09-13T07:43:47.441Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285368184_dq862",
+    "timestamp": "2026-09-13T07:42:48.184Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285328984_deqrz",
+    "timestamp": "2026-09-13T07:42:08.984Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285282876_13zk2",
+    "timestamp": "2026-09-13T07:41:22.876Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285211313_lzo8a",
+    "timestamp": "2026-09-13T07:40:11.313Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285117647_irc58",
+    "timestamp": "2026-09-13T07:38:37.647Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285077911_b12lh",
+    "timestamp": "2026-09-13T07:37:57.911Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789285032416_mijje",
+    "timestamp": "2026-09-13T07:37:12.416Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789284980130_pcyri",
+    "timestamp": "2026-09-13T07:36:20.130Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789284955391_3cqy3",
+    "timestamp": "2026-09-13T07:35:55.391Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789284921180_buwlh",
+    "timestamp": "2026-09-13T07:35:21.180Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789284888067_q3ffi",
+    "timestamp": "2026-09-13T07:34:48.067Z",
+    "eventType": "LOGIN_FAILED_INVALID_PASSWORD",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
+    "id": "audit_1789284574684_es2kl",
+    "timestamp": "2026-09-13T07:29:34.685Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_demo_002",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
     "id": "audit_1789284444234_v4fjr",
     "timestamp": "2026-09-13T07:27:24.234Z",
     "eventType": "LOGIN_FAILED_NOT_FOUND",

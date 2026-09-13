@@ -25,28 +25,19 @@ function loadData() {
     if (fs.existsSync(USERS_FILE)) {
       users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
     } else {
-      // Seed default admin user for initial installation
-      const adminHash = bcrypt.hashSync('Admin@KDelta2026', 10);
+      // Seed default user for initial installation
+      const passHash = bcrypt.hashSync('KDelta@1705', 10);
       users = [
         {
-          userId: 'usr_admin_001',
-          email: 'admin@kdelta.com',
+          userId: 'usr_maari_001',
+          email: 'maari@kdelta.com',
           name: 'Key',
-          passwordHash: adminHash,
-          role: 'admin',
-          twoFactorEnabled: false,
-          twoFactorSecret: null,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          userId: 'usr_demo_002',
-          email: 'trader@kdelta.com',
-          name: 'Key',
-          passwordHash: bcrypt.hashSync('TraderPass2026!', 10),
+          passwordHash: passHash,
           role: 'user',
           twoFactorEnabled: false,
           twoFactorSecret: null,
           createdAt: new Date().toISOString(),
+          avatarUrl: ''
         }
       ];
       saveUsers();
@@ -136,6 +127,7 @@ module.exports = {
    * Authenticate User Login
    */
   loginUser({ email, password }, ip) {
+    loadData();
     const cleanEmail = String(email || '').trim().toLowerCase();
     const user = users.find(u => u.email === cleanEmail);
 

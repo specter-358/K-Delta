@@ -166,7 +166,9 @@ const API = (() => {
       ...(options.headers || {}),
     };
 
-    const token = localStorage.getItem('kdelta_token');
+    const token = typeof getAuthToken === 'function' 
+      ? getAuthToken() 
+      : (localStorage.getItem('kdelta_token') || sessionStorage.getItem('kdelta_token'));
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
