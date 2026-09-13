@@ -355,9 +355,9 @@ function setupSearch() {
             const displayInfo = formatInstrumentDisplay(r.symbol, r.name, r.exchange);
             return `
         <div class="search-result-item" onclick="navigateToDashboard('${r.symbol}', '${(displayInfo.nameDisplay || '').replace(/'/g, "\\'")}')">
-          <div>
-            <div class="search-result-item__symbol">${displayInfo.symbolDisplay}</div>
-            <div class="search-result-item__name">${displayInfo.nameDisplay}</div>
+          <div style="text-align:left; align-items:flex-start;">
+            <div class="search-result-item__symbol" style="text-align:left;">${displayInfo.symbolDisplay}</div>
+            <div class="search-result-item__name" style="text-align:left;">${displayInfo.nameDisplay}</div>
           </div>
           <span class="search-result-item__exchange">${displayInfo.exchangeDisplay}</span>
         </div>`;

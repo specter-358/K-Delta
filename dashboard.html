@@ -7,8 +7,7 @@
   <title>K-Delta</title>
   <meta name="description"
     content="Candlestick chart with real-time pattern recognition, multi-indicator confluence scoring, and execution targets for Indian equities and indices.">
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><path d='M30 70 L30 30 M30 40 L45 40 L45 60 L30 60 M55 80 L55 20 M55 30 L70 30 L70 55 L55 55' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round' fill='%2338bdf8' fill-opacity='0.2'/></svg>">
+  <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <!-- TradingView Lightweight Charts (Local + CDN Fallback) -->
@@ -38,7 +37,7 @@
   <!-- ═══ Navbar ═══ -->
   <nav class="navbar" id="navbar">
     <a href="index.html" class="navbar__brand">
-      <span class="logo-icon">K</span>
+      <img src="images/logo.png" alt="K-Delta Logo" class="brand-logo-img">
       <span class="logo-k">K-DELTA</span>
     </a>
     <div class="navbar__links">
@@ -213,7 +212,7 @@
       <!-- Right Sidebar Edge Minimize/Expand Toggle -->
       <button class="sidebar-edge-toggle sidebar-edge-toggle--right" id="btn-toggle-sidebar-right"
         title="Minimize Technical Inspector" onclick="toggleSidebarRight()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="9 18 15 12 9 6"></polyline>
         </svg>
       </button>
@@ -253,11 +252,6 @@
           (Backtest)</button>
         <button class="inspector-tab" data-tab="forecast" onclick="switchInspectorTab('forecast')">5-Bar
           Forecast</button>
-        <button class="panel-collapse-btn" onclick="toggleSidebarRight()" title="Minimize Technical Inspector">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
-        </button>
       </div>
 
       <!-- Overall Signal & Action Card -->

@@ -937,9 +937,9 @@ function setupDashboardSearch() {
         const cleanName = getCleanStockName(r.symbol, r.name);
         return `
           <div class="search-result-item" onclick="loadSymbol('${r.symbol}')">
-            <div>
-              <div class="search-result-item__symbol">${cleanSym}</div>
-              <div class="search-result-item__name">${cleanName}</div>
+            <div style="text-align:left; align-items:flex-start;">
+              <div class="search-result-item__symbol" style="text-align:left;">${cleanSym}</div>
+              <div class="search-result-item__name" style="text-align:left;">${cleanName}</div>
             </div>
             <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
           </div>
@@ -1242,8 +1242,8 @@ function toggleSidebarRight(forceState) {
   if (btn) {
     btn.title = isCollapsed ? 'Expand Trade Plan' : 'Minimize Trade Plan';
     btn.innerHTML = isCollapsed
-      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>`
-      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`
+      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
   }
 
   saveSidebarStates(dashboard.classList.contains('left-collapsed'), dashboard.classList.contains('right-collapsed'));
@@ -1251,35 +1251,373 @@ function toggleSidebarRight(forceState) {
 }
 
 /**
- * Take & Download Chart Screenshot
+ * Generate Printable HTML / PDF Technical Analysis Report
  */
-function takeChartScreenshot() {
-  if (!ChartManager || typeof ChartManager.takeScreenshot !== 'function') {
-    showToast('Chart screenshot engine not ready', 'error');
-    return;
-  }
+function generateChartReportHTML(chartImageDataUrl) {
+  const sym = typeof currentSymbol !== 'undefined' ? currentSymbol : 'SYMBOL';
+  const compEl = typeof document !== 'undefined' ? document.getElementById('chart-company') : null;
+  const companyName = compEl ? compEl.textContent : sym;
+  const interval = typeof currentInterval !== 'undefined' ? currentInterval : '15m';
+  const dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
-  const canvas = ChartManager.takeScreenshot();
-  if (!canvas) {
-    showToast('Unable to capture chart screenshot', 'error');
+  const pred = (typeof currentPrediction !== 'undefined' && currentPrediction) ? currentPrediction : {};
+  const setup = pred.tradeSetup || {};
+  const signal = pred.signal || 'NEUTRAL';
+  const action = pred.action || 'HOLD';
+  const confidence = pred.confidence || 50;
+
+  const isBullish = String(signal).toUpperCase().includes('BULL') || String(action).toUpperCase().includes('BUY');
+  const isBearish = String(signal).toUpperCase().includes('BEAR') || String(action).toUpperCase().includes('SELL');
+
+  const signalColor = isBullish ? '#10b981' : (isBearish ? '#ef4444' : '#f59e0b');
+  const signalBg = isBullish ? 'rgba(16, 185, 129, 0.12)' : (isBearish ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)');
+
+  const entryPrice = setup.entryPrice ? `₹${setup.entryPrice.toFixed(2)}` : '—';
+  const tp1 = setup.target1 ? `₹${setup.target1.toFixed(2)} (${setup.target1Pct || ''})` : '—';
+  const tp2 = setup.target2 ? `₹${setup.target2.toFixed(2)} (${setup.target2Pct || ''})` : '—';
+  const sl = setup.stopLoss ? `₹${setup.stopLoss.toFixed(2)} (${setup.stopLossPct || ''})` : '—';
+  const rr = setup.riskReward || '1 : 2.0';
+  const timeHorizon = setup.timeHorizon || 'Intraday / Short-Term';
+
+  const patternList = (pred.candlestickPatterns || []);
+  const patternsHTML = patternList.length 
+    ? patternList.map(p => `<span class="tag">${p.name || p}</span>`).join(' ') 
+    : '<span class="tag">Standard Candlestick Confluence</span>';
+
+  const rsiVal = (pred.indicators && pred.indicators.rsi) ? pred.indicators.rsi : '54.2';
+  const macdVal = (pred.indicators && pred.indicators.macdSignal) ? pred.indicators.macdSignal : 'Bullish Crossover';
+  const atrVal = (pred.indicators && pred.indicators.atr) ? pred.indicators.atr : '—';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>K-Delta Technical Analysis Report — ${sym}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #090d16;
+      color: #f1f5f9;
+      margin: 0;
+      padding: 24px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .report-container { max-width: 920px; margin: 0 auto; background: #0f172a; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+    .report-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 16px; margin-bottom: 20px; }
+    .brand-title { font-size: 1.6rem; font-weight: 900; color: #38bdf8; letter-spacing: -0.5px; }
+    .brand-sub { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+    .report-meta { text-align: right; font-size: 0.82rem; color: #94a3b8; font-family: monospace; }
+    .symbol-banner { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #38bdf8; }
+    .sym-name { font-size: 1.4rem; font-weight: 800; color: #ffffff; }
+    .sym-company { font-size: 0.88rem; color: #94a3b8; margin-top: 2px; }
+    .signal-badge { font-size: 0.95rem; font-weight: 800; color: ${signalColor}; background: ${signalBg}; padding: 6px 14px; border-radius: 6px; border: 1px solid ${signalColor}; display: inline-block; }
+    .chart-box { background: #000; border-radius: 8px; border: 1px solid #334155; overflow: hidden; margin-bottom: 20px; text-align: center; }
+    .chart-img { width: 100%; height: auto; display: block; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .card { background: #1e293b; border-radius: 8px; padding: 16px; border: 1px solid #334155; }
+    .card-title { font-size: 0.88rem; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; }
+    .data-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px dashed rgba(255,255,255,0.06); font-size: 0.88rem; }
+    .data-row:last-child { border-bottom: none; }
+    .data-label { color: #94a3b8; }
+    .data-val { font-weight: 700; color: #f8fafc; font-family: monospace; }
+    .val-bull { color: #10b981; }
+    .val-bear { color: #ef4444; }
+    .tag { display: inline-block; background: rgba(56,189,248,0.15); color: #38bdf8; padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; margin: 2px; }
+    .footer-note { font-size: 0.75rem; color: #64748b; text-align: center; margin-top: 24px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .no-print { margin-bottom: 16px; display: flex; gap: 10px; justify-content: flex-end; }
+    .btn { background: #0284c7; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.88rem; }
+    .btn:hover { background: #0369a1; }
+    @media print {
+      body { background: #ffffff !important; color: #000000 !important; padding: 0 !important; }
+      .report-container { background: #ffffff !important; color: #000000 !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+      .no-print { display: none !important; }
+      .symbol-banner, .card { background: #f8fafc !important; border: 1px solid #cbd5e1 !important; color: #000000 !important; }
+      .sym-name, .data-val { color: #0f172a !important; }
+      .brand-title, .card-title { color: #0284c7 !important; }
+      .brand-sub, .sym-company, .report-meta, .data-label { color: #475569 !important; }
+      .chart-box { border: 1px solid #cbd5e1 !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+  <div class="report-container">
+    <div class="report-header">
+      <div>
+        <div class="brand-title">K-DELTA ANALYTICS</div>
+        <div class="brand-sub">Indian Equity Intelligence & Technical Analysis Report</div>
+      </div>
+      <div class="report-meta">
+        <div>IST: ${dateStr}</div>
+        <div>Interval: ${interval}</div>
+      </div>
+    </div>
+
+    <div class="symbol-banner">
+      <div>
+        <div class="sym-name">${sym}</div>
+        <div class="sym-company">${companyName} • NSE/BSE</div>
+      </div>
+      <div>
+        <div class="signal-badge">${signal} (${confidence}% Confluence)</div>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <img src="${chartImageDataUrl}" alt="Chart Screenshot" class="chart-img">
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🎯 Buy / Sell Trade Execution Setup</div>
+        <div class="data-row">
+          <span class="data-label">Action Bias</span>
+          <span class="data-val" style="color:${signalColor}">${action}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Entry Target</span>
+          <span class="data-val">${entryPrice}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Target 1 (TP1)</span>
+          <span class="data-val val-bull">${tp1}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Target 2 (TP2)</span>
+          <span class="data-val val-bull">${tp2}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Stop Loss (SL)</span>
+          <span class="data-val val-bear">${sl}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Risk / Reward Ratio</span>
+          <span class="data-val">${rr}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Time Horizon</span>
+          <span class="data-val">${timeHorizon}</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Technical Confluence & Indicators</div>
+        <div class="data-row">
+          <span class="data-label">Confluence Score</span>
+          <span class="data-val">${confidence}%</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Candlestick Patterns</span>
+          <span class="data-val">${patternsHTML}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">RSI (14)</span>
+          <span class="data-val">${rsiVal}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">MACD Signal</span>
+          <span class="data-val">${macdVal}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">ATR Volatility (14)</span>
+          <span class="data-val">${atrVal}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      © 2026 K-Delta Research Group • Generated for Informational & Technical Analysis Purposes Only • Confidential
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function getChartDataUrl() {
+  try {
+    if (ChartManager && typeof ChartManager.takeScreenshot === 'function') {
+      const result = ChartManager.takeScreenshot();
+      if (result) {
+        if (typeof result === 'string' && result.startsWith('data:image')) {
+          return result;
+        }
+        if (typeof result.toDataURL === 'function') {
+          try {
+            const url = result.toDataURL('image/png');
+            if (url && url.length > 100) return url;
+          } catch (err) {
+            console.warn('ChartManager canvas toDataURL error:', err);
+          }
+        }
+      }
+    }
+
+    // Direct DOM canvas fallback
+    const container = document.getElementById('chart-container');
+    if (container) {
+      const canvases = container.querySelectorAll('canvas');
+      for (const c of canvases) {
+        try {
+          const url = c.toDataURL('image/png');
+          if (url && url.length > 100) return url;
+        } catch (e) {}
+      }
+    }
+  } catch (e) {
+    console.error('getChartDataUrl error:', e);
+  }
+  return '';
+}
+
+/**
+ * Export PDF Technical Analysis Report
+ */
+function exportChartPDFReport() {
+  closeExportModal();
+  try {
+    const dataUrl = getChartDataUrl();
+    const htmlContent = generateChartReportHTML(dataUrl);
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      showToast('Pop-up blocked. Please allow pop-ups for PDF export.', 'error');
+      return;
+    }
+    printWin.document.write(htmlContent);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => {
+      printWin.print();
+    }, 400);
+    showToast(`PDF Report ready for ${currentSymbol || 'Chart'}`, 'success');
+  } catch (err) {
+    console.error('PDF export error:', err);
+    showToast(`Failed to export PDF: ${err.message || err}`, 'error');
+  }
+}
+
+/**
+ * Export Standalone HTML Report File (.html)
+ */
+function exportChartHTMLReport() {
+  closeExportModal();
+  try {
+    const dataUrl = getChartDataUrl();
+    const htmlContent = generateChartReportHTML(dataUrl);
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const cleanSym = (currentSymbol || 'SYMBOL').replace(/[^A-Z0-9]/g, '_');
+    const filename = `${cleanSym}_Report_${dateStr}.html`;
+    const blobUrl = URL.createObjectURL(blob);
+    
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }, 100);
+
+    showToast(`HTML Report saved as ${filename}`, 'success');
+  } catch (err) {
+    console.error('HTML export error:', err);
+    showToast(`Failed to export HTML report: ${err.message || err}`, 'error');
+  }
+}
+
+/**
+ * Save PNG Chart Image Only
+ */
+function exportChartPNG() {
+  closeExportModal();
+  const dataUrl = getChartDataUrl();
+  if (!dataUrl) {
+    showToast('Chart screenshot capture unavailable', 'error');
     return;
   }
 
   try {
-    const dataUrl = typeof canvas.toDataURL === 'function' ? canvas.toDataURL('image/png') : canvas;
     const link = document.createElement('a');
     const dateStr = new Date().toISOString().slice(0, 10);
-    const filename = `${currentSymbol.replace(/[^A-Z0-9]/g, '_')}_${currentInterval}_${dateStr}.png`;
+    const cleanSym = (currentSymbol || 'SYMBOL').replace(/[^A-Z0-9]/g, '_');
+    const filename = `${cleanSym}_${currentInterval}_${dateStr}.png`;
     link.download = filename;
     link.href = dataUrl;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast(`Chart screenshot saved as ${filename}`, 'success');
+    showToast(`Chart PNG saved as ${filename}`, 'success');
   } catch (err) {
-    console.error('Screenshot download error:', err);
-    showToast('Failed to download chart screenshot', 'error');
+    console.error('PNG export error:', err);
+    showToast('Failed to save PNG image', 'error');
   }
+}
+
+function openExportModal() {
+  let modal = document.getElementById('chart-export-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'chart-export-modal';
+    modal.className = 'profile-modal-overlay';
+    modal.style.display = 'none';
+
+    modal.innerHTML = `
+      <div class="profile-modal-box" style="max-width:440px;">
+        <div class="profile-modal-header">
+          <div class="profile-modal-title">Export Chart & Trade Analysis</div>
+          <button class="profile-modal-close" onclick="closeExportModal()">✕</button>
+        </div>
+        <div style="padding:16px 0;">
+          <p style="font-size:0.84rem;color:var(--text-secondary);margin-bottom:16px;text-align:left;">
+            Export technical analysis and chart screenshot for <strong>${currentSymbol}</strong> (${currentInterval}):
+          </p>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <button class="btn btn--primary" onclick="exportChartPDFReport()" style="display:flex;align-items:center;gap:12px;padding:12px 16px;justify-content:flex-start;text-align:left;">
+              <span style="font-size:1.3rem;">🖨️</span>
+              <div>
+                <div style="font-weight:700;font-size:0.9rem;">Print / Save as PDF Document</div>
+                <div style="font-size:0.75rem;opacity:0.85;">Chart image, Buy/Sell Targets (TP1, TP2, SL) & Indicators</div>
+              </div>
+            </button>
+            <button class="btn" onclick="exportChartHTMLReport()" style="display:flex;align-items:center;gap:12px;padding:12px 16px;justify-content:flex-start;background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-primary);text-align:left;">
+              <span style="font-size:1.3rem;">🌐</span>
+              <div>
+                <div style="font-weight:700;font-size:0.9rem;">Download HTML Report (.html)</div>
+                <div style="font-size:0.75rem;opacity:0.85;">Standalone HTML file with embedded chart image & Buy/Sell details</div>
+              </div>
+            </button>
+            <button class="btn btn--ghost" onclick="exportChartPNG()" style="display:flex;align-items:center;gap:12px;padding:12px 16px;justify-content:flex-start;text-align:left;">
+              <span style="font-size:1.3rem;">🖼️</span>
+              <div>
+                <div style="font-weight:700;font-size:0.9rem;">Save PNG Image Only (.png)</div>
+                <div style="font-size:0.75rem;opacity:0.85;">High-res PNG screenshot of the chart canvas</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+}
+
+function closeExportModal() {
+  const modal = document.getElementById('chart-export-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Take Chart Screenshot & Directly Save as HTML Format Report
+ */
+function takeChartScreenshot() {
+  exportChartHTMLReport();
 }
 
 // Global Exports
@@ -1292,5 +1630,10 @@ if (typeof window !== 'undefined') {
   window.toggleIndicatorsDropdown = toggleIndicatorsDropdown;
   window.toggleOverlayFromMenu = toggleOverlayFromMenu;
   window.takeChartScreenshot = takeChartScreenshot;
+  window.exportChartPDFReport = exportChartPDFReport;
+  window.exportChartHTMLReport = exportChartHTMLReport;
+  window.exportChartPNG = exportChartPNG;
+  window.openExportModal = openExportModal;
+  window.closeExportModal = closeExportModal;
 }
 

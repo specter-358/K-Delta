@@ -374,9 +374,9 @@ function setupWatchlistSearchAdd() {
 
         return `
           <div class="search-result-item" onclick="handleAddSymbol('${r.symbol}')">
-            <div>
-              <div class="search-result-item__symbol">${cleanSym}</div>
-              <div class="search-result-item__name">${r.name || cleanSym}</div>
+            <div style="text-align:left; align-items:flex-start;">
+              <div class="search-result-item__symbol" style="text-align:left;">${cleanSym}</div>
+              <div class="search-result-item__name" style="text-align:left;">${r.name || cleanSym}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px">
               <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>

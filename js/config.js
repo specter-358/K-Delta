@@ -590,16 +590,20 @@ function renderNavbarAuth() {
     avatarWrap.id = 'navbar-avatar-wrap';
     avatarWrap.style.display = 'inline-flex';
     avatarWrap.style.alignItems = 'center';
+    avatarWrap.style.position = 'relative';
     statusContainer.appendChild(avatarWrap);
+  } else {
+    avatarWrap.style.position = 'relative';
   }
 
   if (token && user) {
-    const name = user.name || 'Key';
+    const rawName = (user.name && user.name.trim()) ? user.name.trim() : '';
     const email = user.email || 'maari@kdelta.com';
+    const name = rawName || (email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1));
     const initial = name.charAt(0).toUpperCase();
-    const avatarContent = user.avatarUrl 
-      ? `<img src="${user.avatarUrl}" alt="${name}">` 
-      : initial;
+    const avatarContent = (user.avatarUrl && user.avatarUrl.length > 25)
+      ? `<img src="${user.avatarUrl}" alt="${name}" onerror="this.outerHTML='<span>${initial}</span>'">` 
+      : `<span>${initial}</span>`;
 
     avatarWrap.innerHTML = `
       <button class="navbar-avatar-btn" id="navbar-avatar-btn" onclick="toggleProfileDropdown(event)" title="${name}">
@@ -607,8 +611,13 @@ function renderNavbarAuth() {
       </button>
       <div class="profile-dropdown-menu" id="profile-dropdown-menu">
         <div class="profile-dropdown-header">
-          <div class="profile-dropdown-header__name">${name}</div>
-          <div class="profile-dropdown-header__email">${email}</div>
+          <div class="profile-dropdown-avatar">
+            ${avatarContent}
+          </div>
+          <div class="profile-dropdown-user-details">
+            <div class="profile-dropdown-header__name">${name}</div>
+            <div class="profile-dropdown-header__email">${email}</div>
+          </div>
         </div>
         <button class="profile-dropdown-item" onclick="openProfileModal()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -635,11 +644,14 @@ function renderNavbarAuth() {
 }
 
 function toggleProfileDropdown(e) {
-  if (e) e.stopPropagation();
+  if (e) {
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+  }
   const dropdown = document.getElementById('profile-dropdown-menu');
   if (!dropdown) return;
-  const isShown = dropdown.style.display === 'block';
-  dropdown.style.display = isShown ? 'none' : 'block';
+  const currentDisplay = window.getComputedStyle(dropdown).display;
+  dropdown.style.display = currentDisplay === 'none' ? 'block' : 'none';
 }
 
 document.addEventListener('click', (e) => {

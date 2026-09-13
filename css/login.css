@@ -37,6 +37,13 @@ body.login-page {
   color: #ffffff;
 }
 
+.login-brand__img {
+  height: 54px;
+  width: auto;
+  object-fit: contain;
+  filter: none;
+}
+
 .login-brand__icon {
   width: 44px;
   height: 44px;

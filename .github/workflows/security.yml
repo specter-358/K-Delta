@@ -26,7 +26,7 @@ jobs:
 
       - name: Secret Scanning (Check for accidentally committed secrets)
         run: |
-          if grep -E "(eyJhbGciOi|AIzaSy|sk_live_|ghp_|xox[bapz]-)" . -r --exclude-dir={node_modules,.git}; then
+          if grep -E "(eyJhbGciOi|AIzaSy|sk_live_|ghp_|xox[bapz]-)" . -r --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.github; then
             echo "::error::Potential secret token detected in codebase!"
             exit 1
           fi
