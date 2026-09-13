@@ -1,6 +1,7 @@
 /* ============================================================
    K-Delta — Watchlist Page Styles
-   Professional Dark Financial Terminal (NSE/BSE Real-Time)
+   Professional Modern Dark Financial Terminal (NSE/BSE Real-Time)
+   Stitch MCP Redesign Architecture
    ============================================================ */
 
 .watchlist-main {
@@ -19,17 +20,17 @@
 }
 
 .watchlist-title {
-  font-size: 1.75rem;
+  font-size: 1.85rem;
   font-weight: 800;
   color: var(--text-primary);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.6px;
   line-height: 1.2;
 }
 
 .watchlist-subtitle {
   font-size: 0.88rem;
   color: var(--text-secondary);
-  max-width: 580px;
+  max-width: 600px;
   margin-top: 4px;
 }
 
@@ -41,28 +42,29 @@
 }
 
 .watchlist-search-add {
-  min-width: 280px;
+  min-width: 300px;
   position: relative;
 }
 
 .watchlist-search-add .search-box__input {
   width: 100%;
-  padding: 8px 12px 8px 34px;
-  font-size: 0.82rem;
-  background: var(--bg-tertiary);
+  padding: 9px 12px 9px 36px;
+  font-size: 0.84rem;
+  background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
+  transition: all var(--transition-fast);
 }
 
 .watchlist-search-add .search-box__input:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 1px var(--accent-blue);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.18);
 }
 
 .watchlist-search-add .search-box__icon {
-  left: 10px;
-  color: var(--text-muted);
+  left: 12px;
+  color: var(--accent-cyan);
 }
 
 /* ── Stats Strip ── */
@@ -77,27 +79,32 @@
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 16px 18px;
   transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-card:hover {
-  border-color: var(--border-active);
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 10px rgba(6, 182, 212, 0.15);
+  transform: translateY(-1px);
 }
 
 .stat-card__label {
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.8px;
   color: var(--text-muted);
   margin-bottom: 4px;
+  font-family: var(--font-mono);
 }
 
 .stat-card__val {
-  font-size: 1.45rem;
+  font-size: 1.5rem;
   font-weight: 800;
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   color: var(--text-primary);
   line-height: 1.2;
 }
@@ -105,7 +112,7 @@
 .stat-card__sub {
   font-size: 0.74rem;
   color: var(--text-secondary);
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 /* ── Filter Controls ── */

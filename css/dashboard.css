@@ -1,11 +1,12 @@
 /* ============================================================
    K-Delta — Terminal Dashboard Styles
-   Professional Dark Financial Terminal (NSE / BSE Real-Time)
+   Professional Modern Dark Financial Terminal (NSE / BSE Real-Time)
+   Stitch MCP Redesign Architecture
    ============================================================ */
 
 .dashboard {
   display: grid;
-  grid-template-columns: 1fr 370px;
+  grid-template-columns: 1fr 380px;
   min-height: calc(100vh - 86px);
   background: var(--bg-primary);
   border-top: 1px solid var(--border-color);
@@ -46,25 +47,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2px 2px 6px 2px;
+  padding: 2px 2px 8px 2px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .sidebar-left__title {
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.8px;
   color: var(--text-muted);
+  font-family: var(--font-mono);
 }
 
 .panel-collapse-btn {
-  background: var(--bg-card);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
-  border-radius: var(--radius-xs);
-  width: 22px;
-  height: 22px;
+  border-radius: var(--radius-sm);
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -82,8 +84,9 @@
 
 .panel-collapse-btn:hover {
   background: var(--bg-card-hover);
-  color: var(--accent-blue);
-  border-color: var(--accent-blue);
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
 }
 
 .sidebar-left__search .search-box {
@@ -91,11 +94,17 @@
 }
 
 .sidebar-left__search .search-box__input {
-  padding: 8px 10px 8px 32px;
+  padding: 8px 10px 8px 34px;
   font-size: 0.8rem;
-  background: var(--bg-tertiary);
+  background: var(--bg-input);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-fast);
+}
+
+.sidebar-left__search .search-box__input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.15);
 }
 
 .sidebar-left__search .search-box__icon {
@@ -105,55 +114,60 @@
 .sidebar-left__search .search-box__icon svg {
   width: 13px;
   height: 13px;
+  color: var(--accent-cyan);
 }
 
 /* ── Timeframe Resolution Selector ── */
 .timeframe-selector {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-xs);
-  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  padding: 8px;
 }
 
 .timeframe-selector__label {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.8px;
   color: var(--text-muted);
-  margin-bottom: 5px;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
 }
 
 .timeframe-selector__buttons {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 3px;
+  gap: 4px;
 }
 
 .timeframe-btn {
-  padding: 4px 0;
-  font-size: 0.74rem;
+  padding: 5px 0;
+  font-size: 0.76rem;
   font-weight: 700;
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xs);
   text-align: center;
   transition: all var(--transition-fast);
+  cursor: pointer;
 }
 
 .timeframe-btn:hover {
   background: var(--bg-card-hover);
   color: var(--text-primary);
-  border-color: var(--border-active);
+  border-color: var(--accent-cyan);
 }
 
 .timeframe-btn.active {
-  background: var(--accent-blue-dim);
-  color: var(--accent-blue);
-  border-color: var(--accent-blue);
+  background: var(--accent-cyan-dim);
+  color: var(--accent-cyan);
+  border-color: rgba(6, 182, 212, 0.4);
   font-weight: 800;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.15);
 }
 
 /* ── Watchlist ── */

@@ -42,7 +42,7 @@ async function runSecurityTests() {
       passed++;
     } catch (err) {
       console.error(`  ✗ FAILED: ${name}`);
-      console.error(`    Error: ${err.message}`);
+      console.error(`    Error:`, err.message || err);
       failed++;
     }
   }
