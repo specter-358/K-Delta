@@ -650,7 +650,7 @@ function injectProfileModalHTML() {
             <label class="form-label">Profile Picture</label>
             <div style="display:flex; gap:8px; align-items:center;">
               <input type="file" id="profile-avatar-file" accept="image/*" style="display:none;" onchange="handleAvatarFileSelect(event)">
-              <button type="button" class="btn btn--secondary btn--sm" onclick="document.getElementById('profile-avatar-file').click()" style="padding:6px 14px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+              <button type="button" class="btn btn--ghost btn--sm" onclick="document.getElementById('profile-avatar-file').click()" style="padding:8px 16px; font-size:0.82rem; font-weight:700; display:inline-flex; align-items:center; gap:8px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="17 8 12 3 7 8"></polyline>
@@ -658,29 +658,28 @@ function injectProfileModalHTML() {
                 </svg>
                 Choose Image File
               </button>
-              <span style="font-size:0.75rem; color:var(--text-muted)">or paste URL below</span>
             </div>
-            <input type="text" id="profile-avatar-url" class="form-input" placeholder="https://example.com/avatar.jpg" style="margin-top:8px;" oninput="handleAvatarUrlInput(this.value)">
+            <input type="hidden" id="profile-avatar-url">
           </div>
         </div>
 
-        <!-- Full Name Field -->
+        <!-- Name Field -->
         <div class="form-group">
-          <label class="form-label" for="profile-name">Full Name</label>
+          <label class="form-label" for="profile-name">Name :</label>
           <input type="text" id="profile-name" class="form-input" placeholder="Key" required>
         </div>
 
         <!-- Email Address Field -->
         <div class="form-group">
-          <label class="form-label" for="profile-email">Email Address</label>
+          <label class="form-label" for="profile-email">Email Address :</label>
           <input type="email" id="profile-email" class="form-input" placeholder="key@kdelta.com" required>
         </div>
 
-        <!-- Current Password Field -->
+        <!-- Current Password Field (Compulsory to save changes) -->
         <div class="form-group">
-          <label class="form-label" for="profile-current-password">Current Password (Required to change password)</label>
+          <label class="form-label" for="profile-current-password">Current Password :</label>
           <div class="password-input-wrap">
-            <input type="password" id="profile-current-password" class="form-input" placeholder="Enter current password">
+            <input type="password" id="profile-current-password" class="form-input" placeholder="Enter current password" required>
             <button type="button" class="password-toggle-btn"
               onmousedown="holdShowPassword('profile-current-password', this)"
               onmouseup="holdHidePassword('profile-current-password', this)"
@@ -703,9 +702,9 @@ function injectProfileModalHTML() {
 
         <!-- New Password Field -->
         <div class="form-group" style="margin-bottom:24px;">
-          <label class="form-label" for="profile-new-password">New Password (Optional)</label>
+          <label class="form-label" for="profile-new-password">New Password :</label>
           <div class="password-input-wrap">
-            <input type="password" id="profile-new-password" class="form-input" placeholder="Leave blank to keep current password" minlength="8">
+            <input type="password" id="profile-new-password" class="form-input" placeholder="Enter new password to change" minlength="8">
             <button type="button" class="password-toggle-btn"
               onmousedown="holdShowPassword('profile-new-password', this)"
               onmouseup="holdHidePassword('profile-new-password', this)"
@@ -728,7 +727,7 @@ function injectProfileModalHTML() {
 
         <!-- Action Buttons -->
         <div style="display:flex; gap:12px; justify-content:flex-end;">
-          <button type="button" class="btn btn--secondary" onclick="closeProfileModal()">Cancel</button>
+          <button type="button" class="btn btn--ghost" onclick="closeProfileModal()">Cancel</button>
           <button type="submit" id="profile-save-btn" class="btn btn--primary" style="padding:10px 24px; font-weight:700;">Save Changes</button>
         </div>
       </form>
@@ -778,6 +777,15 @@ async function handleSaveProfile(event) {
   const newPassword = document.getElementById('profile-new-password').value;
   const saveBtn = document.getElementById('profile-save-btn');
   const alertBox = document.getElementById('profile-modal-alert');
+
+  if (!currentPassword) {
+    if (alertBox) {
+      alertBox.className = 'login-alert login-alert--error';
+      alertBox.textContent = 'Current Password is required to save profile changes.';
+      alertBox.style.display = 'block';
+    }
+    return;
+  }
 
   try {
     saveBtn.disabled = true;

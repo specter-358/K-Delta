@@ -406,42 +406,40 @@ img {
   border: 1px solid var(--border-color);
   font-variant-numeric: tabular-nums;
 }
-  padding: 3px 8px;
-  border-radius: var(--radius-xs);
-  border: 1px solid var(--border-color);
-}
 
 /* ── Navbar Circular User Avatar & Profile Dropdown ── */
 .navbar-avatar-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
   color: #ffffff;
   font-weight: 800;
-  font-size: 0.88rem;
-  border: 2px solid rgba(56, 189, 248, 0.4);
+  font-size: 0.9rem;
+  border: 2px solid rgba(6, 182, 212, 0.5);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   margin-left: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
   flex-shrink: 0;
+  outline: none;
 }
 
 .navbar-avatar-btn:hover {
-  transform: scale(1.06);
+  transform: scale(1.08);
   border-color: #38bdf8;
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
 }
 
 .navbar-avatar-btn img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
 }
 
 .profile-dropdown-menu {

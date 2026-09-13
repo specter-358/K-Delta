@@ -233,6 +233,14 @@ module.exports = {
     const user = users.find(u => u.userId === userId);
     if (!user) throw new Error('User not found');
 
+    if (!currentPassword) {
+      throw new Error('Current password is required to save profile settings.');
+    }
+    const isCurrentValid = bcrypt.compareSync(currentPassword, user.passwordHash);
+    if (!isCurrentValid) {
+      throw new Error('Current password is incorrect.');
+    }
+
     if (email && email.trim().toLowerCase() !== user.email) {
       const cleanEmail = email.trim().toLowerCase();
       const existing = users.find(u => u.email === cleanEmail && u.userId !== userId);
@@ -249,13 +257,6 @@ module.exports = {
     }
 
     if (newPassword) {
-      if (!currentPassword) {
-        throw new Error('Current password is required to change password.');
-      }
-      const isValid = bcrypt.compareSync(currentPassword, user.passwordHash);
-      if (!isValid) {
-        throw new Error('Current password is incorrect.');
-      }
       if (newPassword.length < 8) {
         throw new Error('New password must be at least 8 characters long.');
       }

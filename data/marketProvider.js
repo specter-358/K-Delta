@@ -181,7 +181,7 @@ class YahooMarketProvider extends BaseMarketProvider {
   constructor() {
     super('YahooMarketProvider');
     this.cache = new Map();
-    this.cacheTTL = 3000; // 3s cache
+    this.cacheTTL = 30000; // 30s high-performance cache
     this.activeSubscriptions = new Map(); // symbol -> interval ID
     this.activeStockWatchlist = [
       'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS',
@@ -425,12 +425,11 @@ class YahooMarketProvider extends BaseMarketProvider {
       { symbol: '^NIFTYPVTBANK', name: 'NIFTY Private Bank', base: 24980.50, exchange: 'NSE' },
     ];
 
-    const results = [];
-    for (const idx of indices) {
+    const results = await Promise.all(indices.map(async idx => {
       try {
         const q = await yf.quote(idx.symbol).catch(() => null);
         if (q && q.regularMarketPrice != null) {
-          results.push({
+          return {
             symbol: idx.symbol,
             name: idx.name,
             displayName: idx.name,
@@ -442,13 +441,13 @@ class YahooMarketProvider extends BaseMarketProvider {
             low: parseFloat((q.regularMarketDayLow || q.regularMarketPrice).toFixed(2)),
             previousClose: parseFloat((q.regularMarketPreviousClose || q.regularMarketPrice).toFixed(2)),
             exchange: idx.exchange,
-          });
+          };
         } else {
           // Provide clean realistic fallback for indices
           const price = idx.base;
           const change = parseFloat(((Math.random() - 0.45) * (price * 0.012)).toFixed(2));
           const percentChange = parseFloat(((change / price) * 100).toFixed(2));
-          results.push({
+          return {
             symbol: idx.symbol,
             name: idx.name,
             displayName: idx.name,
@@ -460,15 +459,17 @@ class YahooMarketProvider extends BaseMarketProvider {
             low: parseFloat((price - Math.abs(change) * 0.8).toFixed(2)),
             previousClose: parseFloat((price - change).toFixed(2)),
             exchange: idx.exchange,
-          });
+          };
         }
       } catch (err) {
         console.warn(`Index quote fallback for ${idx.symbol}:`, err.message);
+        return null;
       }
-    }
+    }));
 
-    if (results.length > 0) this._setCache(cacheKey, results);
-    return results;
+    const validResults = results.filter(Boolean);
+    if (validResults.length > 0) this._setCache(cacheKey, validResults);
+    return validResults;
   }
 
   async getMarketMovers() {

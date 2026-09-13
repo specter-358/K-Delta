@@ -193,13 +193,15 @@ function updateWatchlistStats() {
     const sorted = [...validQuotes].sort((a, b) => (b.percentChange || 0) - (a.percentChange || 0));
     const top = sorted[0];
     const isUp = (top.percentChange || 0) >= 0;
-    const cleanSym = top.symbol.replace('.NS', '').replace('.BO', '').replace('^', '');
+    const displayInfo = formatInstrumentDisplay(top.symbol, top.name, top.exchange);
+
     if (topMoverEl) {
       topMoverEl.className = `stat-card__val ${isUp ? 'price-up' : 'price-down'}`;
-      topMoverEl.textContent = `${cleanSym} (${formatPercent(top.percentChange)})`;
+      topMoverEl.textContent = `${displayInfo.symbolDisplay} (${formatPercent(top.percentChange)})`;
     }
     if (topMoverSubEl) {
-      topMoverSubEl.textContent = `${top.name || cleanSym} • ${formatPrice(top.price)}`;
+      const subLabel = displayInfo.isIndex ? `${displayInfo.exchangeDisplay} Index` : displayInfo.nameDisplay;
+      topMoverSubEl.textContent = `${subLabel} • ${formatPrice(top.price)}`;
     }
   } else {
     if (topMoverEl) topMoverEl.textContent = '—';

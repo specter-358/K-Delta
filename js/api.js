@@ -122,21 +122,45 @@ const API = (() => {
   }
 
   /**
-   * Internal fetch with caching & Auth header
+   * Internal fetch with multi-level caching (Memory + SessionStorage) for instant page switches
    */
   async function apiFetch(endpoint, params = {}, options = {}) {
     const queryString = new URLSearchParams(params).toString();
     const url = `${CONFIG.API_BASE}${endpoint}${queryString ? '?' + queryString : ''}`;
     const cacheKey = url;
+    const isGet = !options.method || options.method === 'GET';
 
-    // Check client-side memory cache if method is GET
-    if (!options.method || options.method === 'GET') {
-      const cached = cache.get(cacheKey);
-      if (cached && (Date.now() - cached.timestamp) < CONFIG.CACHE_DURATION) {
-        return cached.data;
+    if (isGet) {
+      // 1. Check in-memory Map cache
+      const memCached = cache.get(cacheKey);
+      if (memCached && (Date.now() - memCached.timestamp) < 30000) {
+        return memCached.data;
       }
+
+      // 2. Check sessionStorage (persists across page switches for instant 0ms rendering)
+      try {
+        const ssRaw = sessionStorage.getItem(`kdelta_cache_${cacheKey}`);
+        if (ssRaw) {
+          const ssCached = JSON.parse(ssRaw);
+          const age = Date.now() - ssCached.timestamp;
+          if (age < 60000) { // 60s session TTL
+            cache.set(cacheKey, { data: ssCached.data, timestamp: ssCached.timestamp });
+            
+            // Revalidate in background if older than 15s without blocking page load
+            if (age > 15000) {
+              fetchFreshAndStore(url, options, cacheKey).catch(() => {});
+            }
+            return ssCached.data;
+          }
+        }
+      } catch (e) {}
     }
 
+    return await fetchFreshAndStore(url, options, cacheKey);
+  }
+
+  async function fetchFreshAndStore(url, options, cacheKey) {
+    const isGet = !options.method || options.method === 'GET';
     const headers = {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
@@ -147,11 +171,7 @@ const API = (() => {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const fetchOpts = {
-      ...options,
-      headers,
-    };
-
+    const fetchOpts = { ...options, headers };
     const response = await fetch(url, fetchOpts);
     if (!response.ok) {
       const errBody = await response.json().catch(() => ({}));
@@ -159,8 +179,12 @@ const API = (() => {
     }
 
     const data = await response.json();
-    if (!options.method || options.method === 'GET') {
-      cache.set(cacheKey, { data, timestamp: Date.now() });
+    if (isGet) {
+      const payload = { data, timestamp: Date.now() };
+      cache.set(cacheKey, payload);
+      try {
+        sessionStorage.setItem(`kdelta_cache_${cacheKey}`, JSON.stringify(payload));
+      } catch (e) {}
     }
     return data;
   }

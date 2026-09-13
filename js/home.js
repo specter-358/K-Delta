@@ -169,7 +169,7 @@ async function loadRecentSetups() {
   let targetStocks = [];
 
   if (recents && recents.length > 0) {
-    targetStocks = recents.slice(0, 6);
+    targetStocks = recents.slice(0, 3);
   } else {
     targetStocks = [
       { symbol: 'RELIANCE.NS', name: 'Reliance Industries Ltd.' },
@@ -230,6 +230,7 @@ async function loadRecentSetups() {
             <span class="stock-card__action">Trade Plan →</span>
           </div>
         </a>`);
+      if (cards.length >= 3) break;
     } catch (e) {
       console.warn(`Failed to render setup card for ${stock.symbol}:`, e);
     }
@@ -290,14 +291,14 @@ function renderMovers(moversData) {
     const isUp = m.percentChange >= 0;
     const changeClass = isUp ? 'price-up' : 'price-down';
     const sign = isUp ? '+' : '';
-    const cleanSym = m.symbol.replace('.NS', '').replace('.BO', '');
+    const displayInfo = formatInstrumentDisplay(m.symbol, m.name, m.exchange);
     return `
-      <div class="mover-item" onclick="navigateToDashboard('${m.symbol}', '${(m.name || cleanSym).replace(/'/g, "\\'")}')">
+      <div class="mover-item" onclick="navigateToDashboard('${m.symbol}', '${(displayInfo.nameDisplay).replace(/'/g, "\\'")}')">
         <div class="mover-item__left">
           <span class="mover-item__rank">${idx + 1}</span>
           <div>
-            <div class="mover-item__symbol">${cleanSym}</div>
-            <div class="mover-item__name">${m.name || 'NSE Stock'}</div>
+            <div class="mover-item__symbol">${displayInfo.symbolDisplay}</div>
+            <div class="mover-item__name">${displayInfo.nameDisplay}</div>
           </div>
         </div>
         <div class="mover-item__right">
