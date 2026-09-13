@@ -1001,6 +1001,23 @@ img {
   gap: var(--space-sm);
 }
 
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 4px;
+}
+
+.eyebrow-code {
+  color: var(--text-muted);
+}
+
 .section-header__title {
   font-size: 1.15rem;
   font-weight: 800;

@@ -1,5 +1,55 @@
 [
   {
+    "id": "audit_1789284261477_4h0l8",
+    "timestamp": "2026-09-13T07:24:21.477Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_4@test.com"
+    }
+  },
+  {
+    "id": "audit_1789284261472_c8rd2",
+    "timestamp": "2026-09-13T07:24:21.472Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_3@test.com"
+    }
+  },
+  {
+    "id": "audit_1789284261467_5usef",
+    "timestamp": "2026-09-13T07:24:21.467Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_2@test.com"
+    }
+  },
+  {
+    "id": "audit_1789284261463_ki4a4",
+    "timestamp": "2026-09-13T07:24:21.463Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_1@test.com"
+    }
+  },
+  {
+    "id": "audit_1789284261458_6fcoh",
+    "timestamp": "2026-09-13T07:24:21.458Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_0@test.com"
+    }
+  },
+  {
     "id": "audit_1789284076346_lueac",
     "timestamp": "2026-09-13T07:21:16.346Z",
     "eventType": "LOGIN_SUCCESS",
