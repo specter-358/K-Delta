@@ -531,12 +531,12 @@ function initTheme() {
    ═════════════════════════════════════════════════════════════ */
 
 function getAuthToken() {
-  return localStorage.getItem('kdelta_token') || sessionStorage.getItem('kdelta_token') || null;
+  return sessionStorage.getItem('kdelta_token') || null;
 }
 
 function getAuthUser() {
   try {
-    const raw = localStorage.getItem('kdelta_user') || sessionStorage.getItem('kdelta_user');
+    const raw = sessionStorage.getItem('kdelta_user');
     return raw ? JSON.parse(raw) : null;
   } catch (e) {
     return null;
@@ -580,8 +580,10 @@ function updateGlobalISTClock() {
   }) + ' IST';
 }
 
-// Run theme, auth render and global clock immediately
+// Run theme, auth guard and global clock immediately
 initTheme();
+requireAuthPage();
+
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   renderNavbarAuth();

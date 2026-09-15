@@ -201,16 +201,12 @@ const ChartManager = (() => {
 
     const isUp = bar.close >= bar.open;
     const colorClass = isUp ? 'price-up' : 'price-down';
-    const diff = bar.close - bar.open;
-    const pct = bar.open ? (diff / bar.open) * 100 : 0;
-    const sign = diff >= 0 ? '+' : '';
 
     ohlcEl.innerHTML = `
       <span style="color:var(--text-muted)">O:</span> <strong>₹${bar.open.toFixed(2)}</strong>
       <span style="color:var(--text-muted);margin-left:8px">H:</span> <strong>₹${bar.high.toFixed(2)}</strong>
       <span style="color:var(--text-muted);margin-left:8px">L:</span> <strong>₹${bar.low.toFixed(2)}</strong>
       <span style="color:var(--text-muted);margin-left:8px">C:</span> <strong class="${colorClass}">₹${bar.close.toFixed(2)}</strong>
-      <span class="${colorClass}" style="margin-left:8px font-weight:700">(${sign}${pct.toFixed(2)}%)</span>
     `;
   }
 
@@ -313,13 +309,16 @@ const ChartManager = (() => {
     // Update current candles cache
     if (currentCandles.length > 0) {
       const last = currentCandles[currentCandles.length - 1];
-      if (last.time === candle.time) {
-        last.high = candle.high;
-        last.low = candle.low;
+      const lastFormatted = String(formatTime(last.time));
+      const curFormatted = String(formattedTimeKey);
+
+      if (lastFormatted === curFormatted || last.time === candle.time) {
+        last.high = Math.max(last.high, candle.high);
+        last.low = Math.min(last.low, candle.low);
         last.close = candle.close;
         last.volume = candle.volume;
       } else {
-        currentCandles.push({ ...candle });
+        currentCandles.push({ ...candle, time: formattedTimeKey });
       }
     }
 

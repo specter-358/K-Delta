@@ -3,7 +3,10 @@
    100% Real-Time Market Feed, Zero Mock Data
    ============================================================ */
 
+const prevTickerPrices = new Map();
+
 document.addEventListener('DOMContentLoaded', () => {
+  setupHomeWebSocketListeners();
   loadLiveTickerTape();
   loadHomeData();
   setupSearch();
@@ -15,6 +18,59 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(updateMarketStatus, 30000);
   setInterval(loadMarketOverview, 30000);
 });
+
+function setupHomeWebSocketListeners() {
+  API.initWebSocket();
+  API.onTick(tick => {
+    updateHomeLiveTickElements(tick);
+  });
+}
+
+function updateHomeLiveTickElements(tick) {
+  if (!tick || !tick.symbol) return;
+  const displayInfo = formatInstrumentDisplay(tick.symbol, tick.name, tick.exchange);
+
+  // 1. Update Market Cards
+  const cards = document.querySelectorAll(`.market-card[data-symbol="${tick.symbol}"]`);
+  cards.forEach(card => {
+    const priceEl = card.querySelector('.market-card__price');
+    const changeValEl = card.querySelector('.market-card__change-value');
+    const changePctEl = card.querySelector('.market-card__change-percent');
+    const changeWrap = card.querySelector('.market-card__change');
+
+    if (priceEl) {
+      priceEl.textContent = formatPrice(tick.price);
+      prevTickerPrices.set(tick.symbol, tick.price);
+    }
+
+    const isUp = tick.change >= 0;
+    if (changeWrap) {
+      changeWrap.className = `market-card__change ${isUp ? 'price-up' : 'price-down'}`;
+    }
+    if (changeValEl) changeValEl.textContent = formatChange(tick.change);
+    if (changePctEl) changePctEl.textContent = `(${formatPercent(tick.percentChange)})`;
+  });
+
+  // 2. Update Ticker Tape Items
+  const items = document.querySelectorAll('.ticker-tape__item');
+  items.forEach(item => {
+    const symSpan = item.querySelector('.ticker-tape__symbol');
+    if (symSpan && (symSpan.textContent.trim() === displayInfo.symbolDisplay || symSpan.textContent.trim() === tick.symbol)) {
+      const priceSpan = item.querySelector('.ticker-tape__price');
+      const changeSpan = item.querySelector('.ticker-tape__change');
+
+      if (priceSpan) {
+        priceSpan.textContent = formatPrice(tick.price);
+      }
+
+      if (changeSpan) {
+        const isUp = tick.change >= 0;
+        changeSpan.className = `ticker-tape__change ${isUp ? 'price-up' : 'price-down'}`;
+        changeSpan.textContent = formatPercent(tick.percentChange);
+      }
+    }
+  });
+}
 
 /**
  * Load Continuous Rolling Market Ticker Tape (20+ Indices & Equities)
@@ -104,7 +160,7 @@ async function loadMarketOverview() {
       const changeClass = isUp ? 'price-up' : 'price-down';
       const displayInfo = formatInstrumentDisplay(idx.symbol, idx.name, idx.exchange);
       return `
-        <div class="market-card" onclick="navigateToDashboard('${idx.symbol}', '${(displayInfo.symbolDisplay).replace(/'/g, "\\'")}')">
+        <div class="market-card" data-symbol="${idx.symbol}" onclick="navigateToDashboard('${idx.symbol}', '${(displayInfo.symbolDisplay).replace(/'/g, "\\'")}')">
           <div>
             <div class="market-card__symbol">${displayInfo.symbolDisplay}</div>
             <div class="market-card__price">${formatPrice(idx.price)}</div>

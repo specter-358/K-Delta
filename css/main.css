@@ -1224,22 +1224,4 @@ img {
   display: none !important;
 }
 
-@keyframes flashUp {
-  0% { background-color: rgba(16, 185, 129, 0.35); color: #10b981; }
-  100% { background-color: transparent; }
-}
-
-@keyframes flashDown {
-  0% { background-color: rgba(239, 68, 68, 0.35); color: #ef4444; }
-  100% { background-color: transparent; }
-}
-
-.flash-up {
-  animation: flashUp 1.2s ease-out;
-  border-radius: var(--radius-xs);
-}
-
-.flash-down {
-  animation: flashDown 1.2s ease-out;
-  border-radius: var(--radius-xs);
 }

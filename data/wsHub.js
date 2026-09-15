@@ -121,6 +121,10 @@ class SecureWebSocketHub {
       });
     }, 30000);
 
+    // Auto-subscribe key Indian market index symbols for continuous live streaming
+    const DEFAULT_INDEXES = ['^NSEI', '^BSESN', '^NSEBANK', '^CNXIT', '^INDIAVIX', '^CNXAUTO', '^CNXFMCG', '^CNXPHARMA', '^CNXMETAL', '^CNXPSUBANK'];
+    DEFAULT_INDEXES.forEach(sym => provider.subscribe(sym));
+
     // Wire market provider ticks to candle engine and WS subscribers
     provider.on('tick', (tick) => {
       this.broadcastTick(tick);
@@ -206,11 +210,29 @@ class SecureWebSocketHub {
 
   broadcastTick(tick) {
     if (!tick || !tick.symbol) return;
-    this.broadcastToSymbol(tick.symbol, {
+    const payload = {
       type: 'tick',
       feedStatus: 'LIVE',
       data: tick,
-    });
+    };
+    
+    // Broadcast to explicit subscribers for this symbol
+    this.broadcastToSymbol(tick.symbol, payload);
+
+    // If tick is an index symbol, broadcast to ALL connected clients so header ticker updates live
+    if (tick.symbol.startsWith('^')) {
+      this.broadcastToAll(payload);
+    }
+  }
+
+  broadcastToAll(payload) {
+    if (!this.wss || !this.wss.clients) return;
+    const message = JSON.stringify(payload);
+    for (const ws of this.wss.clients) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(message);
+      }
+    }
   }
 
   broadcastToSymbol(symbol, payload) {

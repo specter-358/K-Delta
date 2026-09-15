@@ -10,14 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
  * Check if user is already logged in
  */
 function checkExistingAuth() {
-  const token = localStorage.getItem('kdelta_token') || sessionStorage.getItem('kdelta_token');
+  const token = sessionStorage.getItem('kdelta_token');
   if (token) {
-    const userRaw = localStorage.getItem('kdelta_user') || sessionStorage.getItem('kdelta_user');
+    const userRaw = sessionStorage.getItem('kdelta_user');
     const user = JSON.parse(userRaw || '{}');
     showAuthAlert('success', `Signed in as ${user.name || 'Key'}. Redirecting to terminal...`);
     setTimeout(() => {
       window.location.href = 'index.html';
-    }, 1000);
+    }, 600);
   }
 }
 
@@ -28,7 +28,6 @@ async function handleLoginSubmit(event) {
   event.preventDefault();
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
-  const rememberMe = document.getElementById('login-remember') ? document.getElementById('login-remember').checked : true;
   const submitBtn = document.getElementById('login-submit-btn');
 
   if (!email || !password) {
@@ -61,25 +60,19 @@ async function handleLoginSubmit(event) {
     const user = data.user || {};
     user.name = user.name || 'Key';
 
-    // Store token and user based on Remember This Device state
-    if (rememberMe) {
-      localStorage.setItem('kdelta_token', data.token);
-      localStorage.setItem('kdelta_user', JSON.stringify(user));
-      localStorage.setItem('kdelta_remember', 'true');
-      sessionStorage.removeItem('kdelta_token');
-      sessionStorage.removeItem('kdelta_user');
-    } else {
-      sessionStorage.setItem('kdelta_token', data.token);
-      sessionStorage.setItem('kdelta_user', JSON.stringify(user));
-      localStorage.removeItem('kdelta_token');
-      localStorage.removeItem('kdelta_user');
-      localStorage.removeItem('kdelta_remember');
-    }
+    // Store token and user in active session storage only
+    sessionStorage.setItem('kdelta_token', data.token);
+    sessionStorage.setItem('kdelta_user', JSON.stringify(user));
+
+    // Clear legacy local storage tokens to ensure closing browser or direct links require login
+    localStorage.removeItem('kdelta_token');
+    localStorage.removeItem('kdelta_user');
+    localStorage.removeItem('kdelta_remember');
 
     showAuthAlert('success', `Welcome, ${user.name}! Accessing terminal...`);
     setTimeout(() => {
       window.location.href = 'index.html';
-    }, 900);
+    }, 600);
   } catch (err) {
     showAuthAlert('error', err.message || 'Invalid email or password.');
   } finally {

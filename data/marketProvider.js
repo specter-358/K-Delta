@@ -35,21 +35,62 @@ function normalizeSymbol(sym) {
   if (!sym) return 'RELIANCE.NS';
   let s = sym.trim().toUpperCase();
 
-  // Common index aliases
+  // Index aliases
   if (s === 'NIFTY' || s === 'NIFTY50' || s === 'NIFTY 50') return '^NSEI';
   if (s === 'BANKNIFTY' || s === 'BANK NIFTY') return '^NSEBANK';
-  if (s === 'SENSEX') return '^BSESN';
+  if (s === 'SENSEX' || s === 'BSE SENSEX') return '^BSESN';
   if (s === 'NIFTYIT' || s === 'NIFTY IT') return '^CNXIT';
   if (s === 'VIX' || s === 'INDIAVIX' || s === 'INDIA VIX') return '^INDIAVIX';
 
-  // If index starting with ^, return as is
   if (s.startsWith('^')) return s;
 
-  // If already has suffix .NS or .BO, return as is
-  if (s.endsWith('.NS') || s.endsWith('.BO')) return s;
+  let suffix = '.NS';
+  if (s.endsWith('.BO')) {
+    suffix = '.BO';
+    s = s.slice(0, -3);
+  } else if (s.endsWith('.NS')) {
+    suffix = '.NS';
+    s = s.slice(0, -3);
+  }
 
-  // Default to NSE (.NS) for Indian equities
-  return `${s}.NS`;
+  // Stock name alias map to official NSE tickers
+  const STOCK_MAP = {
+    'TATA STEEL': 'TATASTEEL',
+    'TATA MOTORS': 'TATAMOTORS',
+    'TATA POWER': 'TATAPOWER',
+    'TATA CONSULTANCY SERVICES': 'TCS',
+    'HDFC BANK': 'HDFCBANK',
+    'ICICI BANK': 'ICICIBANK',
+    'AXIS BANK': 'AXISBANK',
+    'KOTAK BANK': 'KOTAKBANK',
+    'KOTAK MAHINDRA BANK': 'KOTAKBANK',
+    'STATE BANK OF INDIA': 'SBIN',
+    'SBI': 'SBIN',
+    'BAJAJ FINANCE': 'BAJFINANCE',
+    'BAJAJ FINSERV': 'BAJAJFINSV',
+    'SUN PHARMA': 'SUNPHARMA',
+    'BHARTI AIRTEL': 'BHARTIARTL',
+    'ASIAN PAINTS': 'ASIANPAINT',
+    'ASIAN PAINT': 'ASIANPAINT',
+    'ULTRATECH CEMENT': 'ULTRACEMCO',
+    'POWER GRID': 'POWERGRID',
+    'POWERGRID': 'POWERGRID',
+    'HINDUSTAN UNILEVER': 'HINDUNILVR',
+    'RELIANCE INDUSTRIES': 'RELIANCE',
+    'LARSEN & TOUBRO': 'LT',
+    'LARSEN AND TOUBRO': 'LT',
+    'M&M': 'M&M',
+    'MAHINDRA & MAHINDRA': 'M&M',
+  };
+
+  if (STOCK_MAP[s]) {
+    s = STOCK_MAP[s];
+  } else {
+    // Remove internal spaces for tickers (e.g. TATA STEEL -> TATASTEEL)
+    s = s.replace(/\s+/g, '');
+  }
+
+  return `${s}${suffix}`;
 }
 
 /**
@@ -60,12 +101,12 @@ class MarketDataNormalizer {
   static normalizeTick(symbol, raw) {
     const sym = normalizeSymbol(symbol);
     const ltp = parseFloat((raw.price || raw.regularMarketPrice || raw.close || 0).toFixed(2));
+    const previousClose = parseFloat((raw.previousClose || raw.regularMarketPreviousClose || ltp).toFixed(2));
     const open = parseFloat((raw.open || raw.regularMarketOpen || ltp).toFixed(2));
     const high = parseFloat((raw.high || raw.regularMarketDayHigh || Math.max(open, ltp)).toFixed(2));
     const low = parseFloat((raw.low || raw.regularMarketDayLow || Math.min(open, ltp)).toFixed(2));
-    const close = parseFloat((raw.previousClose || raw.regularMarketPreviousClose || ltp).toFixed(2));
-    const change = parseFloat((raw.change || raw.regularMarketChange || (ltp - close)).toFixed(2));
-    const percentChange = parseFloat((raw.percentChange || raw.regularMarketChangePercent || (close ? (change / close) * 100 : 0)).toFixed(2));
+    const change = parseFloat((raw.change || raw.regularMarketChange || (ltp - previousClose)).toFixed(2));
+    const percentChange = parseFloat((raw.percentChange || raw.regularMarketChangePercent || (previousClose ? (change / previousClose) * 100 : 0)).toFixed(2));
     const volume = parseInt(raw.volume || raw.regularMarketVolume || 0, 10);
     const exchange = raw.exchange || (sym.endsWith('.BO') || sym === '^BSESN' ? 'BSE' : 'NSE');
 
@@ -96,7 +137,8 @@ class MarketDataNormalizer {
       open,
       high,
       low,
-      close,
+      close: ltp,
+      previousClose,
       change,
       percentChange,
       volume,
@@ -181,7 +223,8 @@ class YahooMarketProvider extends BaseMarketProvider {
   constructor() {
     super('YahooMarketProvider');
     this.cache = new Map();
-    this.cacheTTL = 30000; // 30s high-performance cache
+    this.cacheTTL = 1000; // 1s low-latency server cache
+    this.liveIndexPrices = new Map();
     this.activeSubscriptions = new Map(); // symbol -> interval ID
     this.activeStockWatchlist = [
       'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS',
@@ -191,9 +234,10 @@ class YahooMarketProvider extends BaseMarketProvider {
     ];
   }
 
-  _getCached(key) {
+  _getCached(key, customTTL) {
+    const ttl = customTTL || this.cacheTTL;
     const item = this.cache.get(key);
-    if (item && (Date.now() - item.timestamp) < this.cacheTTL) {
+    if (item && (Date.now() - item.timestamp) < ttl) {
       return item.data;
     }
     return null;
@@ -389,7 +433,7 @@ class YahooMarketProvider extends BaseMarketProvider {
 
   async getMarketIndices() {
     const cacheKey = 'market_indices';
-    const cached = this._getCached(cacheKey);
+    const cached = this._getCached(cacheKey, 1500);
     if (cached) return cached;
 
     const indices = [
@@ -427,6 +471,24 @@ class YahooMarketProvider extends BaseMarketProvider {
 
     const results = await Promise.all(indices.map(async idx => {
       try {
+        // First check if live micro-tick engine has an active tick for this index
+        const liveTick = this.liveIndexPrices.get(idx.symbol);
+        if (liveTick) {
+          return {
+            symbol: idx.symbol,
+            name: idx.name,
+            displayName: idx.name,
+            price: liveTick.price,
+            change: liveTick.change,
+            percentChange: liveTick.percentChange,
+            open: liveTick.open,
+            high: liveTick.high,
+            low: liveTick.low,
+            previousClose: liveTick.close - liveTick.change,
+            exchange: idx.exchange,
+          };
+        }
+
         const q = await yf.quote(idx.symbol).catch(() => null);
         if (q && q.regularMarketPrice != null) {
           return {
@@ -474,7 +536,7 @@ class YahooMarketProvider extends BaseMarketProvider {
 
   async getMarketMovers() {
     const cacheKey = 'indian_movers';
-    const cached = this._getCached(cacheKey);
+    const cached = this._getCached(cacheKey, 5000);
     if (cached) return cached;
 
     const symbols = [
@@ -528,7 +590,7 @@ class YahooMarketProvider extends BaseMarketProvider {
 
   /**
    * Subscribe to live tick stream for a symbol
-   * Fetches genuine real-time market data without synthetic manipulation
+   * Streams real-time market ticks continuously with high frequency
    */
   subscribe(rawSymbol) {
     const symbol = normalizeSymbol(rawSymbol);
@@ -543,11 +605,11 @@ class YahooMarketProvider extends BaseMarketProvider {
 
     const pollFunction = async () => {
       try {
-        const q = await yf.quote(symbol);
+        const q = await yf.quote(symbol).catch(() => null);
         if (!q || q.regularMarketPrice == null) return;
 
-        // Emit tick ONLY when real price or volume updates or on initial load
-        if (q.regularMarketPrice !== lastQuotePrice || q.regularMarketVolume !== lastVolume) {
+        // Emit tick when real market quote or volume updates or on initial load
+        if (q.regularMarketPrice !== lastQuotePrice || q.regularMarketVolume !== lastVolume || lastQuotePrice === null) {
           lastQuotePrice = q.regularMarketPrice;
           lastVolume = q.regularMarketVolume;
 
@@ -557,16 +619,19 @@ class YahooMarketProvider extends BaseMarketProvider {
             volume: q.regularMarketVolume || 0,
           });
 
+          if (symbol.startsWith('^')) {
+            this.liveIndexPrices.set(symbol, tick);
+          }
+
           this.emit('tick', tick);
         }
       } catch (e) {
-        // Suppress transient poll error
+        // Suppress poll error
       }
     };
 
-    // Immediate initial poll, then poll every 3 seconds during session
     pollFunction();
-    const intervalId = setInterval(pollFunction, 3000);
+    const intervalId = setInterval(pollFunction, 1000);
 
     this.activeSubscriptions.set(symbol, { intervalId, subscribers: 1 });
   }

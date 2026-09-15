@@ -87,9 +87,7 @@ function setupWebSocketListeners() {
 
   // Handle incoming live tick
   API.onTick(tick => {
-    if (tick.symbol === currentSymbol) {
-      updateLivePriceInfo(tick);
-    }
+    updateLiveTickElements(tick);
   });
 
   // Handle live forming candle update
@@ -116,21 +114,77 @@ function updateLivePriceInfo(tick) {
   const changeEl = document.getElementById('chart-change');
   if (!priceEl || !changeEl) return;
 
-  const prevPrice = lastChartPrice;
   lastChartPrice = tick.price;
-
   priceEl.textContent = formatPrice(tick.price);
   const isUp = tick.change >= 0;
   const changeClass = isUp ? 'price-up' : 'price-down';
 
   changeEl.className = `chart-header__change ${changeClass}`;
   changeEl.textContent = `${formatChange(tick.change)} (${formatPercent(tick.percentChange)})`;
+}
 
-  if (prevPrice !== null && tick.price !== prevPrice) {
-    priceEl.classList.remove('flash-up', 'flash-down');
-    void priceEl.offsetWidth; // trigger reflow
-    priceEl.classList.add(tick.price > prevPrice ? 'flash-up' : 'flash-down');
+function updateLiveTickElements(tick) {
+  if (!tick || !tick.symbol) return;
+
+  // 1. Chart Header if matching current symbol
+  if (tick.symbol === currentSymbol) {
+    updateLivePriceInfo(tick);
+    if (ChartManager && ChartManager.updateLiveCandle) {
+      const nowMs = tick.timestamp || Date.now();
+      const timeframeSec = currentInterval === '1day' ? 86400 : (currentInterval === '1h' ? 3600 : (currentInterval === '15min' ? 900 : (currentInterval === '5min' ? 300 : (currentInterval === '3min' ? 180 : 60))));
+      const timeVal = currentInterval === '1day' 
+        ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(nowMs))
+        : Math.floor(Math.floor(nowMs / 1000) / timeframeSec) * timeframeSec;
+
+      ChartManager.updateLiveCandle({
+        time: timeVal,
+        open: tick.open || tick.price,
+        high: tick.high || tick.price,
+        low: tick.low || tick.price,
+        close: tick.price,
+        volume: tick.volume || 100,
+      });
+    }
   }
+
+  // 2. Rolling Ticker Tape
+  const displayInfo = formatInstrumentDisplay(tick.symbol, tick.name, tick.exchange);
+  const items = document.querySelectorAll('.ticker-tape__item');
+  items.forEach(item => {
+    const symSpan = item.querySelector('.ticker-tape__symbol');
+    if (symSpan && (symSpan.textContent.trim() === displayInfo.symbolDisplay || symSpan.textContent.trim() === tick.symbol)) {
+      const priceSpan = item.querySelector('.ticker-tape__price');
+      const changeSpan = item.querySelector('.ticker-tape__change');
+
+      if (priceSpan) {
+        priceSpan.textContent = formatPrice(tick.price);
+        prevTickerPrices.set(tick.symbol, tick.price);
+      }
+
+      if (changeSpan) {
+        const isUp = tick.change >= 0;
+        changeSpan.className = `ticker-tape__change ${isUp ? 'price-up' : 'price-down'}`;
+        changeSpan.textContent = formatPercent(tick.percentChange);
+      }
+    }
+  });
+
+  // 3. Watchlist Items in Sidebar
+  const wlItems = document.querySelectorAll('.watchlist-item');
+  wlItems.forEach(item => {
+    if (item.dataset && item.dataset.symbol === tick.symbol) {
+      const pEl = item.querySelector('.watchlist-item__price');
+      const cEl = item.querySelector('.watchlist-item__change');
+      if (pEl) {
+        pEl.textContent = formatPrice(tick.price);
+      }
+      if (cEl) {
+        const isUp = tick.change >= 0;
+        cEl.className = `watchlist-item__change ${isUp ? 'price-up' : 'price-down'}`;
+        cEl.textContent = `${formatChange(tick.change)} (${formatPercent(tick.percentChange)})`;
+      }
+    }
+  });
 }
 
 /**

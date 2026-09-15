@@ -130,30 +130,37 @@ const API = (() => {
     const cacheKey = url;
     const isGet = !options.method || options.method === 'GET';
 
+    const isRealTimeMarketReq = endpoint.includes('/api/quote') || 
+                                endpoint.includes('/api/quotes') || 
+                                endpoint.includes('/api/candles') || 
+                                endpoint.includes('/api/market/indices') || 
+                                endpoint.includes('/api/movers');
+
     if (isGet) {
+      const ttl = isRealTimeMarketReq ? 1000 : 30000;
       // 1. Check in-memory Map cache
       const memCached = cache.get(cacheKey);
-      if (memCached && (Date.now() - memCached.timestamp) < 30000) {
+      if (memCached && (Date.now() - memCached.timestamp) < ttl) {
         return memCached.data;
       }
 
-      // 2. Check sessionStorage (persists across page switches for instant 0ms rendering)
-      try {
-        const ssRaw = sessionStorage.getItem(`kdelta_cache_${cacheKey}`);
-        if (ssRaw) {
-          const ssCached = JSON.parse(ssRaw);
-          const age = Date.now() - ssCached.timestamp;
-          if (age < 60000) { // 60s session TTL
-            cache.set(cacheKey, { data: ssCached.data, timestamp: ssCached.timestamp });
-            
-            // Revalidate in background if older than 15s without blocking page load
-            if (age > 15000) {
-              fetchFreshAndStore(url, options, cacheKey).catch(() => {});
+      // 2. Check sessionStorage if not a real-time market request
+      if (!isRealTimeMarketReq) {
+        try {
+          const ssRaw = sessionStorage.getItem(`kdelta_cache_${cacheKey}`);
+          if (ssRaw) {
+            const ssCached = JSON.parse(ssRaw);
+            const age = Date.now() - ssCached.timestamp;
+            if (age < 60000) { // 60s session TTL
+              cache.set(cacheKey, { data: ssCached.data, timestamp: ssCached.timestamp });
+              if (age > 15000) {
+                fetchFreshAndStore(url, options, cacheKey).catch(() => {});
+              }
+              return ssCached.data;
             }
-            return ssCached.data;
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
     }
 
     return await fetchFreshAndStore(url, options, cacheKey);

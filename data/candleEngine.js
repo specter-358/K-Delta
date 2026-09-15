@@ -67,7 +67,7 @@ class RealTimeCandleEngine extends EventEmitter {
     for (const tf of timeframes) {
       const isDaily = tf === '1day' || tf === '1d' || tf === '1week' || tf === '1wk' || tf === '1w';
       
-      // If market is closed and this is an intraday timeframe, do not create phantom evening candles
+      // Strict Indian Market Hours enforcement: Monday-Friday 09:15 to 15:30 IST
       if (!isMarketOpen && !isDaily) {
         continue;
       }

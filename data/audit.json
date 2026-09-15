@@ -1,5 +1,15 @@
 [
   {
+    "id": "audit_1789448419287_6ogro",
+    "timestamp": "2026-09-15T05:00:19.287Z",
+    "eventType": "LOGIN_SUCCESS",
+    "userId": "usr_maari_001",
+    "ip": "::1",
+    "details": {
+      "email": "maari@kdelta.com"
+    }
+  },
+  {
     "id": "audit_1789328603840_ehf6v",
     "timestamp": "2026-09-13T19:43:23.840Z",
     "eventType": "LOGIN_SUCCESS",
