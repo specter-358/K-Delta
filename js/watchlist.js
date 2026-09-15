@@ -349,45 +349,58 @@ function setupWatchlistSearchAdd() {
   const results = document.getElementById('watchlist-add-results');
   if (!input || !results) return;
 
-  let debounceTimer;
+  function renderWatchlistResults(items) {
+    if (!items || items.length === 0) {
+      results.innerHTML = '<div style="padding:10px;color:var(--text-muted);font-size:0.75rem">No matching securities found.</div>';
+      results.classList.add('active');
+      return;
+    }
+
+    results.innerHTML = items.slice(0, 6).map(r => {
+      const cleanSym = (r.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
+      const isAlreadyAdded = watchlistSymbols.includes(r.symbol);
+
+      return `
+        <div class="search-result-item" onclick="handleAddSymbol('${r.symbol}')">
+          <div style="text-align:left; align-items:flex-start;">
+            <div class="search-result-item__symbol" style="text-align:left;">${cleanSym}</div>
+            <div class="search-result-item__name" style="text-align:left;">${r.name || cleanSym}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
+            ${isAlreadyAdded ? '<span style="font-size:0.65rem;color:var(--accent-blue);font-weight:700">Added</span>' : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    results.classList.add('active');
+  }
+
+  // Show popular suggestions on focus
+  const showSuggestionsOnFocus = async () => {
+    if (!input.value.trim()) {
+      const popular = await API.searchSymbol('');
+      renderWatchlistResults(popular);
+    }
+  };
+
+  input.addEventListener('focus', showSuggestionsOnFocus);
+  input.addEventListener('click', showSuggestionsOnFocus);
 
   input.addEventListener('input', () => {
     clearTimeout(debounceTimer);
     const query = input.value.trim();
 
     if (query.length < 1) {
-      results.classList.remove('active');
+      showSuggestionsOnFocus();
       return;
     }
 
     debounceTimer = setTimeout(async () => {
       const searchResults = await API.searchSymbol(query);
-      if (!searchResults || searchResults.length === 0) {
-        results.innerHTML = '<div style="padding:10px;color:var(--text-muted);font-size:0.75rem">No matching securities found.</div>';
-        results.classList.add('active');
-        return;
-      }
-
-      results.innerHTML = searchResults.slice(0, 6).map(r => {
-        const cleanSym = (r.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
-        const isAlreadyAdded = watchlistSymbols.includes(r.symbol);
-
-        return `
-          <div class="search-result-item" onclick="handleAddSymbol('${r.symbol}')">
-            <div style="text-align:left; align-items:flex-start;">
-              <div class="search-result-item__symbol" style="text-align:left;">${cleanSym}</div>
-              <div class="search-result-item__name" style="text-align:left;">${r.name || cleanSym}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
-              ${isAlreadyAdded ? '<span style="font-size:0.65rem;color:var(--accent-blue);font-weight:700">Added</span>' : ''}
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      results.classList.add('active');
-    }, 200);
+      renderWatchlistResults(searchResults);
+    }, 150);
   });
 
   input.addEventListener('keydown', e => {

@@ -959,18 +959,18 @@ img {
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-active);
-  border-radius: var(--radius-sm);
+  background: var(--bg-card, #080b12);
+  border: 1px solid var(--accent-cyan, #06b6d4);
+  border-radius: var(--radius-md, 8px);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.95);
   max-height: 400px;
   overflow-y: auto;
-  z-index: 9999;
+  z-index: 99999 !important;
   display: none;
 }
 
 .search-box__results.active {
-  display: block;
+  display: block !important;
 }
 
 .search-result-item {
@@ -1222,6 +1222,4 @@ img {
 
 .hidden {
   display: none !important;
-}
-
 }

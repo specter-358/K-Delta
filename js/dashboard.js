@@ -1148,7 +1148,7 @@ function setupCompanySwitcher() {
 
   if (!selector || !dropdown) return;
 
-  const topCompanies = [
+  const topCompanies = (CONFIG && CONFIG.INDIAN_SECURITIES_CATALOG) ? CONFIG.INDIAN_SECURITIES_CATALOG : [
     { symbol: 'RELIANCE.NS', name: 'Reliance Industries Ltd.', exchange: 'NSE' },
     { symbol: 'TCS.NS', name: 'Tata Consultancy Services', exchange: 'NSE' },
     { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.', exchange: 'NSE' },
@@ -1192,7 +1192,7 @@ function setupCompanySwitcher() {
     });
   }
 
-  renderList(topCompanies);
+  renderList(topCompanies.slice(0, 10));
 
   selector.addEventListener('click', (e) => {
     if (e.target.closest('#company-switcher-dropdown')) return;
@@ -1200,7 +1200,7 @@ function setupCompanySwitcher() {
     selector.classList.toggle('active', isActive);
     if (isActive && input) {
       input.value = '';
-      renderList(topCompanies);
+      renderList(topCompanies.slice(0, 10));
       setTimeout(() => input.focus(), 50);
     }
   });
@@ -1211,13 +1211,17 @@ function setupCompanySwitcher() {
       clearTimeout(debounceTimer);
       const query = input.value.trim().toLowerCase();
       if (!query) {
-        renderList(topCompanies);
+        renderList(topCompanies.slice(0, 10));
         return;
       }
+
+      const localMatches = topCompanies.filter(c => {
+        const symClean = c.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+        return symClean.includes(query) || c.symbol.toLowerCase().includes(query) || c.name.toLowerCase().includes(query);
+      });
+      renderList(localMatches.slice(0, 20));
+
       debounceTimer = setTimeout(async () => {
-        const localMatches = topCompanies.filter(c => 
-          c.symbol.toLowerCase().includes(query) || c.name.toLowerCase().includes(query)
-        );
         const remoteResults = await API.searchSymbol(query);
         const combined = [...localMatches];
         if (remoteResults) {
@@ -1227,8 +1231,8 @@ function setupCompanySwitcher() {
             }
           });
         }
-        renderList(combined.slice(0, 8));
-      }, 200);
+        renderList(combined.slice(0, 20));
+      }, 150);
     });
 
     input.addEventListener('keydown', (e) => {

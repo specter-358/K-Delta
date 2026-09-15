@@ -14,6 +14,9 @@ const ChartManager = (() => {
   let currentCandles = [];
   let isIntraday = false;
   let containerEl = null;
+  let isVolumeVisible = true;
+  let cachedVolumes = [];
+  let pendingCandles = null;
 
   const OVERLAY_CONFIGS = {
     sma20: { color: '#f59e0b', lineWidth: 2, title: 'SMA 20' },
@@ -54,6 +57,12 @@ const ChartManager = (() => {
    * Initialize Chart in container
    */
   function init(container) {
+    if (typeof LightweightCharts === 'undefined') {
+      console.warn('[ChartManager] LightweightCharts not loaded yet, retrying in 100ms...');
+      setTimeout(() => init(container), 100);
+      return;
+    }
+
     if (chart) {
       chart.remove();
       chart = null;
@@ -169,6 +178,11 @@ const ChartManager = (() => {
     }
 
     window.addEventListener('resize', handleResize);
+
+    if (pendingCandles && pendingCandles.length > 0) {
+      setData(pendingCandles);
+      pendingCandles = null;
+    }
   }
 
   function handleResize() {
@@ -214,7 +228,11 @@ const ChartManager = (() => {
    * Set complete historical candle data
    */
   function setData(candles) {
-    if (!chart || !candleSeries || !candles || candles.length === 0) return;
+    if (!candles || candles.length === 0) return;
+    if (!chart || !candleSeries) {
+      pendingCandles = candles;
+      return;
+    }
 
     currentCandles = [...candles];
     isIntraday = typeof candles[0].time === 'number';
@@ -268,9 +286,6 @@ const ChartManager = (() => {
     chart.timeScale().fitContent();
     updateOHLCDisplay(null);
   }
-
-  let isVolumeVisible = true;
-  let cachedVolumes = [];
 
   /**
    * Set Volume Histogram Visibility

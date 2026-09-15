@@ -8,14 +8,13 @@
   <meta name="description"
     content="Candlestick chart with real-time pattern recognition, multi-indicator confluence scoring, and execution targets for Indian equities and indices.">
   <link rel="icon" type="image/png" href="images/logo.png">
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-  <script src="js/config.js"></script>
-  <!-- TradingView Lightweight Charts (Local + CDN Fallback) -->
+  <link rel="stylesheet" href="css/main.css?v=3.1">
+  <link rel="stylesheet" href="css/dashboard.css?v=3.1">
+  <!-- TradingView Lightweight Charts (Local + jsdelivr CDN Fallback permitted by CSP) -->
   <script src="node_modules/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
   <script>
     if (typeof LightweightCharts === 'undefined') {
-      document.write('<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"><\\/script>');
+      document.write('<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"><\\/script>');
     }
   </script>
 </head>
@@ -505,13 +504,13 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/indicators.js"></script>
-  <script src="js/patterns.js"></script>
-  <script src="js/predictions.js"></script>
-  <script src="js/chart.js"></script>
-  <script src="js/dashboard.js"></script>
+  <script src="js/config.js?v=3.1"></script>
+  <script src="js/api.js?v=3.1"></script>
+  <script src="js/indicators.js?v=3.1"></script>
+  <script src="js/patterns.js?v=3.1"></script>
+  <script src="js/predictions.js?v=3.1"></script>
+  <script src="js/chart.js?v=3.1"></script>
+  <script src="js/dashboard.js?v=3.1"></script>
 
 </body>
 

@@ -377,6 +377,17 @@ function switchMoverTab(tab) {
   }
 }
 
+const POPULAR_HOME_SUGGESTIONS = [
+  { symbol: 'RELIANCE.NS', name: 'Reliance Industries Ltd.', exchange: 'NSE' },
+  { symbol: 'TCS.NS', name: 'Tata Consultancy Services Ltd.', exchange: 'NSE' },
+  { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.', exchange: 'NSE' },
+  { symbol: 'INFY.NS', name: 'Infosys Ltd.', exchange: 'NSE' },
+  { symbol: 'ICICIBANK.NS', name: 'ICICI Bank Ltd.', exchange: 'NSE' },
+  { symbol: 'TATAMOTORS.NS', name: 'Tata Motors Ltd.', exchange: 'NSE' },
+  { symbol: 'SBIN.NS', name: 'State Bank of India', exchange: 'NSE' },
+  { symbol: '^NSEI', name: 'NIFTY 50 Index', exchange: 'NSE' },
+];
+
 /**
  * Setup search functionality for Indian stocks (NSE/BSE)
  */
@@ -387,42 +398,122 @@ function setupSearch() {
 
   let debounceTimer;
 
+  let selectedIndex = -1;
+
+  function updateSelectedClass() {
+    const items = searchResults.querySelectorAll('.search-result-item');
+    items.forEach((item, idx) => {
+      if (idx === selectedIndex) {
+        item.classList.add('selected');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  }
+
+  function renderSearchResults(items, isDefault = false) {
+    selectedIndex = -1;
+    if (!items || items.length === 0) {
+      searchResults.innerHTML = '<div style="padding:14px;color:var(--text-muted);font-size:0.8rem;text-align:center;">No matching Indian stocks found.</div>';
+      searchResults.classList.add('active');
+      return;
+    }
+
+    const headerHtml = isDefault 
+      ? '<div style="padding:9px 16px;font-size:0.7rem;font-weight:700;color:var(--text-muted);letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.06);">Trending Indian Equities & Indices</div>' 
+      : `<div style="padding:9px 16px;font-size:0.7rem;font-weight:700;color:var(--text-muted);letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.06);">Matching Indian Securities (${items.length})</div>`;
+
+    searchResults.innerHTML = headerHtml + items
+      .slice(0, 25)
+      .map(r => {
+        const displayInfo = formatInstrumentDisplay(r.symbol, r.name, r.exchange);
+        const symClean = displayInfo.symbolDisplay || r.symbol;
+        const nameClean = displayInfo.nameDisplay || r.name || symClean;
+        const exchClean = displayInfo.exchangeDisplay || r.exchange || 'NSE';
+        return `
+          <div class="search-result-item" data-symbol="${r.symbol}" data-name="${nameClean.replace(/"/g, '&quot;')}">
+            <div style="text-align:left; align-items:flex-start;">
+              <div class="search-result-item__symbol">${symClean}</div>
+              <div class="search-result-item__name">${nameClean}</div>
+            </div>
+            <span class="search-result-item__exchange">${exchClean}</span>
+          </div>`;
+      })
+      .join('');
+
+    searchResults.classList.add('active');
+  }
+
+  // Delegated click handler on search results
+  searchResults.addEventListener('click', (e) => {
+    const item = e.target.closest('.search-result-item');
+    if (!item) return;
+    const sym = item.getAttribute('data-symbol');
+    const name = item.getAttribute('data-name');
+    if (sym) {
+      navigateToDashboard(sym, name);
+    }
+  });
+
+  const catalog = (CONFIG && Array.isArray(CONFIG.INDIAN_SECURITIES_CATALOG) && CONFIG.INDIAN_SECURITIES_CATALOG.length > 0)
+    ? CONFIG.INDIAN_SECURITIES_CATALOG 
+    : POPULAR_HOME_SUGGESTIONS;
+
+  // Focus & Click handlers to open dropdown immediately
+  const handleSearchFocus = () => {
+    const query = searchInput.value.trim();
+    if (!query) {
+      renderSearchResults(catalog.slice(0, 12), true);
+    } else {
+      const qClean = query.toLowerCase();
+      const localFiltered = catalog.filter(s => {
+        const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+        return symClean.includes(qClean) || s.symbol.toLowerCase().includes(qClean) || s.name.toLowerCase().includes(qClean);
+      });
+      renderSearchResults(localFiltered.length > 0 ? localFiltered : []);
+    }
+  };
+
+  searchInput.addEventListener('focus', handleSearchFocus);
+  searchInput.addEventListener('click', handleSearchFocus);
+
   searchInput.addEventListener('input', () => {
     clearTimeout(debounceTimer);
     const query = searchInput.value.trim();
 
     if (query.length < 1) {
-      searchResults.classList.remove('active');
+      renderSearchResults(catalog.slice(0, 12), true);
       return;
     }
 
+    // Instant local filter across ALL stocks in catalog (0ms latency)
+    const qClean = query.toLowerCase();
+    const localFiltered = catalog.filter(s => {
+      const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+      return symClean.includes(qClean) || s.symbol.toLowerCase().includes(qClean) || s.name.toLowerCase().includes(qClean);
+    });
+
+    renderSearchResults(localFiltered);
+
+    // Live backend search merge
     debounceTimer = setTimeout(async () => {
-      const results = await API.searchSymbol(query);
-      if (!results || results.length === 0) {
-        searchResults.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.8rem">No matching Indian stocks found.</div>';
-        searchResults.classList.add('active');
-        return;
+      try {
+        const results = await API.searchSymbol(query);
+        if (results && results.length > 0) {
+          const combined = [...localFiltered];
+          results.forEach(r => {
+            if (!combined.some(c => c.symbol === r.symbol)) {
+              combined.push(r);
+            }
+          });
+          renderSearchResults(combined);
+        }
+      } catch (err) {
+        // Fallback to localFiltered
+        renderSearchResults(localFiltered);
       }
-
-      searchResults.innerHTML = results
-        .slice(0, 8)
-        .map(
-          r => {
-            const displayInfo = formatInstrumentDisplay(r.symbol, r.name, r.exchange);
-            return `
-        <div class="search-result-item" onclick="navigateToDashboard('${r.symbol}', '${(displayInfo.nameDisplay || '').replace(/'/g, "\\'")}')">
-          <div style="text-align:left; align-items:flex-start;">
-            <div class="search-result-item__symbol" style="text-align:left;">${displayInfo.symbolDisplay}</div>
-            <div class="search-result-item__name" style="text-align:left;">${displayInfo.nameDisplay}</div>
-          </div>
-          <span class="search-result-item__exchange">${displayInfo.exchangeDisplay}</span>
-        </div>`;
-          }
-        )
-        .join('');
-
-      searchResults.classList.add('active');
-    }, 250);
+    }, 120);
   });
 
   // Close on click outside
@@ -432,11 +523,38 @@ function setupSearch() {
     }
   });
 
-  // Enter key
+  // Keydown for enter, arrow navigation & escape
   searchInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      const query = searchInput.value.trim().toUpperCase();
-      if (query) navigateToDashboard(query);
+    const items = searchResults.querySelectorAll('.search-result-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!searchResults.classList.contains('active')) {
+        handleSearchFocus();
+        return;
+      }
+      if (items.length > 0) {
+        selectedIndex = (selectedIndex + 1) % items.length;
+        updateSelectedClass();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (items.length > 0) {
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+        updateSelectedClass();
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const selectedItem = searchResults.querySelector('.search-result-item.selected') || items[0];
+      if (selectedItem) {
+        const sym = selectedItem.getAttribute('data-symbol');
+        const name = selectedItem.getAttribute('data-name');
+        if (sym) navigateToDashboard(sym, name);
+      } else {
+        const query = searchInput.value.trim().toUpperCase();
+        if (query) navigateToDashboard(query);
+      }
+    } else if (e.key === 'Escape') {
+      searchResults.classList.remove('active');
     }
   });
 }
