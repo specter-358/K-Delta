@@ -10,6 +10,7 @@
   <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="stylesheet" href="css/main.css?v=3.1">
   <link rel="stylesheet" href="css/dashboard.css?v=3.1">
+  <link rel="stylesheet" href="css/alerts.css?v=3.2">
   <!-- TradingView Lightweight Charts (Local + jsdelivr CDN Fallback permitted by CSP) -->
   <script src="node_modules/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
   <script>
@@ -45,6 +46,22 @@
       <a href="watchlist.html">Watchlist</a>
     </div>
     <div class="navbar__market-status">
+      <div class="navbar-alert-controls">
+        <button class="navbar-audio-btn active" id="btn-navbar-audio-toggle" onclick="AudioAlerts.toggleMute()" title="Toggle Alert Audio Chimes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <span class="audio-toggle-label">Audio ON</span>
+        </button>
+        <button class="navbar-alert-btn" id="btn-navbar-alerts" onclick="AlertEngine.openAlertsCenter()" title="Open Live Alerts Center">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span class="alerts-unread-badge" id="navbar-alerts-badge" style="display:none">0</span>
+        </button>
+      </div>
       <span class="live-clock-badge" id="stream-status-badge">
         <span class="status-dot open"></span> WS Live Stream
       </span>
@@ -298,6 +315,15 @@
             </div>
           </div>
 
+          <!-- 1-Click Track Setup Targets in Alerts -->
+          <button class="btn-track-targets" id="btn-track-targets" onclick="trackCurrentStockTargets()" title="Arm live audio and push alerts for Entry, TP1, TP2 and Stop Loss">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span>Track Targets in Alerts (Audio + Push)</span>
+          </button>
+
           <!-- Risk / Reward Bar -->
           <div class="risk-reward-row">
             <span class="risk-reward-label">Risk/Reward Ratio:</span>
@@ -509,6 +535,8 @@
   <script src="js/indicators.js?v=3.1"></script>
   <script src="js/patterns.js?v=3.1"></script>
   <script src="js/predictions.js?v=3.1"></script>
+  <script src="js/audioAlerts.js?v=3.2"></script>
+  <script src="js/alertEngine.js?v=3.2"></script>
   <script src="js/chart.js?v=3.1"></script>
   <script src="js/dashboard.js?v=3.1"></script>
 

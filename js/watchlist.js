@@ -309,6 +309,9 @@ function renderWatchlistTable() {
             <button class="btn-table-launch" onclick="launchTerminal('${q.symbol}')" title="Open in Terminal">
               Terminal ↗
             </button>
+            <button class="btn-table-alert" onclick="openSymbolAlertModal('${q.symbol}', ${q.price || 0})" title="Set Price Alert for ${displayInfo.symbolDisplay}">
+              🔔
+            </button>
             <button class="btn-table-del" onclick="handleRemoveSymbol('${q.symbol}')" title="Remove from Watchlist">
               ✕
             </button>
@@ -508,6 +511,18 @@ function launchTerminal(symbol) {
   window.location.href = `dashboard.html?symbol=${encodeURIComponent(symbol)}`;
 }
 
+function openSymbolAlertModal(symbol, price) {
+  if (typeof AlertEngine !== 'undefined') {
+    AlertEngine.openAlertsCenter();
+    setTimeout(() => {
+      const symInput = document.getElementById('custom-alert-sym');
+      const priceInput = document.getElementById('custom-alert-price');
+      if (symInput) symInput.value = symbol;
+      if (priceInput && price) priceInput.value = price;
+    }, 100);
+  }
+}
+
 // Global window bindings
 if (typeof window !== 'undefined') {
   window.loadWatchlistData = loadWatchlistData;
@@ -517,4 +532,5 @@ if (typeof window !== 'undefined') {
   window.triggerSearchAdd = triggerSearchAdd;
   window.restoreDefaultWatchlist = restoreDefaultWatchlist;
   window.launchTerminal = launchTerminal;
+  window.openSymbolAlertModal = openSymbolAlertModal;
 }

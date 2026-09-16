@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node tests/security.test.js"
+    "test": "node tests/security.test.js && node tests/alerts.test.js"
   },
   "repository": {
     "type": "git",

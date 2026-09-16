@@ -343,6 +343,13 @@ function runAnalysisAndRender(updateMarkers = true) {
   if (window.ChartManager && typeof window.ChartManager.autoFit === 'function') {
     window.ChartManager.autoFit();
   }
+
+  // 7. Auto-detect and notify High-Conviction Confluence (>80% confidence)
+  if (typeof AlertEngine !== 'undefined' && currentPrediction) {
+    const compEl = document.getElementById('chart-company');
+    const compName = compEl ? compEl.textContent : currentSymbol;
+    AlertEngine.checkHighConvictionSetup(currentSymbol, currentPrediction, compName);
+  }
 }
 
 /**
@@ -584,6 +591,21 @@ function renderTradeSetup(setup) {
         <div>${item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</div>
       </div>
     `).join('');
+  }
+}
+
+/**
+ * 1-Click Track Setup Targets in Browser Audio & Push Alerts
+ */
+function trackCurrentStockTargets() {
+  if (!currentPrediction || !currentPrediction.tradeSetup) {
+    alert('No active target setup is currently available for this security.');
+    return;
+  }
+  const compEl = document.getElementById('chart-company');
+  const compName = compEl ? compEl.textContent : currentSymbol;
+  if (typeof AlertEngine !== 'undefined') {
+    AlertEngine.trackTradeSetup(currentSymbol, currentPrediction.tradeSetup, compName);
   }
 }
 
@@ -1701,5 +1723,6 @@ if (typeof window !== 'undefined') {
   window.exportChartPNG = exportChartPNG;
   window.openExportModal = openExportModal;
   window.closeExportModal = closeExportModal;
+  window.trackCurrentStockTargets = trackCurrentStockTargets;
 }
 
