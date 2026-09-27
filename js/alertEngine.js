@@ -112,13 +112,36 @@ const AlertEngine = (() => {
     startWatchlistMonitoring();
   }
 
+  function removeAllEmojis(str) {
+    if (typeof str !== 'string') return str;
+    return str
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function loadFromStorage() {
     try {
       const savedActive = localStorage.getItem(STORAGE_KEY_ACTIVE);
-      if (savedActive) activeAlerts = JSON.parse(savedActive);
+      if (savedActive) {
+        activeAlerts = JSON.parse(savedActive).map(a => ({
+          ...a,
+          label: removeAllEmojis(a.label || ''),
+          title: removeAllEmojis(a.title || ''),
+          message: removeAllEmojis(a.message || ''),
+        }));
+      }
 
       const savedHistory = localStorage.getItem(STORAGE_KEY_HISTORY);
-      if (savedHistory) alertHistory = JSON.parse(savedHistory);
+      if (savedHistory) {
+        alertHistory = JSON.parse(savedHistory).map(h => ({
+          ...h,
+          label: removeAllEmojis(h.label || ''),
+          title: removeAllEmojis(h.title || ''),
+          message: removeAllEmojis(h.message || ''),
+          reason: removeAllEmojis(h.reason || ''),
+        }));
+      }
     } catch (e) {
       console.warn('[AlertEngine] Storage load error:', e);
       activeAlerts = [];
@@ -296,6 +319,12 @@ const AlertEngine = (() => {
   function dispatchAlertTriggered(alertEvent) {
     unreadCount++;
 
+    // Purge any emojis from alert content
+    alertEvent.title = removeAllEmojis(alertEvent.title || '');
+    alertEvent.message = removeAllEmojis(alertEvent.message || '');
+    if (alertEvent.label) alertEvent.label = removeAllEmojis(alertEvent.label);
+    if (alertEvent.reason) alertEvent.reason = removeAllEmojis(alertEvent.reason);
+
     // 1. Play Institutional Web Audio Chime
     const audio = getAudioAlertsModule();
     if (audio && typeof audio.play === 'function') {
@@ -345,7 +374,7 @@ const AlertEngine = (() => {
     cooldownMap.set(cooldownKey, now);
 
     const primaryPattern = (prediction.patterns && prediction.patterns[0]) ? prediction.patterns[0].name : 'Multi-Indicator Confluence';
-    const title = `⚡ High Conviction (${prediction.confidence}%): ${symbol}`;
+    const title = `High Conviction (${prediction.confidence}%): ${symbol}`;
     const message = `Algorithmic ${prediction.signal} confirmed by ${primaryPattern}. Confidence score: ${prediction.confidence}%.`;
 
     dispatchAlertTriggered({
@@ -468,7 +497,7 @@ const AlertEngine = (() => {
     showToast({
       symbol: sym,
       levelType: 'entry',
-      title: `🎯 Alerts Armed: ${sym}`,
+      title: `Alerts Armed: ${sym}`,
       message: `Tracking ${addedCount} targets (Entry, TP1, TP2, Stop Loss). Audio & Web Push will trigger upon price breach.`,
       price: setup.entryPrice,
     });
@@ -485,8 +514,8 @@ const AlertEngine = (() => {
     const sym = symbol.toUpperCase().trim();
     const targetPrice = parseFloat(price);
     const now = Date.now();
-    const type = condition === 'above' ? 'custom_above' : 'custom_below';
-    const label = note ? `${note} (₹${targetPrice.toFixed(2)})` : `Crosses ${condition.toUpperCase()} ₹${targetPrice.toFixed(2)}`;
+    const type = condition === 'below' ? 'custom_below' : 'custom_above';
+    const label = note ? `${note} (₹${targetPrice.toFixed(2)})` : `Target Price ₹${targetPrice.toFixed(2)}`;
 
     activeAlerts.push({
       id: `custom_${sym}_${now}`,
@@ -506,7 +535,7 @@ const AlertEngine = (() => {
       symbol: sym,
       levelType: 'custom',
       title: `Custom Alert Set: ${sym}`,
-      message: `You will be alerted when ${sym} crosses ${condition} ₹${targetPrice.toFixed(2)}.`,
+      message: `You will be alerted when ${sym} reaches ₹${targetPrice.toFixed(2)}.`,
       price: targetPrice,
     });
 
@@ -571,25 +600,9 @@ const AlertEngine = (() => {
   }
 
   /**
-   * Trigger automatic movement sound with anti-spam debouncing
+   * Trigger automatic movement sound every time price moves up or down
    */
   function triggerMovementSound(symbol, isUp, currentPrice, prevPrice) {
-    const now = Date.now();
-
-    // 1. Anti-spam: Global minimum interval (350ms) to prevent multiple simultaneous stocks screeching
-    if (now - lastPriceMovementSoundTime < 350) {
-      return;
-    }
-
-    // 2. Anti-spam: Per-symbol debounce (1200ms) to prevent rapid tick hammering
-    const lastSymTime = symbolMovementSoundCooldown.get(symbol) || 0;
-    if (now - lastSymTime < 1200) {
-      return;
-    }
-
-    lastPriceMovementSoundTime = now;
-    symbolMovementSoundCooldown.set(symbol, now);
-
     const soundType = isUp ? 'price-up' : 'price-down';
     const audio = getAudioAlertsModule();
     if (audio && typeof audio.play === 'function') {
@@ -963,6 +976,7 @@ const AlertEngine = (() => {
     const badgeLabel = event.signalType ? `${event.signalType} SIGNAL` : (event.levelType || 'ALERT').toUpperCase();
     const timeDisplay = event.timeFormatted || (new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) + ' IST');
 
+    const cleanMessage = removeAllEmojis(event.message || event.title || '');
     toast.className = `kdelta-toast toast--${event.levelType || 'entry'}`;
     toast.innerHTML = `
       <div class="toast-header">
@@ -973,7 +987,7 @@ const AlertEngine = (() => {
         </div>
         <button class="toast-close-btn" title="Dismiss">&times;</button>
       </div>
-      <div class="toast-body">${event.message || event.title}</div>
+      <div class="toast-body">${cleanMessage}</div>
       <div class="toast-actions">
         ${event.symbol ? `<a href="dashboard.html?symbol=${encodeURIComponent(event.rawSymbol || event.symbol)}" class="toast-action-link">Open Terminal →</a>` : ''}
         <span class="toast-time">${timeDisplay}</span>
@@ -1116,22 +1130,22 @@ const AlertEngine = (() => {
 
           <div class="chime-test-buttons">
             <button class="btn-chime-test" onclick="AudioAlerts.testChime('target-hit')" title="Test TP1/TP2 Chime">
-              <span>🎯 Target Hit (TP1)</span>
+              <span>Target Hit (TP1)</span>
             </button>
             <button class="btn-chime-test" onclick="AudioAlerts.testChime('entry-trigger')" title="Test Entry Chime">
-              <span>🔔 Entry Breach</span>
+              <span>Entry Breach</span>
             </button>
             <button class="btn-chime-test" onclick="AudioAlerts.testChime('stop-hit')" title="Test Stop Loss Chime">
-              <span>🛑 Stop Loss Warning</span>
+              <span>Stop Loss Warning</span>
             </button>
             <button class="btn-chime-test" onclick="AudioAlerts.testChime('high-conviction')" title="Test High Conviction Chime">
-              <span>⚡ >80% Setup Pulse</span>
+              <span>>80% Setup Pulse</span>
             </button>
             <button class="btn-chime-test" onclick="AudioAlerts.testChime('price-up')" title="Test Upward Price Movement Chime">
-              <span>📈 Price Up Sound</span>
+              <span>Price Up Sound</span>
             </button>
             <button class="btn-chime-test" onclick="AudioAlerts.testChime('price-down')" title="Test Downward Price Movement Chime">
-              <span>📉 Price Down Sound</span>
+              <span>Price Down Sound</span>
             </button>
           </div>
         </div>
@@ -1150,7 +1164,7 @@ const AlertEngine = (() => {
               Enable Desktop Push
             </button>
           ` : `
-            <span class="push-active-badge">✓ Active in Background</span>
+            <span class="push-active-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Active in Background</span>
           `}
         </div>
       </div>
@@ -1160,10 +1174,6 @@ const AlertEngine = (() => {
         <div class="alerts-section-title">Set Custom Price Alert</div>
         <div class="custom-alert-form">
           <input type="text" id="custom-alert-sym" placeholder="Symbol (e.g. RELIANCE.NS)" class="alert-input">
-          <select id="custom-alert-cond" class="alert-select">
-            <option value="above">Crosses Above (≥)</option>
-            <option value="below">Crosses Below (≤)</option>
-          </select>
           <input type="number" id="custom-alert-price" placeholder="Target Price (₹)" step="0.05" class="alert-input">
           <button class="btn btn--primary btn--sm" onclick="AlertEngine.handleAddCustomFromModal()">Arm Alert</button>
         </div>
@@ -1234,17 +1244,19 @@ const AlertEngine = (() => {
 
   function handleAddCustomFromModal() {
     const symInput = document.getElementById('custom-alert-sym');
-    const condSelect = document.getElementById('custom-alert-cond');
     const priceInput = document.getElementById('custom-alert-price');
 
     if (!symInput || !priceInput || !priceInput.value) {
-      alert('Please enter a valid stock symbol and price threshold.');
+      alert('Please enter a valid stock symbol and target price.');
       return;
     }
 
     const sym = symInput.value.trim().toUpperCase();
-    const cond = condSelect ? condSelect.value : 'above';
     const price = parseFloat(priceInput.value);
+
+    // Auto-detect direction relative to current reference price if known
+    const lastPrice = lastKnownPrices.get(sym);
+    const cond = (lastPrice && price < lastPrice) ? 'below' : 'above';
 
     addCustomAlert(sym, price, cond);
     symInput.value = '';

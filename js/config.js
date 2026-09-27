@@ -813,7 +813,7 @@ function injectProfileModalHTML() {
     <div class="profile-modal-box">
       <div class="profile-modal-header">
         <div class="profile-modal-title">Edit Account Profile</div>
-        <button class="profile-modal-close" onclick="closeProfileModal()">✕</button>
+        <button class="profile-modal-close" onclick="closeProfileModal()">&times;</button>
       </div>
 
       <div id="profile-modal-alert" class="login-alert" style="display:none; margin-bottom:16px;"></div>

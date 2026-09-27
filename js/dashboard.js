@@ -310,6 +310,12 @@ async function loadSymbol(symbol, isRefresh = false) {
     // Render Quote Header
     renderHeader(quote);
 
+    if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.processPriceUpdate === 'function') {
+      if (quote && quote.symbol && typeof quote.price === 'number') {
+        AlertEngine.processPriceUpdate(quote.symbol, quote.price);
+      }
+    }
+
     if (currentCandles.length > 0) {
       // Set Candlestick Data in Chart
       ChartManager.setData(currentCandles);
@@ -1609,7 +1615,7 @@ function generateChartReportHTML(chartImageDataUrl) {
 </head>
 <body>
   <div class="no-print">
-    <button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <button class="btn" onclick="window.print()">Print / Save as PDF</button>
   </div>
   <div class="report-container">
     <div class="report-header">
@@ -1639,7 +1645,7 @@ function generateChartReportHTML(chartImageDataUrl) {
 
     <div class="grid-2">
       <div class="card">
-        <div class="card-title">🎯 Buy / Sell Trade Execution Setup</div>
+        <div class="card-title">Buy / Sell Trade Execution Setup</div>
         <div class="data-row">
           <span class="data-label">Action Bias</span>
           <span class="data-val" style="color:${signalColor}">${action}</span>
@@ -1671,7 +1677,7 @@ function generateChartReportHTML(chartImageDataUrl) {
       </div>
 
       <div class="card">
-        <div class="card-title">📊 Technical Confluence & Indicators</div>
+        <div class="card-title">Technical Confluence & Indicators</div>
         <div class="data-row">
           <span class="data-label">Confluence Score</span>
           <span class="data-val">${confidence}%</span>
@@ -1837,7 +1843,7 @@ function openExportModal() {
       <div class="profile-modal-box" style="max-width:440px;">
         <div class="profile-modal-header">
           <div class="profile-modal-title">Export Chart & Trade Analysis</div>
-          <button class="profile-modal-close" onclick="closeExportModal()">✕</button>
+          <button class="profile-modal-close" onclick="closeExportModal()">&times;</button>
         </div>
         <div style="padding:16px 0;">
           <p style="font-size:0.84rem;color:var(--text-secondary);margin-bottom:16px;text-align:left;">
@@ -1845,21 +1851,21 @@ function openExportModal() {
           </p>
           <div style="display:flex; flex-direction:column; gap:12px;">
             <button class="btn btn--primary" onclick="exportChartPDFReport()" style="display:flex;align-items:center;gap:12px;padding:12px 16px;justify-content:flex-start;text-align:left;">
-              <span style="font-size:1.3rem;">🖨️</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
               <div>
                 <div style="font-weight:700;font-size:0.9rem;">Print / Save as PDF Document</div>
                 <div style="font-size:0.75rem;opacity:0.85;">Chart image, Buy/Sell Targets (TP1, TP2, SL) & Indicators</div>
               </div>
             </button>
             <button class="btn" onclick="exportChartHTMLReport()" style="display:flex;align-items:center;gap:12px;padding:12px 16px;justify-content:flex-start;background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-primary);text-align:left;">
-              <span style="font-size:1.3rem;">🌐</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
               <div>
                 <div style="font-weight:700;font-size:0.9rem;">Download HTML Report (.html)</div>
                 <div style="font-size:0.75rem;opacity:0.85;">Standalone HTML file with embedded chart image & Buy/Sell details</div>
               </div>
             </button>
             <button class="btn btn--ghost" onclick="exportChartPNG()" style="display:flex;align-items:center;gap:12px;padding:12px 16px;justify-content:flex-start;text-align:left;">
-              <span style="font-size:1.3rem;">🖼️</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
               <div>
                 <div style="font-weight:700;font-size:0.9rem;">Save PNG Image Only (.png)</div>
                 <div style="font-size:0.75rem;opacity:0.85;">High-res PNG screenshot of the chart canvas</div>

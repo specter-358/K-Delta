@@ -269,7 +269,7 @@ async function loadRecentSetups() {
               </div>
             </div>
             <span class="badge ${badgeClass} stock-card__prediction-badge">
-              ${badgeIcon} ${actionText}
+              ${actionText}
             </span>
           </div>
           <div class="stock-card__price-row">

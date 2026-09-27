@@ -1,5 +1,205 @@
 [
   {
+    "id": "audit_1790537739688_up4wd",
+    "timestamp": "2026-09-27T19:35:39.688Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_4@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537739682_xe6x5",
+    "timestamp": "2026-09-27T19:35:39.682Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_3@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537739674_vtdbs",
+    "timestamp": "2026-09-27T19:35:39.674Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_2@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537739668_fqcx2",
+    "timestamp": "2026-09-27T19:35:39.668Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_1@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537739661_cupom",
+    "timestamp": "2026-09-27T19:35:39.661Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_0@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537598473_gwu39",
+    "timestamp": "2026-09-27T19:33:18.473Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_4@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537598468_plijs",
+    "timestamp": "2026-09-27T19:33:18.468Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_3@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537598463_bcvle",
+    "timestamp": "2026-09-27T19:33:18.463Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_2@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537598458_06prs",
+    "timestamp": "2026-09-27T19:33:18.458Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_1@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537598453_womn9",
+    "timestamp": "2026-09-27T19:33:18.453Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_0@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537250499_t5q7h",
+    "timestamp": "2026-09-27T19:27:30.499Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_4@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537250489_0vvme",
+    "timestamp": "2026-09-27T19:27:30.489Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_3@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537250481_ofkq9",
+    "timestamp": "2026-09-27T19:27:30.481Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_2@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537250472_z2ed7",
+    "timestamp": "2026-09-27T19:27:30.472Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_1@test.com"
+    }
+  },
+  {
+    "id": "audit_1790537250463_56em6",
+    "timestamp": "2026-09-27T19:27:30.463Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_0@test.com"
+    }
+  },
+  {
+    "id": "audit_1790536915918_v5y26",
+    "timestamp": "2026-09-27T19:21:55.918Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_4@test.com"
+    }
+  },
+  {
+    "id": "audit_1790536915912_cm1lh",
+    "timestamp": "2026-09-27T19:21:55.912Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_3@test.com"
+    }
+  },
+  {
+    "id": "audit_1790536915904_j7skt",
+    "timestamp": "2026-09-27T19:21:55.904Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_2@test.com"
+    }
+  },
+  {
+    "id": "audit_1790536915895_tpsgo",
+    "timestamp": "2026-09-27T19:21:55.895Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_1@test.com"
+    }
+  },
+  {
+    "id": "audit_1790536915888_bzfnq",
+    "timestamp": "2026-09-27T19:21:55.888Z",
+    "eventType": "LOGIN_FAILED_NOT_FOUND",
+    "userId": "anonymous",
+    "ip": "::1",
+    "details": {
+      "email": "test_0@test.com"
+    }
+  },
+  {
     "id": "audit_1790536151997_2qepj",
     "timestamp": "2026-09-27T19:09:11.997Z",
     "eventType": "LOGIN_FAILED_NOT_FOUND",
@@ -1795,204 +1995,6 @@
     "ip": "::1",
     "details": {
       "email": "test_0@test.com"
-    }
-  },
-  {
-    "id": "audit_1789248049073_6kndr",
-    "timestamp": "2026-09-12T21:20:49.073Z",
-    "eventType": "LOGIN_SUCCESS",
-    "userId": "usr_demo_002",
-    "ip": "::1",
-    "details": {
-      "email": "maari@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789248044585_0ws22",
-    "timestamp": "2026-09-12T21:20:44.585Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247899941_vq7uc",
-    "timestamp": "2026-09-12T21:18:19.941Z",
-    "eventType": "LOGIN_SUCCESS",
-    "userId": "usr_admin_001",
-    "ip": "::1",
-    "details": {
-      "email": "admin@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247874101_qg3ap",
-    "timestamp": "2026-09-12T21:17:54.101Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247853037_yp6ai",
-    "timestamp": "2026-09-12T21:17:33.037Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247817565_popnr",
-    "timestamp": "2026-09-12T21:16:57.565Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247766471_l8k95",
-    "timestamp": "2026-09-12T21:16:06.471Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247759678_c60r2",
-    "timestamp": "2026-09-12T21:15:59.678Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247620247_sfin9",
-    "timestamp": "2026-09-12T21:13:40.247Z",
-    "eventType": "LOGIN_SUCCESS",
-    "userId": "usr_demo_002",
-    "ip": "::1",
-    "details": {
-      "email": "maari@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247613384_3vket",
-    "timestamp": "2026-09-12T21:13:33.384Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247613168_2ta00",
-    "timestamp": "2026-09-12T21:13:33.168Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247612009_2ndqk",
-    "timestamp": "2026-09-12T21:13:32.009Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247578755_yhqiz",
-    "timestamp": "2026-09-12T21:12:58.755Z",
-    "eventType": "PROFILE_UPDATED",
-    "userId": "usr_demo_002",
-    "ip": "::1",
-    "details": {}
-  },
-  {
-    "id": "audit_1789247425639_e6seb",
-    "timestamp": "2026-09-12T21:10:25.639Z",
-    "eventType": "LOGIN_SUCCESS",
-    "userId": "usr_demo_002",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247083857_5yeae",
-    "timestamp": "2026-09-12T21:04:43.857Z",
-    "eventType": "LOGIN_SUCCESS",
-    "userId": "usr_demo_002",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789247009374_9qbuc",
-    "timestamp": "2026-09-12T21:03:29.374Z",
-    "eventType": "LOGIN_SUCCESS",
-    "userId": "usr_demo_002",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789246973680_cgcly",
-    "timestamp": "2026-09-12T21:02:53.680Z",
-    "eventType": "LOGIN_SUCCESS",
-    "userId": "usr_demo_002",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789246748739_y21ly",
-    "timestamp": "2026-09-12T20:59:08.739Z",
-    "eventType": "LOGIN_SUCCESS",
-    "userId": "usr_demo_002",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789246528482_2ulyd",
-    "timestamp": "2026-09-12T20:55:28.482Z",
-    "eventType": "LOGIN_SUCCESS",
-    "userId": "usr_demo_002",
-    "ip": "::1",
-    "details": {
-      "email": "trader@kdelta.com"
-    }
-  },
-  {
-    "id": "audit_1789245407781_15kbe",
-    "timestamp": "2026-09-12T20:36:47.781Z",
-    "eventType": "LOGIN_FAILED_NOT_FOUND",
-    "userId": "anonymous",
-    "ip": "::1",
-    "details": {
-      "email": "test_4@test.com"
     }
   }
 ]

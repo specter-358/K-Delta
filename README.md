@@ -2,7 +2,7 @@
 
 Real-time Indian stock market analytics, candlestick pattern recognition, multi-indicator confluence scoring, and volatility-adjusted execution targets for NSE & BSE securities.
 
-## 📄 Copyright & Disclaimer
+## Copyright & Disclaimer
 
 © 2026 **K-Delta Analytics Group**. All Rights Reserved.  
 © 2026 **spector-358**. All Rights Reserved.

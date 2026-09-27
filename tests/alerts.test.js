@@ -387,6 +387,13 @@ async function runAlertTests() {
     AlertEngine.processPriceUpdate('NON_WATCHLIST.NS', 200.00, 190.00);
     assert.strictEqual(soundsPlayed.length, countBefore, 'Unwatched stock movement must not play sound');
 
+    // 6. Rings every time while price is going up or down (instant successive movements)
+    const soundsCount = soundsPlayed.length;
+    AlertEngine.processPriceUpdate('TCS.NS', 4010.00, 4005.00); // UP
+    AlertEngine.processPriceUpdate('TCS.NS', 4008.00, 4010.00); // DOWN
+    AlertEngine.processPriceUpdate('TCS.NS', 4015.00, 4008.00); // UP
+    assert.strictEqual(soundsPlayed.length, soundsCount + 3, 'Must ring every time price moves up or down without delay');
+
     // Restore AudioAlerts.play
     AudioAlerts.play = origPlay;
   });
