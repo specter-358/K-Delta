@@ -46,6 +46,7 @@ global.Notification = MockNotification;
 
 // Require our modules
 const AudioAlerts = require('../js/audioAlerts');
+global.AudioAlerts = AudioAlerts;
 const AlertEngine = require('../js/alertEngine');
 
 async function runAlertTests() {
@@ -204,6 +205,192 @@ async function runAlertTests() {
     assert.strictEqual(custom.triggered, true);
   });
 
+  // ════════════════════════════════════════════════════════════
+  // 7. Watchlist Trade Signal Notifications: BUY
+  // ════════════════════════════════════════════════════════════
+  await test('Watchlist Stock BUY Signal Generates Notification', () => {
+    localStorage.setItem('kdelta_watchlist', JSON.stringify(['RELIANCE.NS', 'TCS.NS', 'INFY.NS']));
+    AlertEngine.syncWatchlist();
+
+    const initialHistoryLength = AlertEngine.getHistory().length;
+
+    // Simulate BUY signal for RELIANCE.NS
+    AlertEngine.processSignalUpdate('RELIANCE.NS', {
+      signal: 'BUY STOCK',
+      action: 'STRONG BUY STOCK',
+      confidence: 88,
+      tradeSetup: {
+        currentPrice: 3020.50,
+        action: 'STRONG BUY STOCK',
+      },
+    });
+
+    const history = AlertEngine.getHistory();
+    assert.strictEqual(history.length, initialHistoryLength + 1, 'BUY notification must be added to history');
+    const latest = history[0];
+    assert.strictEqual(latest.symbol, 'RELIANCE');
+    assert.strictEqual(latest.levelType, 'buy');
+    assert.strictEqual(latest.signalType, 'BUY');
+    assert.strictEqual(latest.price, 3020.50);
+    assert.strictEqual(latest.title, 'BUY Signal');
+    assert(latest.timeFormatted.includes('IST'), 'Must include IST time');
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // 8. Watchlist Signal Duplicate Prevention (BUY → BUY → BUY)
+  // ════════════════════════════════════════════════════════════
+  await test('Watchlist Signal Duplicate Prevention (BUY → BUY → BUY does not repeat)', () => {
+    const historyBefore = AlertEngine.getHistory().length;
+
+    // Repeated identical BUY updates on subsequent data refreshes
+    AlertEngine.processSignalUpdate('RELIANCE.NS', {
+      signal: 'BUY STOCK',
+      action: 'STRONG BUY STOCK',
+      confidence: 88,
+      tradeSetup: { currentPrice: 3021.00, action: 'STRONG BUY STOCK' },
+    });
+    AlertEngine.processSignalUpdate('RELIANCE.NS', {
+      signal: 'BUY STOCK',
+      action: 'STRONG BUY STOCK',
+      confidence: 89,
+      tradeSetup: { currentPrice: 3022.00, action: 'STRONG BUY STOCK' },
+    });
+
+    const historyAfter = AlertEngine.getHistory().length;
+    assert.strictEqual(historyAfter, historyBefore, 'Unchanged BUY signal must not generate duplicate notifications');
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // 9. Watchlist Signal Transition: BUY → SELL
+  // ════════════════════════════════════════════════════════════
+  await test('Watchlist Signal Transition: BUY → SELL Generates SELL Notification', () => {
+    const historyBefore = AlertEngine.getHistory().length;
+
+    // RELIANCE hits target -> SELL signal
+    AlertEngine.processSignalUpdate('RELIANCE.NS', {
+      signal: 'SELL STOCK',
+      action: 'EXIT: TARGET 1 REACHED',
+      confidence: 94,
+      tradeSetup: {
+        currentPrice: 3120.00,
+        exitReason: 'Target reached',
+      },
+    });
+
+    const history = AlertEngine.getHistory();
+    assert.strictEqual(history.length, historyBefore + 1, 'SELL notification must be generated on transition');
+    const latest = history[0];
+    assert.strictEqual(latest.symbol, 'RELIANCE');
+    assert.strictEqual(latest.levelType, 'sell');
+    assert.strictEqual(latest.signalType, 'SELL');
+    assert.strictEqual(latest.price, 3120.00);
+    assert.strictEqual(latest.reason, 'Target reached');
+    assert.strictEqual(latest.title, 'SELL Signal');
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // 10. Watchlist Signal Transition: SELL → EXIT
+  // ════════════════════════════════════════════════════════════
+  await test('Watchlist Signal Transition: SELL → EXIT Generates EXIT Notification', () => {
+    const historyBefore = AlertEngine.getHistory().length;
+
+    // Position square-off or stop condition -> EXIT signal
+    AlertEngine.processSignalUpdate('RELIANCE.NS', {
+      signal: 'SELL STOCK',
+      action: 'EXIT: STOP LOSS TRIGGERED',
+      confidence: 95,
+      tradeSetup: {
+        currentPrice: 2950.00,
+        exitReason: 'Stop loss reached',
+      },
+    });
+
+    const history = AlertEngine.getHistory();
+    assert.strictEqual(history.length, historyBefore + 1, 'EXIT notification must be generated on transition');
+    const latest = history[0];
+    assert.strictEqual(latest.symbol, 'RELIANCE');
+    assert.strictEqual(latest.levelType, 'exit');
+    assert.strictEqual(latest.signalType, 'EXIT');
+    assert.strictEqual(latest.reason, 'Stop loss reached');
+    assert.strictEqual(latest.title, 'EXIT Signal');
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // 11. Watchlist Source Synchronization: Add & Remove Stock
+  // ════════════════════════════════════════════════════════════
+  await test('Watchlist Synchronization: Add and Remove Stock Monitoring', () => {
+    // 1. Stock NOT in watchlist does not generate notification
+    const historyBefore = AlertEngine.getHistory().length;
+    AlertEngine.processSignalUpdate('UNWATCHED_TICKER.NS', {
+      signal: 'BUY STOCK',
+      action: 'STRONG BUY',
+      tradeSetup: { currentPrice: 500 },
+    });
+    assert.strictEqual(AlertEngine.getHistory().length, historyBefore, 'Unwatched stock must not trigger notification');
+
+    // 2. Add stock to Watchlist -> becomes eligible
+    localStorage.setItem('kdelta_watchlist', JSON.stringify(['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'UNWATCHED_TICKER.NS']));
+    AlertEngine.syncWatchlist();
+
+    AlertEngine.processSignalUpdate('UNWATCHED_TICKER.NS', {
+      signal: 'BUY STOCK',
+      action: 'STRONG BUY',
+      tradeSetup: { currentPrice: 505 },
+    });
+    assert.strictEqual(AlertEngine.getHistory().length, historyBefore + 1, 'Newly added watchlist stock must trigger notification');
+
+    // 3. Remove stock from Watchlist -> stops being monitored
+    AlertEngine.unmonitorSymbol('UNWATCHED_TICKER.NS');
+    localStorage.setItem('kdelta_watchlist', JSON.stringify(['RELIANCE.NS', 'TCS.NS', 'INFY.NS']));
+    AlertEngine.syncWatchlist();
+
+    const historyAfterRemove = AlertEngine.getHistory().length;
+    AlertEngine.processSignalUpdate('UNWATCHED_TICKER.NS', {
+      signal: 'SELL STOCK',
+      action: 'SELL',
+      tradeSetup: { currentPrice: 490 },
+    });
+    assert.strictEqual(AlertEngine.getHistory().length, historyAfterRemove, 'Removed stock must no longer trigger notifications');
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // 12. Automatic Sound: Stock Price Moves UP and DOWN
+  // ════════════════════════════════════════════════════════════
+  await test('Automatic Sound on Upward and Downward Price Movements', async () => {
+    AlertEngine.resetMovementSoundCooldown();
+    const soundsPlayed = [];
+    const origPlay = AudioAlerts.play;
+    AudioAlerts.play = (type) => soundsPlayed.push(type);
+
+    localStorage.setItem('kdelta_watchlist', JSON.stringify(['RELIANCE.NS', 'TCS.NS', 'INFY.NS']));
+    AlertEngine.syncWatchlist();
+
+    // 1. Initial baseline price (no sound on first baseline load)
+    AlertEngine.processPriceUpdate('TCS.NS', 4000.00);
+    assert.strictEqual(soundsPlayed.length, 0, 'No sound on initial baseline price');
+
+    // 2. Upward Movement: 4000 -> 4020
+    AlertEngine.processPriceUpdate('TCS.NS', 4020.00, 4000.00);
+    assert(soundsPlayed.includes('price-up'), 'Price increase must play upward sound');
+
+    // 3. Downward Movement: 4020 -> 4005 (after small delay to bypass debounce)
+    await new Promise(r => setTimeout(r, 1300));
+    AlertEngine.processPriceUpdate('TCS.NS', 4005.00, 4020.00);
+    assert(soundsPlayed.includes('price-down'), 'Price decrease must play downward sound');
+
+    // 4. Repeated Identical Price: 4005 -> 4005 (No movement)
+    const countBefore = soundsPlayed.length;
+    AlertEngine.processPriceUpdate('TCS.NS', 4005.00, 4005.00);
+    assert.strictEqual(soundsPlayed.length, countBefore, 'Unchanged price must not trigger sound');
+
+    // 5. Unwatched Stock: no movement sound
+    AlertEngine.processPriceUpdate('NON_WATCHLIST.NS', 200.00, 190.00);
+    assert.strictEqual(soundsPlayed.length, countBefore, 'Unwatched stock movement must not play sound');
+
+    // Restore AudioAlerts.play
+    AudioAlerts.play = origPlay;
+  });
+
   console.log(`\n----------------------------------------------------`);
   console.log(`Alert Engine Test Results: ${passed} passed, ${failed} failed`);
   console.log(`----------------------------------------------------`);
@@ -214,3 +401,4 @@ async function runAlertTests() {
 }
 
 runAlertTests();
+

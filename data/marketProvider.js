@@ -11,6 +11,20 @@ const EventEmitter = require('events');
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
 
 /**
+ * Guard network promises with hard timeouts to eliminate backend stalls
+ */
+function withTimeout(promise, ms = 5000, fallback = null) {
+  let timer;
+  const timeoutPromise = new Promise(resolve => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([
+    promise.then(res => { clearTimeout(timer); return res; }).catch(() => fallback),
+    timeoutPromise,
+  ]);
+}
+
+/**
  * Check if Indian equity market (NSE/BSE) is currently in open trading hours
  * Regular session: Monday - Friday, 09:15 to 15:30 IST
  */
@@ -309,11 +323,12 @@ class YahooMarketProvider extends BaseMarketProvider {
   async getQuote(rawSymbol) {
     const symbol = normalizeSymbol(rawSymbol);
     const cacheKey = `quote_${symbol}`;
-    const cached = this._getCached(cacheKey);
+    const cached = this._getCached(cacheKey, 5000);
     if (cached) return cached;
 
     try {
-      const q = await yf.quote(symbol);
+      const q = await withTimeout(yf.quote(symbol), 4500, null);
+      if (!q) return null;
       const normalized = MarketDataNormalizer.normalizeQuote(q);
       if (normalized) {
         this._setCache(cacheKey, normalized);
@@ -323,6 +338,40 @@ class YahooMarketProvider extends BaseMarketProvider {
       console.error(`Quote error for ${symbol}:`, err.message);
       return null;
     }
+  }
+
+  async getQuotes(symbolsList) {
+    if (!Array.isArray(symbolsList) || symbolsList.length === 0) return [];
+    const normalizedSymbols = symbolsList.map(s => normalizeSymbol(s)).filter(Boolean);
+    const results = [];
+    const missing = [];
+
+    for (const sym of normalizedSymbols) {
+      const cached = this._getCached(`quote_${sym}`, 5000);
+      if (cached) {
+        results.push(cached);
+      } else {
+        missing.push(sym);
+      }
+    }
+
+    if (missing.length > 0) {
+      try {
+        const rawQuotes = await withTimeout(yf.quote(missing), 5500, []);
+        const rawList = Array.isArray(rawQuotes) ? rawQuotes : (rawQuotes ? [rawQuotes] : []);
+        for (const q of rawList) {
+          const norm = MarketDataNormalizer.normalizeQuote(q);
+          if (norm) {
+            this._setCache(`quote_${norm.symbol}`, norm);
+            results.push(norm);
+          }
+        }
+      } catch (err) {
+        console.warn('Batch quotes error:', err.message);
+      }
+    }
+
+    return results;
   }
 
   /**
@@ -368,14 +417,14 @@ class YahooMarketProvider extends BaseMarketProvider {
     period1.setDate(period1.getDate() - lookbackDays);
 
     const cacheKey = `candles_${symbol}_${normInterval}_${count}`;
-    const cached = this._getCached(cacheKey);
+    const cached = this._getCached(cacheKey, 30000);
     if (cached) return cached;
 
     try {
-      const chartData = await yf.chart(symbol, {
+      const chartData = await withTimeout(yf.chart(symbol, {
         period1: period1.toISOString().split('T')[0],
         interval: yfInterval,
-      });
+      }), 6500, null);
 
       if (!chartData || !chartData.quotes || chartData.quotes.length === 0) {
         return null;
@@ -542,65 +591,75 @@ class YahooMarketProvider extends BaseMarketProvider {
       { symbol: '^NIFTYPVTBANK', name: 'NIFTY Private Bank', base: 24980.50, exchange: 'NSE' },
     ];
 
-    const results = await Promise.all(indices.map(async idx => {
-      try {
-        // First check if live micro-tick engine has an active tick for this index
-        const liveTick = this.liveIndexPrices.get(idx.symbol);
-        if (liveTick) {
-          return {
-            symbol: idx.symbol,
-            name: idx.name,
-            displayName: idx.name,
-            price: liveTick.price,
-            change: liveTick.change,
-            percentChange: liveTick.percentChange,
-            open: liveTick.open,
-            high: liveTick.high,
-            low: liveTick.low,
-            previousClose: liveTick.close - liveTick.change,
-            exchange: idx.exchange,
-          };
-        }
+    const results = [];
+    const symbols = indices.map(i => i.symbol);
+    let quotesMap = new Map();
 
-        const q = await yf.quote(idx.symbol).catch(() => null);
-        if (q && q.regularMarketPrice != null) {
-          return {
-            symbol: idx.symbol,
-            name: idx.name,
-            displayName: idx.name,
-            price: parseFloat(q.regularMarketPrice.toFixed(2)),
-            change: parseFloat((q.regularMarketChange || 0).toFixed(2)),
-            percentChange: parseFloat((q.regularMarketChangePercent || 0).toFixed(2)),
-            open: parseFloat((q.regularMarketOpen || q.regularMarketPrice).toFixed(2)),
-            high: parseFloat((q.regularMarketDayHigh || q.regularMarketPrice).toFixed(2)),
-            low: parseFloat((q.regularMarketDayLow || q.regularMarketPrice).toFixed(2)),
-            previousClose: parseFloat((q.regularMarketPreviousClose || q.regularMarketPrice).toFixed(2)),
-            exchange: idx.exchange,
-          };
-        } else {
-          // Provide clean realistic fallback for indices
-          const price = idx.base;
-          const change = parseFloat(((Math.random() - 0.45) * (price * 0.012)).toFixed(2));
-          const percentChange = parseFloat(((change / price) * 100).toFixed(2));
-          return {
-            symbol: idx.symbol,
-            name: idx.name,
-            displayName: idx.name,
-            price: parseFloat(price.toFixed(2)),
-            change,
-            percentChange,
-            open: parseFloat((price - change * 0.2).toFixed(2)),
-            high: parseFloat((price + Math.abs(change) * 0.8).toFixed(2)),
-            low: parseFloat((price - Math.abs(change) * 0.8).toFixed(2)),
-            previousClose: parseFloat((price - change).toFixed(2)),
-            exchange: idx.exchange,
-          };
-        }
-      } catch (err) {
-        console.warn(`Index quote fallback for ${idx.symbol}:`, err.message);
-        return null;
+    try {
+      const rawQuotes = await withTimeout(yf.quote(symbols), 5500, []);
+      const quotesList = Array.isArray(rawQuotes) ? rawQuotes : (rawQuotes ? [rawQuotes] : []);
+      quotesList.forEach(q => {
+        if (q && q.symbol) quotesMap.set(q.symbol, q);
+      });
+    } catch (e) {
+      console.warn('Indices batch quote failed, falling back:', e.message);
+    }
+
+    for (const idx of indices) {
+      // First check if live micro-tick engine has an active tick for this index
+      const liveTick = this.liveIndexPrices.get(idx.symbol);
+      if (liveTick) {
+        results.push({
+          symbol: idx.symbol,
+          name: idx.name,
+          displayName: idx.name,
+          price: liveTick.price,
+          change: liveTick.change,
+          percentChange: liveTick.percentChange,
+          open: liveTick.open,
+          high: liveTick.high,
+          low: liveTick.low,
+          previousClose: liveTick.close - liveTick.change,
+          exchange: idx.exchange,
+        });
+        continue;
       }
-    }));
+
+      const q = quotesMap.get(idx.symbol);
+      if (q && q.regularMarketPrice != null) {
+        results.push({
+          symbol: idx.symbol,
+          name: idx.name,
+          displayName: idx.name,
+          price: parseFloat(q.regularMarketPrice.toFixed(2)),
+          change: parseFloat((q.regularMarketChange || 0).toFixed(2)),
+          percentChange: parseFloat((q.regularMarketChangePercent || 0).toFixed(2)),
+          open: parseFloat((q.regularMarketOpen || q.regularMarketPrice).toFixed(2)),
+          high: parseFloat((q.regularMarketDayHigh || q.regularMarketPrice).toFixed(2)),
+          low: parseFloat((q.regularMarketDayLow || q.regularMarketPrice).toFixed(2)),
+          previousClose: parseFloat((q.regularMarketPreviousClose || q.regularMarketPrice).toFixed(2)),
+          exchange: idx.exchange,
+        });
+      } else {
+        // Provide clean realistic fallback for indices
+        const price = idx.base;
+        const change = parseFloat(((Math.random() - 0.45) * (price * 0.012)).toFixed(2));
+        const percentChange = parseFloat(((change / price) * 100).toFixed(2));
+        results.push({
+          symbol: idx.symbol,
+          name: idx.name,
+          displayName: idx.name,
+          price: parseFloat(price.toFixed(2)),
+          change,
+          percentChange,
+          open: parseFloat((price - change * 0.2).toFixed(2)),
+          high: parseFloat((price + Math.abs(change) * 0.8).toFixed(2)),
+          low: parseFloat((price - Math.abs(change) * 0.8).toFixed(2)),
+          previousClose: parseFloat((price - change).toFixed(2)),
+          exchange: idx.exchange,
+        });
+      }
+    }
 
     const validResults = results.filter(Boolean);
     if (validResults.length > 0) this._setCache(cacheKey, validResults);
@@ -609,7 +668,7 @@ class YahooMarketProvider extends BaseMarketProvider {
 
   async getMarketMovers() {
     const cacheKey = 'indian_movers';
-    const cached = this._getCached(cacheKey, 5000);
+    const cached = this._getCached(cacheKey, 15000);
     if (cached) return cached;
 
     const symbols = [
@@ -620,28 +679,25 @@ class YahooMarketProvider extends BaseMarketProvider {
       'WIPRO.NS', 'HCLTECH.NS', 'ULTRACEMCO.NS', 'POWERGRID.NS', 'ASIANPAINT.NS'
     ];
 
-    const quotePromises = symbols.map(async sym => {
-      try {
-        const q = await yf.quote(sym);
-        if (q && q.regularMarketPrice != null) {
-          return {
-            symbol: q.symbol,
-            name: q.shortName || q.longName || q.symbol,
-            price: parseFloat(q.regularMarketPrice.toFixed(2)),
-            change: parseFloat((q.regularMarketChange || 0).toFixed(2)),
-            percentChange: parseFloat((q.regularMarketChangePercent || 0).toFixed(2)),
-            volume: q.regularMarketVolume || 0,
-            exchange: 'NSE',
-          };
-        }
-      } catch (e) {
-        return null;
-      }
-      return null;
-    });
+    let quotes = [];
+    try {
+      const rawQuotes = await withTimeout(yf.quote(symbols), 5500, []);
+      const quotesList = Array.isArray(rawQuotes) ? rawQuotes : (rawQuotes ? [rawQuotes] : []);
+      quotes = quotesList
+        .filter(q => q && q.regularMarketPrice != null)
+        .map(q => ({
+          symbol: q.symbol,
+          name: q.shortName || q.longName || q.symbol,
+          price: parseFloat(q.regularMarketPrice.toFixed(2)),
+          change: parseFloat((q.regularMarketChange || 0).toFixed(2)),
+          percentChange: parseFloat((q.regularMarketChangePercent || 0).toFixed(2)),
+          volume: q.regularMarketVolume || 0,
+          exchange: 'NSE',
+        }));
+    } catch (e) {
+      console.warn('Market movers batch quote failed:', e.message);
+    }
 
-    const quoteResults = await Promise.all(quotePromises);
-    const quotes = quoteResults.filter(Boolean);
     if (quotes.length === 0) return null;
 
     const gainers = [...quotes].sort((a, b) => b.percentChange - a.percentChange).slice(0, 8);
@@ -675,10 +731,13 @@ class YahooMarketProvider extends BaseMarketProvider {
 
     let lastQuotePrice = null;
     let lastVolume = null;
+    let isPolling = false;
 
     const pollFunction = async () => {
+      if (isPolling) return;
+      isPolling = true;
       try {
-        const q = await yf.quote(symbol).catch(() => null);
+        const q = await withTimeout(yf.quote(symbol), 4000, null);
         if (!q || q.regularMarketPrice == null) return;
 
         // Emit tick when real market quote or volume updates or on initial load
@@ -700,11 +759,14 @@ class YahooMarketProvider extends BaseMarketProvider {
         }
       } catch (e) {
         // Suppress poll error
+      } finally {
+        isPolling = false;
       }
     };
 
     pollFunction();
-    const intervalId = setInterval(pollFunction, 1000);
+    const pollInterval = isIndianMarketOpen() ? 4000 : 30000;
+    const intervalId = setInterval(pollFunction, pollInterval);
 
     this.activeSubscriptions.set(symbol, { intervalId, subscribers: 1 });
   }

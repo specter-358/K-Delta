@@ -121,8 +121,8 @@ class SecureWebSocketHub {
       });
     }, 30000);
 
-    // Auto-subscribe key Indian market index symbols for continuous live streaming
-    const DEFAULT_INDEXES = ['^NSEI', '^BSESN', '^NSEBANK', '^CNXIT', '^INDIAVIX', '^CNXAUTO', '^CNXFMCG', '^CNXPHARMA', '^CNXMETAL', '^CNXPSUBANK'];
+    // Auto-subscribe core Indian benchmark index symbols for live streaming
+    const DEFAULT_INDEXES = ['^NSEI', '^BSESN'];
     DEFAULT_INDEXES.forEach(sym => provider.subscribe(sym));
 
     // Wire market provider ticks to candle engine and WS subscribers

@@ -233,11 +233,7 @@ app.get('/api/quotes', async (req, res, next) => {
     const symbolsList = rawSymbols.split(',').map(s => normalizeSymbol(s)).filter(Boolean);
     if (symbolsList.length === 0) return res.json([]);
 
-    const results = [];
-    for (const sym of symbolsList) {
-      const q = await provider.getQuote(sym);
-      if (q) results.push(q);
-    }
+    const results = await provider.getQuotes(symbolsList);
     res.json(results);
   } catch (err) {
     next(err);

@@ -35,6 +35,10 @@ const API = (() => {
         if (currentSubscribedSymbol) {
           subscribeSymbol(currentSubscribedSymbol, currentSubscribedTimeframe);
         }
+        const wl = typeof getWatchlist === 'function' ? getWatchlist() : [];
+        if (Array.isArray(wl) && wl.length > 0) {
+          subscribeWatchlistSymbols(wl);
+        }
       };
 
       ws.onmessage = (event) => {
@@ -79,6 +83,21 @@ const API = (() => {
         symbol,
         timeframe,
       }));
+    }
+  }
+
+  function subscribeWatchlistSymbols(symbols) {
+    if (!Array.isArray(symbols) || symbols.length === 0) return;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      symbols.forEach(sym => {
+        if (sym) {
+          ws.send(JSON.stringify({
+            action: 'subscribe',
+            symbol: sym,
+            timeframe: '1day',
+          }));
+        }
+      });
     }
   }
 
@@ -423,6 +442,7 @@ const API = (() => {
   return {
     initWebSocket,
     subscribeSymbol,
+    subscribeWatchlistSymbols,
     unsubscribeSymbol,
     onTick,
     onCandleUpdate,

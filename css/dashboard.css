@@ -856,6 +856,165 @@
   border-radius: var(--radius-xs);
 }
 
+/* ── Position Lifecycle Status Card ── */
+.position-status-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  transition: border-color var(--transition-fast);
+}
+
+.position-status-card.status-active {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.04) 0%, var(--bg-card) 100%);
+}
+
+.position-status-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.position-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+}
+
+.position-status--none {
+  color: var(--text-muted);
+  background: rgba(100, 116, 139, 0.12);
+  border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+.position-status--open {
+  color: var(--bullish);
+  background: var(--bullish-dim);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.position-status--closed {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+}
+
+.position-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.position-status--open .position-status-dot {
+  box-shadow: 0 0 8px var(--bullish);
+  animation: pulse-dot 1.8s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.position-pnl-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+}
+
+.position-pnl-pill.price-up {
+  color: var(--bullish);
+  background: var(--bullish-bg);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.position-pnl-pill.price-down {
+  color: var(--bearish);
+  background: var(--bearish-bg);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.position-details-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 6px;
+}
+
+.position-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.position-stat__label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.position-stat__val {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.position-action-btn-row {
+  display: flex;
+  margin-top: 4px;
+}
+
+.btn-position-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: var(--radius-xs);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-mono);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+}
+
+.btn-position-action:hover {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: var(--accent-blue);
+}
+
+.btn-position-action.btn-close-pos {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: var(--bearish-dim);
+  color: #fca5a5;
+}
+
+.btn-position-action.btn-close-pos:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: var(--bearish);
+}
+
 /* ── Execution Targets Grid ── */
 .trade-targets-grid {
   display: grid;

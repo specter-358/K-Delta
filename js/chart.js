@@ -17,6 +17,8 @@ const ChartManager = (() => {
   let isVolumeVisible = true;
   let cachedVolumes = [];
   let pendingCandles = null;
+  let cachedTradeMarkers = [];
+  let cachedPatternMarkers = [];
 
   const OVERLAY_CONFIGS = {
     sma20: { color: '#f59e0b', lineWidth: 2, title: 'SMA 20' },
@@ -411,10 +413,81 @@ const ChartManager = (() => {
   }
 
   /**
+   * Combined marker updater ensuring all markers (Trade Lifecycle + Patterns)
+   * are strictly sorted by time ascending for TradingView Lightweight Charts
+   */
+  function updateCombinedMarkers() {
+    if (!candleSeries) return;
+
+    const allMarkers = [];
+
+    // Add Trade Lifecycle Markers (Entry BUY / Exit SELL)
+    if (cachedTradeMarkers && cachedTradeMarkers.length > 0) {
+      allMarkers.push(...cachedTradeMarkers);
+    }
+
+    // Add Pattern Markers if present
+    if (cachedPatternMarkers && cachedPatternMarkers.length > 0) {
+      allMarkers.push(...cachedPatternMarkers);
+    }
+
+    // Sort strictly ascending by time for Lightweight Charts
+    allMarkers.sort((a, b) => {
+      const timeA = typeof a.time === 'number' ? a.time : (new Date(a.time).getTime() / 1000);
+      const timeB = typeof b.time === 'number' ? b.time : (new Date(b.time).getTime() / 1000);
+      return timeA - timeB;
+    });
+
+    try {
+      candleSeries.setMarkers(allMarkers);
+    } catch (e) {
+      console.warn('Error setting chart markers:', e);
+    }
+  }
+
+  /**
+   * Display Intraday Trade Lifecycle Markers (BUY @ ₹... / SELL: Reason (+X%))
+   */
+  function setTradeMarkers(tradeList) {
+    if (!tradeList || !Array.isArray(tradeList) || tradeList.length === 0) {
+      cachedTradeMarkers = [];
+      updateCombinedMarkers();
+      return;
+    }
+
+    cachedTradeMarkers = tradeList.map(t => {
+      const isBuy = t.type === 'BUY';
+      const isWin = (t.pnlPct || 0) >= 0;
+      return {
+        time: formatTime(t.time),
+        position: isBuy ? 'belowBar' : 'aboveBar',
+        color: isBuy ? '#10b981' : (isWin ? '#10b981' : '#f43f5e'),
+        shape: isBuy ? 'arrowUp' : 'arrowDown',
+        text: t.text || (isBuy ? `BUY @ ₹${t.price}` : `SELL: ${t.reason || 'Exit'}`),
+        size: 2,
+      };
+    });
+
+    updateCombinedMarkers();
+  }
+
+  /**
+   * Clear Trade Lifecycle Markers
+   */
+  function clearTradeMarkers() {
+    cachedTradeMarkers = [];
+    updateCombinedMarkers();
+  }
+
+  /**
    * Display Pattern Markers directly on chart candles
    */
   function setPatternMarkers(patternList) {
-    if (!candleSeries || !patternList) return;
+    if (!patternList || !Array.isArray(patternList) || patternList.length === 0) {
+      cachedPatternMarkers = [];
+      updateCombinedMarkers();
+      return;
+    }
 
     // Deduplicate by time and keep highest confidence pattern per bar
     const uniqueByTime = new Map();
@@ -425,31 +498,29 @@ const ChartManager = (() => {
       }
     });
 
-    const markers = Array.from(uniqueByTime.values()).map(p => {
+    cachedPatternMarkers = Array.from(uniqueByTime.values()).map(p => {
       const isBullish = p.signal === 'bullish';
       const isBearish = p.signal === 'bearish';
 
       return {
         time: formatTime(p.timestamp),
         position: isBullish ? 'belowBar' : isBearish ? 'aboveBar' : 'inBar',
-        color: isBullish ? '#10b981' : isBearish ? '#f43f5e' : '#f59e0b',
+        color: isBullish ? '#34d399' : isBearish ? '#fb7185' : '#f59e0b',
         shape: isBullish ? 'arrowUp' : isBearish ? 'arrowDown' : 'circle',
         text: `${p.name} (${p.confidence}%)`,
         size: 1,
       };
     });
 
-    candleSeries.setMarkers(markers);
+    updateCombinedMarkers();
   }
 
   /**
    * Clear Pattern Markers from chart candles
    */
   function clearPatternMarkers() {
-    if (!candleSeries) return;
-    try {
-      candleSeries.setMarkers([]);
-    } catch (e) {}
+    cachedPatternMarkers = [];
+    updateCombinedMarkers();
   }
 
   /**
@@ -475,7 +546,8 @@ const ChartManager = (() => {
       let target1 = setup && setup.target1;
       let target2 = setup && setup.target2;
       let stopLoss = setup && setup.stopLoss;
-      let isBuy = setup ? (setup.type === 'BUY' || setup.type === 'BUY STOCK' || (setup.signal && setup.signal.includes('BUY'))) : true;
+      const isPositionOpen = setup && setup.positionStatus === 'OPEN_LONG';
+      let isBuy = setup ? (setup.type === 'BUY' || setup.type === 'BUY STOCK' || isPositionOpen || (setup.signal && setup.signal.includes('BUY'))) : true;
 
       // Dynamic fallback if no specific pattern setup exists yet
       if (!entry && currentCandles.length > 0) {
@@ -489,13 +561,14 @@ const ChartManager = (() => {
       }
 
       if (entry) {
+        const entryTitle = isPositionOpen ? `BOUGHT @ ₹${entry.toFixed(2)}` : (isBuy ? 'BUY ENTRY' : 'SELL / EXIT');
         tradePriceLines.push(candleSeries.createPriceLine({
           price: entry,
           color: isBuy ? '#10b981' : '#f43f5e',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
-          title: isBuy ? 'BUY STOCK' : 'SELL STOCK',
+          title: entryTitle,
         }));
       }
 
@@ -647,6 +720,8 @@ const ChartManager = (() => {
     tradePriceLines = [];
     srPriceLines = [];
     currentCandles = [];
+    cachedTradeMarkers = [];
+    cachedPatternMarkers = [];
   }
 
   return {
@@ -656,6 +731,8 @@ const ChartManager = (() => {
     setOverlay,
     removeOverlay,
     clearAllOverlays,
+    setTradeMarkers,
+    clearTradeMarkers,
     setPatternMarkers,
     clearPatternMarkers,
     setVolumeVisibility,

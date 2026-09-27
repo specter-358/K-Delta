@@ -115,6 +115,15 @@ async function loadWatchlistData(isBackground = false) {
     // Fetch batch quotes for all symbols
     const quotes = await API.fetchMultipleQuotes(watchlistSymbols);
     
+    // Feed quotes to AlertEngine for automatic price movement sound detection
+    if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.processPriceUpdate === 'function') {
+      quotes.forEach(q => {
+        if (q && q.symbol && typeof q.price === 'number') {
+          AlertEngine.processPriceUpdate(q.symbol, q.price);
+        }
+      });
+    }
+
     // Map quotes keeping order of symbols
     const quoteMap = new Map();
     quotes.forEach(q => quoteMap.set(q.symbol, q));
@@ -454,6 +463,9 @@ async function handleAddSymbol(symbol) {
   // Update local list immediately for instant UX feedback
   watchlistSymbols.push(cleanSym);
   saveWatchlist(watchlistSymbols);
+  if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.checkSymbolSignal === 'function') {
+    AlertEngine.checkSymbolSignal(cleanSym);
+  }
 
   showToast(`Added ${cleanSym} to Watchlist`, 'success');
 
@@ -475,10 +487,11 @@ async function handleRemoveSymbol(symbol) {
   watchlistSymbols = watchlistSymbols.filter(s => s !== cleanSym);
   watchlistQuotes = watchlistQuotes.filter(q => q.symbol !== cleanSym);
 
-  // Save to localStorage immediately
-  try {
-    localStorage.setItem('kdelta_watchlist', JSON.stringify(watchlistSymbols));
-  } catch (e) {}
+  // Save to localStorage immediately and unmonitor in AlertEngine
+  saveWatchlist(watchlistSymbols);
+  if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.unmonitorSymbol === 'function') {
+    AlertEngine.unmonitorSymbol(cleanSym);
+  }
 
   renderWatchlistTable();
   updateWatchlistStats();

@@ -5,6 +5,20 @@
    Web Audio Chimes & Desktop Web Push Notifications
    ============================================================ */
 
+// Resolve external modules safely across Browser and Node test environments
+let AudioAlertsRef = typeof globalThis.AudioAlerts !== 'undefined' ? globalThis.AudioAlerts : null;
+if (!AudioAlertsRef && typeof require !== 'undefined') {
+  try { AudioAlertsRef = require('./audioAlerts'); } catch (e) {}
+}
+
+let PredictionsRef = typeof globalThis.Predictions !== 'undefined' ? globalThis.Predictions : null;
+if (!PredictionsRef && typeof require !== 'undefined') {
+  try {
+    const pr = require('./predictions');
+    PredictionsRef = pr.Predictions || pr.PredictionEngine || pr;
+  } catch (e) {}
+}
+
 const AlertEngine = (() => {
   const STORAGE_KEY_ACTIVE = 'kdelta_active_alerts';
   const STORAGE_KEY_HISTORY = 'kdelta_alerts_history';
@@ -18,6 +32,61 @@ const AlertEngine = (() => {
   // Listeners for UI reactive updates
   const uiListeners = new Set();
 
+  // Watchlist Signal Monitoring State
+  // Map: symbol -> { signal: 'BUY'|'SELL'|'EXIT'|'HOLD', action: string, price: number, reason: string, timestamp: number }
+  const watchlistSignalStates = new Map();
+
+  // Watchlist Price Movement Sound State
+  // Map: symbol -> last known reference price
+  const lastKnownPrices = new Map();
+
+  // Cached candles for background watchlist evaluation: symbol -> candle[]
+  const watchlistCandlesCache = new Map();
+
+  let lastPriceMovementSoundTime = 0;
+  const symbolMovementSoundCooldown = new Map();
+  let watchlistMonitorTimer = null;
+  let isEvaluatingWatchlist = false;
+
+  function getAudioAlertsModule() {
+    if (typeof globalThis.AudioAlerts !== 'undefined') return globalThis.AudioAlerts;
+    if (AudioAlertsRef) return AudioAlertsRef;
+    if (typeof AudioAlerts !== 'undefined') return AudioAlerts;
+    if (typeof window !== 'undefined' && window.AudioAlerts) return window.AudioAlerts;
+    return null;
+  }
+
+  function getPredictionsModule() {
+    if (typeof globalThis.Predictions !== 'undefined') return globalThis.Predictions;
+    if (PredictionsRef) return PredictionsRef;
+    if (typeof Predictions !== 'undefined') return Predictions;
+    if (typeof PredictionEngine !== 'undefined') return PredictionEngine;
+    if (typeof window !== 'undefined' && window.Predictions) return window.Predictions;
+    return null;
+  }
+
+  function getMonitoredWatchlistSymbols() {
+    if (typeof getWatchlist === 'function') {
+      try {
+        const list = getWatchlist();
+        if (Array.isArray(list) && list.length > 0) return list;
+      } catch (e) {}
+    }
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const saved = localStorage.getItem('kdelta_watchlist');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      }
+    } catch (e) {}
+    if (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.DEFAULT_WATCHLIST)) {
+      return [...CONFIG.DEFAULT_WATCHLIST];
+    }
+    return ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'TATAMOTORS.NS'];
+  }
+
   /**
    * Initialize Alert Engine
    */
@@ -27,11 +96,20 @@ const AlertEngine = (() => {
     injectToastContainer();
     injectAlertsCenterModal();
     updateNavbarBadges();
+    const audio = getAudioAlertsModule();
+    if (audio && typeof audio.onStateChange === 'function') {
+      audio.onStateChange(() => {
+        updateNavbarBadges();
+      });
+    }
 
     // Check notification permission state
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       console.log('[AlertEngine] Web Notifications active & permitted');
     }
+
+    // Start Watchlist Signal & Price Movement Monitoring
+    startWatchlistMonitoring();
   }
 
   function loadFromStorage() {
@@ -86,6 +164,26 @@ const AlertEngine = (() => {
     const currentPrice = tick.price;
     const now = Date.now();
 
+    // 1. Automatic Upward/Downward Price-Movement Sound for Watched Stocks
+    processPriceUpdate(sym, currentPrice);
+
+    // 2. Evaluate cached candles if available
+    if (watchlistCandlesCache.has(sym)) {
+      const cached = watchlistCandlesCache.get(sym);
+      if (cached && cached.length > 0) {
+        const lastCandle = cached[cached.length - 1];
+        lastCandle.close = currentPrice;
+        if (currentPrice > lastCandle.high) lastCandle.high = currentPrice;
+        if (currentPrice < lastCandle.low) lastCandle.low = currentPrice;
+        const predModule = getPredictionsModule();
+        if (predModule && typeof predModule.analyze === 'function') {
+          const pred = predModule.analyze(cached, sym, { isIntraday: false });
+          processSignalUpdate(sym, pred);
+        }
+      }
+    }
+
+    // 3. Evaluate Active Targets & Price Alerts
     activeAlerts.forEach(alert => {
       if (alert.symbol.toUpperCase() !== sym) return;
       if (alert.triggered) return;
@@ -199,15 +297,19 @@ const AlertEngine = (() => {
     unreadCount++;
 
     // 1. Play Institutional Web Audio Chime
-    if (typeof AudioAlerts !== 'undefined') {
+    const audio = getAudioAlertsModule();
+    if (audio && typeof audio.play === 'function') {
       const soundMap = {
+        buy: 'buy',
+        sell: 'sell',
+        exit: 'exit',
         tp: 'target-hit',
         entry: 'entry-trigger',
         sl: 'stop-hit',
         conviction: 'high-conviction',
         custom: 'entry-trigger',
       };
-      AudioAlerts.play(soundMap[alertEvent.levelType] || 'entry-trigger');
+      audio.play(soundMap[alertEvent.levelType] || 'entry-trigger');
     }
 
     // 2. Add to Historical Feed
@@ -431,6 +533,361 @@ const AlertEngine = (() => {
   }
 
   /**
+   * Process price updates and trigger automatic UP/DOWN sounds for watched stocks
+   * Compares current valid price against previous reference price
+   * Prevents spam via global and per-symbol throttling
+   * @param {string} symbol - e.g. 'RELIANCE.NS'
+   * @param {number} currentPrice - current market price
+   * @param {number|null} [prevPriceOverride] - optional previous price override (for unit testing)
+   */
+  function processPriceUpdate(symbol, currentPrice, prevPriceOverride = null) {
+    if (!symbol || typeof currentPrice !== 'number' || isNaN(currentPrice) || currentPrice <= 0) return;
+
+    const sym = symbol.toUpperCase();
+    const watchlist = getMonitoredWatchlistSymbols();
+    const isWatched = watchlist.includes(sym) || 
+                      (typeof window !== 'undefined' && window.currentSymbol === sym);
+
+    if (!isWatched) return;
+
+    const prevPrice = prevPriceOverride !== null ? prevPriceOverride : lastKnownPrices.get(sym);
+
+    if (prevPrice == null) {
+      // First baseline observation in this session: record price and do not play sound
+      lastKnownPrices.set(sym, currentPrice);
+      return;
+    }
+
+    if (currentPrice === prevPrice) {
+      // Identical price, no movement: no sound (Requirement 9 & 15)
+      return;
+    }
+
+    const isUp = currentPrice > prevPrice;
+    lastKnownPrices.set(sym, currentPrice);
+
+    // Trigger price movement sound
+    triggerMovementSound(sym, isUp, currentPrice, prevPrice);
+  }
+
+  /**
+   * Trigger automatic movement sound with anti-spam debouncing
+   */
+  function triggerMovementSound(symbol, isUp, currentPrice, prevPrice) {
+    const now = Date.now();
+
+    // 1. Anti-spam: Global minimum interval (350ms) to prevent multiple simultaneous stocks screeching
+    if (now - lastPriceMovementSoundTime < 350) {
+      return;
+    }
+
+    // 2. Anti-spam: Per-symbol debounce (1200ms) to prevent rapid tick hammering
+    const lastSymTime = symbolMovementSoundCooldown.get(symbol) || 0;
+    if (now - lastSymTime < 1200) {
+      return;
+    }
+
+    lastPriceMovementSoundTime = now;
+    symbolMovementSoundCooldown.set(symbol, now);
+
+    const soundType = isUp ? 'price-up' : 'price-down';
+    const audio = getAudioAlertsModule();
+    if (audio && typeof audio.play === 'function') {
+      audio.play(soundType);
+    }
+  }
+
+  /**
+   * Reset movement sound debouncing cooldowns (useful for unit tests and clean reloads)
+   */
+  function resetMovementSoundCooldown() {
+    lastPriceMovementSoundTime = 0;
+    symbolMovementSoundCooldown.clear();
+  }
+
+  /**
+   * Process trading analysis prediction for a stock
+   * Monitored for all Watchlist stocks (regardless of currently open stock)
+   * Dispatches BUY, SELL, EXIT notifications only on genuine state changes (prevents duplicate spam)
+   * @param {string} symbol - Stock symbol (e.g. 'RELIANCE.NS')
+   * @param {object} prediction - PredictionEngine analysis result
+   */
+  function processSignalUpdate(symbol, prediction) {
+    if (!symbol || !prediction) return;
+
+    const sym = symbol.toUpperCase();
+    const watchlist = getMonitoredWatchlistSymbols();
+    if (!watchlist.includes(sym)) {
+      // Stock not in watchlist, do not generate watchlist notification (Requirement 3)
+      return;
+    }
+
+    const rawSignal = (prediction.signal || '').toUpperCase();
+    const rawAction = (prediction.action || '').toUpperCase();
+    const tradeSetup = prediction.tradeSetup || {};
+    const exitReason = tradeSetup.exitReason || '';
+
+    // Determine normalized signal type: 'BUY', 'SELL', 'EXIT', or 'HOLD'
+    let signalType = null;
+    let relevantReason = '';
+
+    if (rawSignal.includes('BUY')) {
+      signalType = 'BUY';
+      relevantReason = tradeSetup.action || prediction.action || 'A BUY signal has been generated.';
+    } else if (
+      exitReason.includes('Target') ||
+      rawAction.includes('TARGET') ||
+      (rawSignal.includes('SELL') && !rawAction.includes('STOP') && !rawAction.includes('BEARISH') && !rawAction.includes('SQUARE-OFF') && !exitReason.includes('Stop') && !exitReason.includes('Bearish') && !exitReason.includes('square-off') && !exitReason.includes('Exit condition'))
+    ) {
+      signalType = 'SELL';
+      relevantReason = exitReason || (rawAction ? rawAction.replace(/^EXIT:\s*/, '') : '') || 'Target reached';
+    } else if (
+      rawAction.startsWith('EXIT') ||
+      rawSignal.startsWith('EXIT') ||
+      exitReason.includes('Stop') ||
+      exitReason.includes('square-off') ||
+      exitReason.includes('Exit condition') ||
+      exitReason.includes('Bearish')
+    ) {
+      signalType = 'EXIT';
+      relevantReason = exitReason || (rawAction ? rawAction.replace(/^EXIT:\s*/, '') : '') || 'Exit condition triggered';
+    } else if (rawSignal.includes('SELL') || rawAction.includes('SELL')) {
+      signalType = 'SELL';
+      relevantReason = exitReason || (rawAction ? rawAction.replace(/^EXIT:\s*/, '') : '') || 'A SELL signal has been generated.';
+    } else {
+      signalType = 'HOLD';
+      relevantReason = '';
+    }
+
+    const currentPrice = tradeSetup.currentPrice || tradeSetup.entryPrice || prediction.currentPrice || lastKnownPrices.get(sym) || null;
+    const now = Date.now();
+    const previousState = watchlistSignalStates.get(sym);
+
+    if (signalType === 'HOLD') {
+      watchlistSignalStates.set(sym, {
+        signal: 'HOLD',
+        action: rawAction,
+        price: currentPrice,
+        reason: relevantReason,
+        timestamp: now,
+      });
+      return; // No notification for HOLD
+    }
+
+    // Requirement 4: Prevent duplicate notifications on unchanged signal (BUY -> BUY -> BUY)
+    if (previousState && previousState.signal === signalType) {
+      return; // Already notified for this exact state!
+    }
+
+    // State transition detected! (e.g. NONE -> BUY, BUY -> SELL, SELL -> EXIT, HOLD -> BUY)
+    watchlistSignalStates.set(sym, {
+      signal: signalType,
+      action: rawAction,
+      price: currentPrice,
+      reason: relevantReason,
+      timestamp: now,
+    });
+
+    // Dispatch Trade Signal Notification
+    dispatchTradeNotification({
+      symbol: sym,
+      signalType,
+      price: currentPrice,
+      reason: relevantReason,
+      timestamp: now,
+      confidence: prediction.confidence,
+    });
+  }
+
+  /**
+   * Dispatch BUY, SELL, or EXIT notification for a Watchlist stock
+   */
+  function dispatchTradeNotification({ symbol, signalType, price, reason, timestamp, confidence }) {
+    const cleanSym = symbol.replace('.NS', '').replace('.BO', '').replace('^', '');
+    const timeFormatted = formatAlertISTTime(timestamp);
+    const company = (typeof getCleanStockName === 'function') ? getCleanStockName(symbol) : cleanSym;
+
+    const levelType = signalType.toLowerCase(); // 'buy', 'sell', 'exit'
+    const title = `${signalType} Signal`;
+
+    let message = `A ${signalType} signal has been generated for ${cleanSym}.`;
+    if (reason) {
+      message = reason;
+    }
+
+    const alertEvent = {
+      id: `trade_${levelType}_${symbol}_${timestamp}`,
+      symbol: cleanSym,
+      rawSymbol: symbol,
+      company: company || cleanSym,
+      type: `signal_${levelType}`,
+      levelType,
+      signalType,
+      price: price ? parseFloat(price) : null,
+      reason: reason || `A ${signalType} signal has been generated.`,
+      title,
+      message,
+      confidence: confidence || null,
+      timestamp,
+      timeFormatted,
+    };
+
+    dispatchAlertTriggered(alertEvent);
+  }
+
+  /**
+   * Background Watchlist Signal Evaluator
+   * Monitors all stocks in Watchlist regardless of currently open stock
+   */
+  async function evaluateWatchlistSignals() {
+    if (isEvaluatingWatchlist) return;
+    isEvaluatingWatchlist = true;
+
+    try {
+      const symbols = getMonitoredWatchlistSymbols();
+      if (!symbols || symbols.length === 0) {
+        watchlistSignalStates.clear();
+        lastKnownPrices.clear();
+        return;
+      }
+
+      // 1. Remove state for any symbols no longer in watchlist (Requirement 3)
+      for (const sym of watchlistSignalStates.keys()) {
+        if (!symbols.includes(sym)) {
+          watchlistSignalStates.delete(sym);
+          lastKnownPrices.delete(sym);
+          watchlistCandlesCache.delete(sym);
+          symbolMovementSoundCooldown.delete(sym);
+        }
+      }
+
+      // 2. Evaluate signals for each monitored watchlist stock
+      for (const sym of symbols) {
+        try {
+          // If viewing this symbol on dashboard, use currentPrediction directly
+          if (typeof window !== 'undefined' && window.currentSymbol === sym && window.currentPrediction) {
+            processSignalUpdate(sym, window.currentPrediction);
+            continue;
+          }
+
+          // Fetch candles if API is available
+          if (typeof API !== 'undefined' && typeof API.fetchCandles === 'function') {
+            const candles = await API.fetchCandles(sym, '1day', 40);
+            if (candles && candles.length >= 20) {
+              watchlistCandlesCache.set(sym, candles);
+              const predModule = getPredictionsModule();
+              if (predModule && typeof predModule.analyze === 'function') {
+                const pred = predModule.analyze(candles, sym, { isIntraday: false });
+                processSignalUpdate(sym, pred);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`[AlertEngine] Watchlist eval error for ${sym}:`, e);
+        }
+      }
+    } finally {
+      isEvaluatingWatchlist = false;
+    }
+  }
+
+  /**
+   * Start periodic Watchlist background monitoring
+   */
+  function startWatchlistMonitoring() {
+    if (watchlistMonitorTimer) {
+      clearInterval(watchlistMonitorTimer);
+      watchlistMonitorTimer = null;
+    }
+
+    const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
+
+    if (!isNode) {
+      if (typeof setTimeout !== 'undefined') {
+        setTimeout(() => {
+          evaluateWatchlistSignals();
+        }, 1000);
+      }
+
+      if (typeof setInterval !== 'undefined') {
+        watchlistMonitorTimer = setInterval(() => {
+          evaluateWatchlistSignals();
+        }, 15000);
+      }
+    }
+  }
+
+  function stopWatchlistMonitoring() {
+    if (watchlistMonitorTimer) {
+      clearInterval(watchlistMonitorTimer);
+      watchlistMonitorTimer = null;
+    }
+  }
+
+  /**
+   * Synchronize watchlist when symbols are added or removed
+   */
+  function syncWatchlist() {
+    const symbols = getMonitoredWatchlistSymbols();
+
+    // Clean up removed symbols immediately
+    for (const sym of watchlistSignalStates.keys()) {
+      if (!symbols.includes(sym)) {
+        watchlistSignalStates.delete(sym);
+        lastKnownPrices.delete(sym);
+        watchlistCandlesCache.delete(sym);
+        symbolMovementSoundCooldown.delete(sym);
+      }
+    }
+
+    // Subscribe updated symbols to real-time WebSocket if API available
+    if (typeof API !== 'undefined' && typeof API.subscribeWatchlistSymbols === 'function') {
+      API.subscribeWatchlistSymbols(symbols);
+    }
+
+    // Trigger immediate evaluation
+    evaluateWatchlistSignals();
+  }
+
+  /**
+   * Explicitly unmonitor a symbol when removed from Watchlist
+   */
+  function unmonitorSymbol(symbol) {
+    if (!symbol) return;
+    const sym = symbol.toUpperCase();
+    watchlistSignalStates.delete(sym);
+    lastKnownPrices.delete(sym);
+    watchlistCandlesCache.delete(sym);
+    symbolMovementSoundCooldown.delete(sym);
+  }
+
+  /**
+   * Immediately check signal for newly added stock
+   */
+  async function checkSymbolSignal(symbol) {
+    if (!symbol) return;
+    const sym = symbol.toUpperCase();
+    const watchlist = getMonitoredWatchlistSymbols();
+    if (!watchlist.includes(sym)) return;
+
+    try {
+      if (typeof API !== 'undefined' && typeof API.fetchCandles === 'function') {
+        const candles = await API.fetchCandles(sym, '1day', 40);
+        if (candles && candles.length >= 20) {
+          watchlistCandlesCache.set(sym, candles);
+          const predModule = getPredictionsModule();
+          if (predModule && typeof predModule.analyze === 'function') {
+            const pred = predModule.analyze(candles, sym, { isIntraday: false });
+            processSignalUpdate(sym, pred);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`[AlertEngine] checkSymbolSignal error for ${sym}:`, e);
+    }
+  }
+
+  /**
    * Request Desktop Web Notification Permission
    */
   async function requestNotificationPermission() {
@@ -503,12 +960,14 @@ const AlertEngine = (() => {
     const toast = document.createElement('div');
     const badgeClass = `toast-badge--${event.levelType || 'entry'}`;
     const formattedPrice = event.price ? `₹${parseFloat(event.price).toFixed(2)}` : '';
+    const badgeLabel = event.signalType ? `${event.signalType} SIGNAL` : (event.levelType || 'ALERT').toUpperCase();
+    const timeDisplay = event.timeFormatted || (new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) + ' IST');
 
     toast.className = `kdelta-toast toast--${event.levelType || 'entry'}`;
     toast.innerHTML = `
       <div class="toast-header">
         <div class="toast-title-wrap">
-          <span class="toast-badge ${badgeClass}">${(event.levelType || 'ALERT').toUpperCase()}</span>
+          <span class="toast-badge ${badgeClass}">${badgeLabel}</span>
           <strong class="toast-symbol">${event.symbol || 'K-DELTA'}</strong>
           ${formattedPrice ? `<span class="toast-price">${formattedPrice}</span>` : ''}
         </div>
@@ -516,8 +975,8 @@ const AlertEngine = (() => {
       </div>
       <div class="toast-body">${event.message || event.title}</div>
       <div class="toast-actions">
-        ${event.symbol ? `<a href="dashboard.html?symbol=${encodeURIComponent(event.symbol)}" class="toast-action-link">Open Terminal →</a>` : ''}
-        <span class="toast-time">${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })} IST</span>
+        ${event.symbol ? `<a href="dashboard.html?symbol=${encodeURIComponent(event.rawSymbol || event.symbol)}" class="toast-action-link">Open Terminal →</a>` : ''}
+        <span class="toast-time">${timeDisplay}</span>
       </div>
       <div class="toast-progress"><div class="toast-progress-bar"></div></div>
     `;
@@ -668,6 +1127,12 @@ const AlertEngine = (() => {
             <button class="btn-chime-test" onclick="AudioAlerts.testChime('high-conviction')" title="Test High Conviction Chime">
               <span>⚡ >80% Setup Pulse</span>
             </button>
+            <button class="btn-chime-test" onclick="AudioAlerts.testChime('price-up')" title="Test Upward Price Movement Chime">
+              <span>📈 Price Up Sound</span>
+            </button>
+            <button class="btn-chime-test" onclick="AudioAlerts.testChime('price-down')" title="Test Downward Price Movement Chime">
+              <span>📉 Price Down Sound</span>
+            </button>
           </div>
         </div>
       </div>
@@ -810,6 +1275,14 @@ const AlertEngine = (() => {
   return {
     init,
     evaluateTick,
+    processPriceUpdate,
+    processSignalUpdate,
+    syncWatchlist,
+    unmonitorSymbol,
+    checkSymbolSignal,
+    evaluateWatchlistSignals,
+    startWatchlistMonitoring,
+    stopWatchlistMonitoring,
     checkHighConvictionSetup,
     trackTradeSetup,
     addCustomAlert,
@@ -821,6 +1294,10 @@ const AlertEngine = (() => {
     handleAddCustomFromModal,
     getActiveAlerts: () => activeAlerts,
     getHistory: () => alertHistory,
+    getWatchlistSignalStates: () => watchlistSignalStates,
+    getLastKnownPrices: () => lastKnownPrices,
+    getMonitoredWatchlistSymbols,
+    resetMovementSoundCooldown,
   };
 })();
 

@@ -46,10 +46,12 @@ const AudioAlerts = (() => {
       document.removeEventListener('click', unlock);
       document.removeEventListener('keydown', unlock);
       document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('pointerdown', unlock);
     };
     document.addEventListener('click', unlock, { once: true });
     document.addEventListener('keydown', unlock, { once: true });
     document.addEventListener('touchstart', unlock, { once: true });
+    document.addEventListener('pointerdown', unlock, { once: true });
   }
 
   if (typeof window !== 'undefined') {
@@ -151,8 +153,28 @@ const AudioAlerts = (() => {
   }
 
   /**
+   * Sound Profile 5: Upward Price Movement
+   * Crisp, light, optimistic dual ascending micro-chimes (A5 -> D6)
+   */
+  function synthesizePriceUp(ctx, masterGain) {
+    const now = ctx.currentTime;
+    playTone(ctx, 880.00, now, 0.12, masterGain, 'sine', 0.75); // A5
+    playTone(ctx, 1174.66, now + 0.06, 0.18, masterGain, 'sine', 0.85); // D6
+  }
+
+  /**
+   * Sound Profile 6: Downward Price Movement
+   * Soft, warm, cautionary dual descending micro-chimes (E5 -> B4)
+   */
+  function synthesizePriceDown(ctx, masterGain) {
+    const now = ctx.currentTime;
+    playTone(ctx, 659.25, now, 0.12, masterGain, 'sine', 0.75); // E5
+    playTone(ctx, 493.88, now + 0.06, 0.18, masterGain, 'sine', 0.85); // B4
+  }
+
+  /**
    * Public: Play Chime by Alert Type
-   * @param {'target-hit' | 'entry-trigger' | 'stop-hit' | 'high-conviction'} type
+   * @param {'target-hit' | 'entry-trigger' | 'stop-hit' | 'high-conviction' | 'price-up' | 'price-down' | 'buy' | 'sell' | 'exit'} type
    * @param {boolean} force - Force play even if muted (used for sound preview buttons)
    */
   function play(type, force = false) {
@@ -168,15 +190,33 @@ const AudioAlerts = (() => {
       masterGain.connect(ctx.destination);
 
       switch (type) {
+        case 'price-up':
+        case 'price_up':
+        case 'price-upward':
+        case 'up':
+          synthesizePriceUp(ctx, masterGain);
+          break;
+        case 'price-down':
+        case 'price_down':
+        case 'price-downward':
+        case 'down':
+          synthesizePriceDown(ctx, masterGain);
+          break;
+        case 'buy':
+        case 'signal-buy':
+        case 'entry-trigger':
+        case 'entry':
+          synthesizeEntryTrigger(ctx, masterGain);
+          break;
+        case 'sell':
+        case 'signal-sell':
         case 'target-hit':
         case 'tp1':
         case 'tp2':
           synthesizeTargetHit(ctx, masterGain);
           break;
-        case 'entry-trigger':
-        case 'entry':
-          synthesizeEntryTrigger(ctx, masterGain);
-          break;
+        case 'exit':
+        case 'signal-exit':
         case 'stop-hit':
         case 'sl':
         case 'stop':
@@ -195,12 +235,50 @@ const AudioAlerts = (() => {
     }
   }
 
+  function syncNavbarButton(muted) {
+    if (typeof document === 'undefined') return;
+    const btns = [];
+    const mainBtn = typeof document.getElementById === 'function' ? document.getElementById('btn-navbar-audio-toggle') : null;
+    if (mainBtn) btns.push(mainBtn);
+
+    if (typeof document.querySelectorAll === 'function') {
+      try {
+        const extraBtns = document.querySelectorAll('.navbar-audio-btn');
+        extraBtns.forEach(b => {
+          if (!btns.includes(b)) btns.push(b);
+        });
+      } catch (e) {}
+    }
+
+    btns.forEach(btn => {
+      btn.className = `navbar-audio-btn ${muted ? 'muted' : 'active'}`;
+      if (typeof btn.setAttribute === 'function') {
+        btn.setAttribute('title', muted ? 'Audio Muted — Click to Enable Audio Chimes' : 'Audio Active — Click to Mute');
+      }
+      btn.innerHTML = muted
+        ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg><span class="audio-toggle-label">Muted</span>`
+        : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg><span class="audio-toggle-label">Audio ON</span>`;
+    });
+
+    const modalCb = typeof document.getElementById === 'function' ? document.getElementById('modal-audio-mute-cb') : null;
+    if (modalCb) {
+      modalCb.checked = !muted;
+    }
+  }
+
   function setMuted(val) {
     isMuted = !!val;
     try {
       localStorage.setItem('kdelta_audio_muted', String(isMuted));
     } catch (e) {}
+    syncNavbarButton(isMuted);
     dispatchAudioStateChange();
+    if (!isMuted) {
+      play('setup_entry', true);
+    }
+    if (typeof showToast === 'function') {
+      showToast(isMuted ? 'Alert audio chimes muted' : 'Alert audio chimes unmuted (Sound ON)', isMuted ? 'info' : 'success');
+    }
     return isMuted;
   }
 
@@ -236,6 +314,14 @@ const AudioAlerts = (() => {
     });
   }
 
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => syncNavbarButton(isMuted));
+    } else {
+      syncNavbarButton(isMuted);
+    }
+  }
+
   return {
     play,
     testChime: (type) => play(type, true),
@@ -244,6 +330,7 @@ const AudioAlerts = (() => {
     setVolume,
     getSettings,
     onStateChange,
+    syncNavbarButton,
   };
 })();
 

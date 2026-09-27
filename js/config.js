@@ -398,6 +398,9 @@ function saveWatchlist(list) {
     if (typeof API !== 'undefined' && API.syncWatchlist) {
       API.syncWatchlist(unique).catch(() => {});
     }
+    if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.syncWatchlist === 'function') {
+      AlertEngine.syncWatchlist();
+    }
   } catch (e) {}
 }
 
@@ -448,15 +451,24 @@ function isMarketOpen() {
 }
 
 /**
- * Format timestamp into Indian Standard Time (IST)
+ * Format timestamp into Indian Standard Time (IST) with fixed character width for UI stability
  */
 function formatISTTime(date = new Date()) {
-  return date.toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    dateStyle: 'medium',
-    timeStyle: 'medium',
-    hour12: true,
-  }) + ' IST';
+  const d = date instanceof Date ? date : new Date(date);
+  const istStr = d.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+  const istDate = new Date(istStr);
+  const day = String(istDate.getDate()).padStart(2, '0');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[istDate.getMonth()];
+  const year = istDate.getFullYear();
+  let hours = istDate.getHours();
+  const ampm = hours >= 12 ? 'pm' : 'am';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const hourStr = String(hours).padStart(2, '0');
+  const minutes = String(istDate.getMinutes()).padStart(2, '0');
+  const seconds = String(istDate.getSeconds()).padStart(2, '0');
+  return `${day} ${month} ${year}, ${hourStr}:${minutes}:${seconds} ${ampm} IST`;
 }
 
 /**
@@ -687,17 +699,7 @@ function requireAuthPage() {
 function updateGlobalISTClock() {
   const clockEl = document.getElementById('live-ist-clock');
   if (!clockEl) return;
-  const now = new Date();
-  clockEl.textContent = now.toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  }) + ' IST';
+  clockEl.textContent = formatISTTime();
 }
 
 // Run theme, auth guard and global clock immediately

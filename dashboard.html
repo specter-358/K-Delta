@@ -284,6 +284,38 @@
       <!-- ═══ TAB 1: Trade Plan ═══ -->
       <div class="tab-content active" id="tab-content-plan">
 
+        <!-- Position Lifecycle Status Card -->
+        <div class="position-status-card" id="position-status-card">
+          <div class="position-status-card__header">
+            <div class="position-status-badge position-status--none" id="position-status-badge">
+              <span class="position-status-dot"></span>
+              <span id="position-status-text">NO OPEN POSITION</span>
+            </div>
+            <div class="position-pnl-pill" id="position-pnl-pill" style="display:none">
+              <span id="position-pnl-value">+0.00%</span>
+            </div>
+          </div>
+          <div class="position-details-row" id="position-details-row" style="display:none">
+            <div class="position-stat">
+              <span class="position-stat__label">BOUGHT AT</span>
+              <span class="position-stat__val" id="position-bought-price">₹—</span>
+            </div>
+            <div class="position-stat">
+              <span class="position-stat__label">CURRENT</span>
+              <span class="position-stat__val" id="position-current-price">₹—</span>
+            </div>
+            <div class="position-stat">
+              <span class="position-stat__label">ACTION</span>
+              <span class="position-stat__val" id="position-current-action">HOLD</span>
+            </div>
+          </div>
+          <div class="position-action-btn-row">
+            <button class="btn-position-action" id="btn-position-toggle" onclick="toggleUserPosition()" title="Record stock purchase or exit position">
+              <span id="btn-position-toggle-text">Record Purchase (I Bought this Stock)</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Trade Execution Setup -->
         <div class="panel-section trade-setup-panel">
           <div class="panel-section__title">

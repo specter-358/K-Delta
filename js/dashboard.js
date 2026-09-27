@@ -19,6 +19,30 @@ function saveActiveOverlays() {
   } catch (e) {}
 }
 
+/**
+ * Isolated User Open Position Store per symbol
+ */
+const PositionStore = {
+  STORAGE_KEY: 'kdelta_user_positions',
+  get(symbol) {
+    try {
+      const data = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}');
+      return data[symbol] || null;
+    } catch (e) { return null; }
+  },
+  set(symbol, pos) {
+    try {
+      const data = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}');
+      if (pos) data[symbol] = pos;
+      else delete data[symbol];
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {}
+  },
+  clear(symbol) {
+    this.set(symbol, null);
+  }
+};
+
 let currentSymbol = getSavedSymbol() || 'RELIANCE.NS';
 let currentInterval = getSavedTimeframe() || '1day';
 let currentCandles = [];
@@ -312,13 +336,24 @@ async function loadSymbol(symbol, isRefresh = false) {
 function runAnalysisAndRender(updateMarkers = true) {
   if (!currentCandles || currentCandles.length === 0) return;
 
-  // 1. Run Quantitative Prediction & Confluence Engine
-  currentPrediction = PredictionEngine.analyze(currentCandles, currentSymbol);
+  const isIntradayTf = currentInterval !== '1day' && currentInterval !== '1week';
+  const savedUserPosition = PositionStore.get(currentSymbol);
+
+  // 1. Run Quantitative Prediction & Confluence Engine with Trade Lifecycle
+  currentPrediction = PredictionEngine.analyze(currentCandles, currentSymbol, {
+    userPosition: savedUserPosition,
+    isIntraday: isIntradayTf,
+  });
 
   // 2. Scan All Mathematical Candlestick Patterns
   currentPatterns = Patterns.scan(currentCandles);
 
-  // 3. Render Chart Pattern Markers (if active)
+  // 3. Render Chart Trade Lifecycle Markers (BUY Entry & SELL Exit)
+  if (window.ChartManager && typeof window.ChartManager.setTradeMarkers === 'function') {
+    ChartManager.setTradeMarkers(currentPrediction.tradeEvents);
+  }
+
+  // 3b. Render Chart Pattern Markers (if active)
   if (updateMarkers && activeOverlays.has('patterns')) {
     ChartManager.setPatternMarkers(currentPatterns);
   } else if (!activeOverlays.has('patterns')) {
@@ -328,8 +363,9 @@ function runAnalysisAndRender(updateMarkers = true) {
   // 4. Update Technical Overlays
   updateOverlays(currentPrediction);
 
-  // 5. Update Technical Inspector Sidebar
+  // 5. Update Technical Inspector Sidebar & Position Card
   renderSignalHeader(currentPrediction);
+  renderPositionStatus(currentPrediction);
   renderTradeSetup(currentPrediction.tradeSetup);
   renderPatternInspector(currentPatterns);
   renderBacktestTab(currentPrediction.backtest);
@@ -349,6 +385,9 @@ function runAnalysisAndRender(updateMarkers = true) {
     const compEl = document.getElementById('chart-company');
     const compName = compEl ? compEl.textContent : currentSymbol;
     AlertEngine.checkHighConvictionSetup(currentSymbol, currentPrediction, compName);
+    if (typeof AlertEngine.processSignalUpdate === 'function') {
+      AlertEngine.processSignalUpdate(currentSymbol, currentPrediction);
+    }
   }
 }
 
@@ -499,8 +538,15 @@ function renderSignalHeader(pred) {
   const confEl = document.getElementById('signal-confidence');
   const headlineEl = document.getElementById('action-headline');
 
-  const sigKey = (pred.signal || '').toLowerCase().includes('buy') ? 'buy'
-    : (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold';
+  const isPosOpen = pred && pred.positionState === 'OPEN_LONG';
+  let sigKey = 'hold';
+
+  if (isPosOpen) {
+    sigKey = (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold';
+  } else {
+    sigKey = (pred.signal || '').toLowerCase().includes('buy') ? 'buy'
+      : (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold';
+  }
 
   if (badge) {
     badge.className = `signal-badge signal-badge--${sigKey}`;
@@ -532,8 +578,11 @@ function renderBannerAction(pred) {
 
   if (!banner || !pred.tradeSetup) return;
 
-  const sigKey = (pred.signal || '').toLowerCase().includes('buy') ? 'buy'
-    : (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold';
+  const isPosOpen = pred && pred.positionState === 'OPEN_LONG';
+  const sigKey = isPosOpen
+    ? ((pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold')
+    : ((pred.signal || '').toLowerCase().includes('buy') ? 'buy'
+      : (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold');
 
   banner.className = `action-alert-banner banner--${sigKey}`;
   if (badge) badge.textContent = pred.action || pred.signal;
@@ -556,6 +605,130 @@ function renderBannerAction(pred) {
     `;
   }
 }
+
+/**
+ * Render Position Lifecycle Status Card
+ */
+function renderPositionStatus(pred) {
+  const card = document.getElementById('position-status-card');
+  const badge = document.getElementById('position-status-badge');
+  const text = document.getElementById('position-status-text');
+  const pnlPill = document.getElementById('position-pnl-pill');
+  const pnlVal = document.getElementById('position-pnl-value');
+  const detailsRow = document.getElementById('position-details-row');
+  const boughtPrice = document.getElementById('position-bought-price');
+  const currentPriceEl = document.getElementById('position-current-price');
+  const actionEl = document.getElementById('position-current-action');
+  const btnText = document.getElementById('btn-position-toggle-text');
+  const btnToggle = document.getElementById('btn-position-toggle');
+
+  if (!card) return;
+
+  const isOpen = pred && pred.positionState === 'OPEN_LONG';
+  const setup = pred ? pred.tradeSetup : null;
+  const currentPrice = currentCandles.length > 0 ? currentCandles[currentCandles.length - 1].close : (setup ? setup.currentPrice : null);
+
+  if (isOpen && setup && setup.boughtPrice) {
+    card.classList.add('status-active');
+
+    if (badge) {
+      badge.className = 'position-status-badge position-status--open';
+    }
+    if (text) {
+      text.textContent = 'POSITION OPEN (LONG)';
+    }
+
+    const pnl = setup.pnl != null ? setup.pnl : (currentPrice ? currentPrice - setup.boughtPrice : 0);
+    const pnlPct = setup.pnlPct != null ? setup.pnlPct : (setup.boughtPrice ? +(((pnl) / setup.boughtPrice) * 100).toFixed(2) : 0);
+    const isUp = pnl >= 0;
+
+    if (pnlPill) {
+      pnlPill.style.display = 'inline-block';
+      pnlPill.className = `position-pnl-pill ${isUp ? 'price-up' : 'price-down'}`;
+    }
+    if (pnlVal) {
+      pnlVal.textContent = `${isUp ? '+' : ''}${pnlPct.toFixed(2)}% (₹${isUp ? '+' : ''}${pnl.toFixed(2)})`;
+    }
+
+    if (detailsRow) detailsRow.style.display = 'grid';
+    if (boughtPrice) boughtPrice.textContent = `₹${setup.boughtPrice.toFixed(2)}`;
+    if (currentPriceEl && currentPrice) currentPriceEl.textContent = `₹${currentPrice.toFixed(2)}`;
+    if (actionEl) {
+      actionEl.textContent = setup.exitReason ? `SELL (${setup.exitReason.replace(' reached', '')})` : 'HOLD';
+      actionEl.className = `position-stat__val ${setup.exitReason ? 'price-down' : 'price-up'}`;
+    }
+
+    if (btnToggle) {
+      btnToggle.className = 'btn-position-action btn-close-pos';
+    }
+    if (btnText) {
+      btnText.textContent = setup.exitReason ? `Exit / Close Position (SELL: ${setup.exitReason})` : 'Close / Exit Position';
+    }
+
+  } else {
+    card.classList.remove('status-active');
+
+    if (badge) {
+      badge.className = 'position-status-badge position-status--none';
+    }
+    if (text) {
+      text.textContent = 'NO OPEN POSITION';
+    }
+
+    if (pnlPill) pnlPill.style.display = 'none';
+    if (detailsRow) detailsRow.style.display = 'none';
+
+    if (btnToggle) {
+      btnToggle.className = 'btn-position-action';
+    }
+    if (btnText) {
+      btnText.textContent = currentPrice
+        ? `Record Purchase (Bought at ₹${currentPrice.toFixed(2)})`
+        : 'Record Stock Purchase';
+    }
+  }
+}
+
+/**
+ * Toggle user position: Record purchase or Exit open position
+ */
+function toggleUserPosition() {
+  const currentPos = PositionStore.get(currentSymbol);
+
+  if (currentPos && currentPos.status === 'OPEN_LONG') {
+    // Close Position
+    PositionStore.clear(currentSymbol);
+    showToast(`Position closed for ${currentSymbol}`, 'info');
+    runAnalysisAndRender();
+  } else {
+    // Record Purchase
+    if (!currentCandles || currentCandles.length === 0) {
+      showToast('No active candle data available to open position', 'error');
+      return;
+    }
+    const lastPrice = currentCandles[currentCandles.length - 1].close;
+    const setup = currentPrediction ? currentPrediction.tradeSetup : null;
+    const stopLoss = setup ? setup.stopLoss : +(lastPrice * 0.985).toFixed(2);
+    const target1 = setup ? setup.target1 : +(lastPrice * 1.025).toFixed(2);
+    const target2 = setup ? setup.target2 : +(lastPrice * 1.04).toFixed(2);
+
+    PositionStore.set(currentSymbol, {
+      status: 'OPEN_LONG',
+      symbol: currentSymbol,
+      entryPrice: lastPrice,
+      stopLoss,
+      target1,
+      target2,
+      entryTime: Math.floor(Date.now() / 1000),
+    });
+
+    showToast(`Recorded purchase of ${currentSymbol} at ₹${lastPrice.toFixed(2)}`, 'success');
+    runAnalysisAndRender();
+  }
+}
+
+window.toggleUserPosition = toggleUserPosition;
+window.PositionStore = PositionStore;
 
 /**
  * Render Trade Execution Setup (Targets, Stop-Loss, Checklist)
@@ -1079,6 +1252,11 @@ async function loadWatchlist() {
   try {
     const quotes = await API.fetchMultipleQuotes(symbols);
     quotes.forEach(q => {
+      if (q && q.symbol && typeof q.price === 'number') {
+        if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.processPriceUpdate === 'function') {
+          AlertEngine.processPriceUpdate(q.symbol, q.price);
+        }
+      }
       const el = document.getElementById(`watchlist-item-${q.symbol.replace(/[^A-Z0-9]/g, '_')}`);
       if (!el) return;
       const isUp = q.change >= 0;
