@@ -61,7 +61,9 @@ class RealTimeCandleEngine extends EventEmitter {
 
     const symbol = tick.symbol;
     const price = tick.price;
-    const timestampMs = tick.timestamp || Date.now();
+    const timestampMs = typeof tick.timestamp === 'number'
+      ? tick.timestamp
+      : (tick.timestamp ? (Date.parse(tick.timestamp) || Date.now()) : Date.now());
     const isMarketOpen = tick.isMarketOpen !== false;
 
     for (const tf of timeframes) {

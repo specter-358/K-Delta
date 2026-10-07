@@ -69,10 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initChart();
   setupTimeframeSelector();
   setupIndicatorButtons();
-  setupDashboardSearch();
-  setupCompanySwitcher();
+  setupStockSearchModal();
+  setupWatchlistButton();
+  setupChartTypeButton();
   loadLiveTickerTape();
-  loadWatchlist();
   updateMarketStatus();
   startLiveClock();
   setupWebSocketListeners();
@@ -154,7 +154,9 @@ function updateLiveTickElements(tick) {
   if (tick.symbol === currentSymbol) {
     updateLivePriceInfo(tick);
     if (ChartManager && ChartManager.updateLiveCandle) {
-      const nowMs = tick.timestamp || Date.now();
+      const nowMs = typeof tick.timestamp === 'number'
+        ? tick.timestamp
+        : (tick.timestamp ? (Date.parse(tick.timestamp) || Date.now()) : Date.now());
       const timeframeSec = currentInterval === '1day' ? 86400 : (currentInterval === '1h' ? 3600 : (currentInterval === '15min' ? 900 : (currentInterval === '5min' ? 300 : (currentInterval === '3min' ? 180 : 60))));
       const timeVal = currentInterval === '1day' 
         ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(nowMs))
@@ -162,11 +164,11 @@ function updateLiveTickElements(tick) {
 
       ChartManager.updateLiveCandle({
         time: timeVal,
-        open: tick.open || tick.price,
-        high: tick.high || tick.price,
-        low: tick.low || tick.price,
-        close: tick.price,
-        volume: tick.volume || 100,
+        open: Number(tick.open || tick.price),
+        high: Number(tick.high || tick.price),
+        low: Number(tick.low || tick.price),
+        close: Number(tick.price),
+        volume: Number(tick.volume || 100),
       });
     }
   }
@@ -246,6 +248,38 @@ async function loadLiveTickerTape() {
   try {
     const quotes = await API.fetchRollingTickerQuotes();
     if (!quotes || quotes.length === 0) return;
+
+    const existingItems = tape.querySelectorAll('.ticker-tape__item');
+    if (existingItems.length > 0) {
+      // In-place smooth update without breaking CSS animation marquee
+      quotes.forEach(item => {
+        const displayInfo = formatInstrumentDisplay(item.symbol, item.displayName || item.name, item.exchange);
+        const prevPrice = prevTickerPrices.get(item.symbol);
+        let flashClass = '';
+        if (prevPrice != null && item.price !== prevPrice) {
+          flashClass = item.price > prevPrice ? 'flash-up' : 'flash-down';
+        }
+        prevTickerPrices.set(item.symbol, item.price);
+
+        existingItems.forEach(el => {
+          const symSpan = el.querySelector('.ticker-tape__symbol');
+          if (symSpan && (symSpan.textContent.trim() === displayInfo.symbolDisplay || symSpan.textContent.trim() === item.symbol)) {
+            const priceSpan = el.querySelector('.ticker-tape__price');
+            const changeSpan = el.querySelector('.ticker-tape__change');
+            if (priceSpan) {
+              if (flashClass) priceSpan.className = `ticker-tape__price ${flashClass}`;
+              priceSpan.textContent = formatPrice(item.price);
+            }
+            if (changeSpan) {
+              const isUp = (item.change || item.percentChange) >= 0;
+              changeSpan.className = `ticker-tape__change ${isUp ? 'price-up' : 'price-down'}`;
+              changeSpan.textContent = formatPercent(item.percentChange);
+            }
+          }
+        });
+      });
+      return;
+    }
 
     const renderItems = (itemsList) => itemsList.map(item => {
       const isUp = (item.change || item.percentChange) >= 0;
@@ -328,6 +362,7 @@ async function loadSymbol(symbol, isRefresh = false) {
 
     // Update Watchlist Active State
     updateActiveWatchlistItem();
+    updateWatchlistButtonState();
   } catch (err) {
     console.error('Error loading symbol:', err);
     showToast('Failed to load market data', 'error');
@@ -1344,17 +1379,82 @@ function showLoading(show) {
 }
 
 /**
- * Setup Interactive Header Company Switcher Dropdown
+ * Setup Watchlist Toggle Button for currently loaded stock
  */
-function setupCompanySwitcher() {
-  const selector = document.getElementById('chart-company-selector');
-  const dropdown = document.getElementById('company-switcher-dropdown');
-  const input = document.getElementById('company-switcher-input');
-  const list = document.getElementById('company-switcher-list');
+function updateWatchlistButtonState() {
+  const btn = document.getElementById('btn-chart-watchlist');
+  const label = document.getElementById('chart-watchlist-label');
+  if (!btn) return;
 
-  if (!selector || !dropdown) return;
+  const list = typeof getWatchlist === 'function' ? getWatchlist() : [];
+  const cleanSym = currentSymbol.toUpperCase();
+  const isInList = list.some(s => s.toUpperCase() === cleanSym || s.toUpperCase() === cleanSym.replace('.NS', '') || cleanSym === s.toUpperCase() + '.NS');
 
-  const topCompanies = (CONFIG && CONFIG.INDIAN_SECURITIES_CATALOG) ? CONFIG.INDIAN_SECURITIES_CATALOG : [
+  if (isInList) {
+    btn.classList.add('in-watchlist');
+    btn.title = `Remove ${currentSymbol} from Watchlist`;
+    if (label) label.textContent = 'In Watchlist';
+  } else {
+    btn.classList.remove('in-watchlist');
+    btn.title = `Add ${currentSymbol} to Watchlist`;
+    if (label) label.textContent = '+ Watchlist';
+  }
+}
+
+function toggleCurrentSymbolWatchlist() {
+  const list = typeof getWatchlist === 'function' ? getWatchlist() : [];
+  const cleanSym = currentSymbol.toUpperCase();
+  const isInList = list.some(s => s.toUpperCase() === cleanSym || s.toUpperCase() === cleanSym.replace('.NS', '') || cleanSym === s.toUpperCase() + '.NS');
+
+  if (isInList) {
+    if (typeof removeFromWatchlist === 'function') removeFromWatchlist(currentSymbol);
+    updateWatchlistButtonState();
+    showToast(`Removed ${currentSymbol} from Watchlist`, 'info');
+  } else {
+    if (typeof addToWatchlist === 'function') addToWatchlist(currentSymbol);
+    updateWatchlistButtonState();
+    showToast(`Added ${currentSymbol} to Watchlist`, 'success');
+  }
+
+  // Sync with API
+  if (typeof API !== 'undefined' && typeof API.syncWatchlist === 'function') {
+    API.syncWatchlist(getWatchlist()).catch(() => {});
+  }
+}
+window.toggleCurrentSymbolWatchlist = toggleCurrentSymbolWatchlist;
+
+function setupWatchlistButton() {
+  updateWatchlistButtonState();
+}
+
+/**
+ * Setup Chart Type Switcher Button (Candlestick / Line)
+ */
+function setupChartTypeButton() {
+  const btn = document.getElementById('btn-chart-type');
+  if (!btn) return;
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof window.toggleChartType === 'function') {
+      window.toggleChartType();
+    } else if (typeof ChartManager !== 'undefined' && typeof ChartManager.toggleChartType === 'function') {
+      ChartManager.toggleChartType();
+    }
+  });
+
+  // Sync initial button icon with saved/current chart type
+  if (typeof ChartManager !== 'undefined' && typeof ChartManager.getChartType === 'function') {
+    ChartManager.updateChartTypeButtonUI(ChartManager.getChartType());
+  }
+}
+
+/**
+ * Setup Institutional Stock Search Modal (Command Palette)
+ */
+function getPopularStockList() {
+  return (CONFIG && CONFIG.INDIAN_SECURITIES_CATALOG) ? CONFIG.INDIAN_SECURITIES_CATALOG : [
     { symbol: 'RELIANCE.NS', name: 'Reliance Industries Ltd.', exchange: 'NSE' },
     { symbol: 'TCS.NS', name: 'Tata Consultancy Services', exchange: 'NSE' },
     { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.', exchange: 'NSE' },
@@ -1369,45 +1469,76 @@ function setupCompanySwitcher() {
     { symbol: '^BSESN', name: 'SENSEX Index', exchange: 'BSE' },
     { symbol: '^NSEBANK', name: 'BANK NIFTY Index', exchange: 'NSE' },
   ];
+}
 
-  function renderList(items) {
-    if (!list) return;
-    list.innerHTML = items.map(c => {
-      const displayInfo = formatInstrumentDisplay(c.symbol, c.name, c.exchange);
-      return `
-        <div class="company-switcher-item" data-symbol="${c.symbol}">
-          <div>
-            <div class="company-switcher-item__symbol">${displayInfo.symbolDisplay}</div>
-            <div class="company-switcher-item__name">${displayInfo.nameDisplay}</div>
-          </div>
-          <span class="company-switcher-item__exchange">${displayInfo.exchangeDisplay}</span>
-        </div>
-      `;
-    }).join('');
+function openStockSearchModal() {
+  const modal = document.getElementById('stock-search-modal');
+  const input = document.getElementById('stock-modal-search-input');
+  if (!modal) return;
 
-    list.querySelectorAll('.company-switcher-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const sym = item.dataset.symbol;
-        if (sym) {
-          loadSymbol(sym);
-          dropdown.classList.remove('active');
-          selector.classList.remove('active');
-        }
-      });
-    });
+  modal.classList.add('active');
+  if (input) {
+    input.value = '';
+    renderModalResults(getPopularStockList().slice(0, 8));
+    setTimeout(() => input.focus(), 50);
+  }
+}
+
+function closeStockSearchModal(e) {
+  if (e && e.target && e.target.closest('.stock-search-modal-card') && !e.target.closest('.stock-search-modal-close')) {
+    return;
+  }
+  const modal = document.getElementById('stock-search-modal');
+  if (modal) modal.classList.remove('active');
+}
+window.openStockSearchModal = openStockSearchModal;
+window.closeStockSearchModal = closeStockSearchModal;
+
+function renderModalResults(items) {
+  const list = document.getElementById('stock-modal-search-results');
+  if (!list) return;
+
+  if (!items || items.length === 0) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:0.78rem">No matching securities found.</div>';
+    return;
   }
 
-  renderList(topCompanies.slice(0, 10));
+  list.innerHTML = items.map((c, idx) => {
+    const displayInfo = formatInstrumentDisplay(c.symbol, c.name, c.exchange);
+    return `
+      <div class="stock-search-result-item ${idx === 0 ? 'highlighted' : ''}" data-symbol="${c.symbol}">
+        <div>
+          <div class="stock-search-item__symbol">${displayInfo.symbolDisplay}</div>
+          <div class="stock-search-item__name">${displayInfo.nameDisplay}</div>
+        </div>
+        <span class="stock-search-item__exchange">${displayInfo.exchangeDisplay}</span>
+      </div>
+    `;
+  }).join('');
 
-  selector.addEventListener('click', (e) => {
-    if (e.target.closest('#company-switcher-dropdown')) return;
-    const isActive = dropdown.classList.toggle('active');
-    selector.classList.toggle('active', isActive);
-    if (isActive && input) {
-      input.value = '';
-      renderList(topCompanies.slice(0, 10));
-      setTimeout(() => input.focus(), 50);
+  list.querySelectorAll('.stock-search-result-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sym = item.dataset.symbol;
+      if (sym) {
+        loadSymbol(sym);
+        closeStockSearchModal();
+      }
+    });
+  });
+}
+
+function setupStockSearchModal() {
+  const input = document.getElementById('stock-modal-search-input');
+  const list = document.getElementById('stock-modal-search-results');
+
+  // '/' key shortcut to open search modal, Esc to close
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+      e.preventDefault();
+      openStockSearchModal();
+    } else if (e.key === 'Escape') {
+      closeStockSearchModal();
     }
   });
 
@@ -1416,49 +1547,59 @@ function setupCompanySwitcher() {
     input.addEventListener('input', () => {
       clearTimeout(debounceTimer);
       const query = input.value.trim().toLowerCase();
+      const allSecurities = getPopularStockList();
+
       if (!query) {
-        renderList(topCompanies.slice(0, 10));
+        renderModalResults(allSecurities.slice(0, 8));
         return;
       }
 
-      const localMatches = topCompanies.filter(c => {
+      const localMatches = allSecurities.filter(c => {
         const symClean = c.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
-        return symClean.includes(query) || c.symbol.toLowerCase().includes(query) || c.name.toLowerCase().includes(query);
+        return symClean.includes(query) || c.symbol.toLowerCase().includes(query) || (c.name || '').toLowerCase().includes(query);
       });
-      renderList(localMatches.slice(0, 20));
+      renderModalResults(localMatches.slice(0, 15));
 
       debounceTimer = setTimeout(async () => {
-        const remoteResults = await API.searchSymbol(query);
-        const combined = [...localMatches];
-        if (remoteResults) {
-          remoteResults.forEach(r => {
-            if (!combined.some(c => c.symbol === r.symbol)) {
-              combined.push({ symbol: r.symbol, name: r.name || r.symbol, exchange: r.exchange });
-            }
-          });
-        }
-        renderList(combined.slice(0, 20));
+        try {
+          const remoteResults = await API.searchSymbol(query);
+          const combined = [...localMatches];
+          if (remoteResults && Array.isArray(remoteResults)) {
+            remoteResults.forEach(r => {
+              if (!combined.some(c => c.symbol === r.symbol)) {
+                combined.push({ symbol: r.symbol, name: r.name || r.symbol, exchange: r.exchange });
+              }
+            });
+          }
+          renderModalResults(combined.slice(0, 15));
+        } catch (e) {}
       }, 150);
     });
 
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const first = list.querySelector('.company-switcher-item');
-        if (first && first.dataset.symbol) {
-          loadSymbol(first.dataset.symbol);
-          dropdown.classList.remove('active');
-          selector.classList.remove('active');
+      const items = list ? Array.from(list.querySelectorAll('.stock-search-result-item')) : [];
+      const currentIdx = items.findIndex(el => el.classList.contains('highlighted'));
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIdx = (currentIdx + 1) % items.length;
+        items.forEach((el, i) => el.classList.toggle('highlighted', i === nextIdx));
+        if (items[nextIdx]) items[nextIdx].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevIdx = (currentIdx - 1 + items.length) % items.length;
+        items.forEach((el, i) => el.classList.toggle('highlighted', i === prevIdx));
+        if (items[prevIdx]) items[prevIdx].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const selected = items[currentIdx >= 0 ? currentIdx : 0];
+        if (selected && selected.dataset.symbol) {
+          loadSymbol(selected.dataset.symbol);
+          closeStockSearchModal();
         }
       }
     });
   }
-
-  document.addEventListener('click', (e) => {
-    if (!selector.contains(e.target)) {
-      dropdown.classList.remove('active');
-      selector.classList.remove('active');
-    }
-  });
 }
 
 /**

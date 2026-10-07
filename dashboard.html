@@ -45,6 +45,16 @@
       <a href="index.html">Home</a>
       <a href="watchlist.html">Watchlist</a>
     </div>
+    <div class="navbar__search">
+      <button class="navbar-search-btn" id="btn-navbar-search" onclick="openStockSearchModal()" title="Search Indian Stocks (Press /)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <span class="search-placeholder">Search stock (e.g. RELIANCE, ITC)...</span>
+        <kbd class="search-kbd">/</kbd>
+      </button>
+    </div>
     <div class="navbar__market-status">
       <div class="navbar-alert-controls">
         <button class="navbar-audio-btn active" id="btn-navbar-audio-toggle" onclick="AudioAlerts.toggleMute()" title="Toggle Alert Audio Chimes">
@@ -78,32 +88,19 @@
       <!-- Chart Header Toolbar -->
       <div class="chart-header">
 
-        <!-- Stock Selector / Quick Switcher -->
-        <div class="chart-toolbar__search-btn" id="chart-company-selector"
-          title="Search NSE/BSE stock or switch company">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
+        <!-- Stock Identity Header -->
+        <div class="chart-header__stock-info" id="chart-stock-info">
           <span class="chart-header__symbol" id="chart-symbol">RELIANCE</span>
           <span class="chart-header__company" id="chart-company">Reliance Industries Ltd.</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            class="company-dropdown-arrow">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-
-          <!-- Quick Company Switcher Dropdown -->
-          <div class="company-switcher-dropdown" id="company-switcher-dropdown">
-            <div class="company-switcher-search">
-              <input type="text" id="company-switcher-input"
-                placeholder="Search Indian stock (e.g. RELIANCE, TCS, INFY)..." autocomplete="off">
-            </div>
-            <div class="company-switcher-list" id="company-switcher-list">
-              <!-- Top companies populated dynamically -->
-            </div>
-          </div>
         </div>
+
+        <!-- Add / Remove Current Stock to Watchlist Button -->
+        <button class="toolbar-watchlist-btn" id="btn-chart-watchlist" onclick="toggleCurrentSymbolWatchlist()" title="Add to Watchlist">
+          <svg class="watchlist-star-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+          <span id="chart-watchlist-label">+ Watchlist</span>
+        </button>
 
         <div class="toolbar-divider"></div>
 
@@ -121,14 +118,16 @@
 
         <div class="toolbar-divider"></div>
 
-        <!-- Chart Type Icon -->
-        <button class="toolbar-icon-btn active" title="Candlestick Chart">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="9" y1="2" x2="9" y2="22"></line>
-            <rect x="6" y="6" width="6" height="12" fill="currentColor" fill-opacity="0.3"></rect>
-            <line x1="17" y1="2" x2="17" y2="22"></line>
-            <rect x="14" y="10" width="6" height="7" fill="currentColor" fill-opacity="0.3"></rect>
-          </svg>
+        <!-- Chart Type Switcher (Candlestick / Line) -->
+        <button class="toolbar-icon-btn active" id="btn-chart-type" onclick="toggleChartType()" title="Switch to Line Chart">
+          <span id="chart-type-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="9" y1="2" x2="9" y2="22"></line>
+              <rect x="6" y="6" width="6" height="12" fill="currentColor" fill-opacity="0.3"></rect>
+              <line x1="17" y1="2" x2="17" y2="22"></line>
+              <rect x="14" y="10" width="6" height="7" fill="currentColor" fill-opacity="0.3"></rect>
+            </svg>
+          </span>
         </button>
 
         <div class="toolbar-divider"></div>
@@ -561,16 +560,38 @@
 
   </div>
 
+  <!-- ═══ Quick Stock Search Modal (Institutional Command Palette) ═══ -->
+  <div class="stock-search-modal-backdrop" id="stock-search-modal" onclick="closeStockSearchModal(event)">
+    <div class="stock-search-modal-card" onclick="event.stopPropagation()">
+      <div class="stock-search-modal-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="stock-modal-search-input" placeholder="Type stock name or symbol (e.g. INFY, TCS, ITC, RELIANCE)..." autocomplete="off" spellcheck="false">
+        <button class="stock-search-modal-close" onclick="closeStockSearchModal()" title="Close (Esc)">✕</button>
+      </div>
+      <div class="stock-search-modal-results" id="stock-modal-search-results">
+        <!-- Results populated dynamically -->
+      </div>
+      <div class="stock-search-modal-footer">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> Navigate</span>
+        <span><kbd>Enter</kbd> Open in Terminal</span>
+        <span><kbd>Esc</kbd> Close</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="js/config.js?v=4.0"></script>
-  <script src="js/api.js?v=4.0"></script>
-  <script src="js/indicators.js?v=4.0"></script>
-  <script src="js/patterns.js?v=4.0"></script>
-  <script src="js/predictions.js?v=4.0"></script>
-  <script src="js/audioAlerts.js?v=4.0"></script>
-  <script src="js/alertEngine.js?v=4.0"></script>
-  <script src="js/chart.js?v=4.0"></script>
-  <script src="js/dashboard.js?v=4.0"></script>
+  <script src="js/config.js?v=4.2"></script>
+  <script src="js/api.js?v=4.2"></script>
+  <script src="js/indicators.js?v=4.2"></script>
+  <script src="js/patterns.js?v=4.2"></script>
+  <script src="js/predictions.js?v=4.2"></script>
+  <script src="js/audioAlerts.js?v=4.2"></script>
+  <script src="js/alertEngine.js?v=4.2"></script>
+  <script src="js/chart.js?v=4.2"></script>
+  <script src="js/dashboard.js?v=4.2"></script>
 
 </body>
 

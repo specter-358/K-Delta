@@ -7,7 +7,9 @@
 const ChartManager = (() => {
   let chart = null;
   let candleSeries = null;
+  let lineSeries = null;
   let volumeSeries = null;
+  let currentChartType = (typeof localStorage !== 'undefined' && localStorage.getItem('kdelta_chart_type')) || 'candlestick';
   let overlayLines = {};
   let tradePriceLines = [];
   let srPriceLines = [];
@@ -146,6 +148,19 @@ const ChartManager = (() => {
       borderDownColor: '#f43f5e',
       wickUpColor: '#10b981',
       wickDownColor: '#f43f5e',
+      visible: currentChartType === 'candlestick',
+    });
+
+    // Area / Line Series (Smooth Institutional Line Chart with Cyan Gradient)
+    lineSeries = chart.addAreaSeries({
+      topColor: 'rgba(56, 189, 248, 0.28)',
+      bottomColor: 'rgba(56, 189, 248, 0.01)',
+      lineColor: '#38bdf8',
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+      visible: currentChartType === 'line',
     });
 
     // Volume series (overlay without polluting price axis)
@@ -162,12 +177,18 @@ const ChartManager = (() => {
       const ohlcEl = document.getElementById('chart-live-ohlc');
       if (!ohlcEl) return;
 
-      if (!param || !param.time || !param.seriesPrices || !param.seriesPrices.get(candleSeries)) {
+      if (!param || !param.time || !param.seriesPrices) {
         updateOHLCDisplay(null);
         return;
       }
 
-      const bar = param.seriesPrices.get(candleSeries);
+      let bar = param.seriesPrices.get(candleSeries);
+      if (!bar && lineSeries) {
+        const lineVal = param.seriesPrices.get(lineSeries);
+        if (lineVal != null && !isNaN(lineVal)) {
+          bar = { open: lineVal, high: lineVal, low: lineVal, close: lineVal };
+        }
+      }
       updateOHLCDisplay(bar);
     });
 
@@ -185,6 +206,8 @@ const ChartManager = (() => {
       setData(pendingCandles);
       pendingCandles = null;
     }
+
+    updateChartTypeButtonUI(currentChartType);
   }
 
   function handleResize() {
@@ -275,6 +298,12 @@ const ChartManager = (() => {
     });
 
     candleSeries.setData(formattedCandles);
+    if (lineSeries) {
+      lineSeries.setData(formattedCandles.map(c => ({
+        time: c.time,
+        value: c.close,
+      })));
+    }
     cachedVolumes = formattedVolumes;
     if (volumeSeries) {
       volumeSeries.setData(isVolumeVisible ? formattedVolumes : []);
@@ -304,42 +333,68 @@ const ChartManager = (() => {
    * Update the currently forming candle dynamically from live WebSocket tick
    */
   function updateLiveCandle(candle) {
-    if (!candleSeries || !candle) return;
+    if (!candleSeries || !candle || candle.time == null) return;
 
-    const formattedTimeKey = formatTime(candle.time);
-    candleSeries.update({
-      time: formattedTimeKey,
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-    });
-
-    if (volumeSeries && candle.volume) {
-      volumeSeries.update({
-        time: formattedTimeKey,
-        value: candle.volume,
-        color: candle.close >= candle.open ? 'rgba(16, 185, 129, 0.35)' : 'rgba(244, 63, 94, 0.35)',
-      });
-    }
-
-    // Update current candles cache
-    if (currentCandles.length > 0) {
-      const last = currentCandles[currentCandles.length - 1];
-      const lastFormatted = String(formatTime(last.time));
-      const curFormatted = String(formattedTimeKey);
-
-      if (lastFormatted === curFormatted || last.time === candle.time) {
-        last.high = Math.max(last.high, candle.high);
-        last.low = Math.min(last.low, candle.low);
-        last.close = candle.close;
-        last.volume = candle.volume;
-      } else {
-        currentCandles.push({ ...candle, time: formattedTimeKey });
+    try {
+      const formattedTimeKey = formatTime(candle.time);
+      if (currentCandles.length > 0) {
+        const last = currentCandles[currentCandles.length - 1];
+        const lastTime = formatTime(last.time);
+        
+        // LightweightCharts throws if time is older than the last bar
+        if (typeof formattedTimeKey === 'number' && typeof lastTime === 'number' && formattedTimeKey < lastTime) {
+          return;
+        }
+        if (typeof formattedTimeKey === 'string' && typeof lastTime === 'string' && formattedTimeKey < lastTime) {
+          return;
+        }
       }
-    }
 
-    updateOHLCDisplay(candle);
+      const barData = {
+        time: formattedTimeKey,
+        open: Number(candle.open),
+        high: Number(candle.high),
+        low: Number(candle.low),
+        close: Number(candle.close),
+      };
+
+      candleSeries.update(barData);
+
+      if (lineSeries) {
+        lineSeries.update({
+          time: formattedTimeKey,
+          value: Number(candle.close),
+        });
+      }
+
+      if (volumeSeries && candle.volume) {
+        volumeSeries.update({
+          time: formattedTimeKey,
+          value: Number(candle.volume),
+          color: candle.close >= candle.open ? 'rgba(16, 185, 129, 0.35)' : 'rgba(244, 63, 94, 0.35)',
+        });
+      }
+
+      // Update current candles cache
+      if (currentCandles.length > 0) {
+        const last = currentCandles[currentCandles.length - 1];
+        const lastFormatted = String(formatTime(last.time));
+        const curFormatted = String(formattedTimeKey);
+
+        if (lastFormatted === curFormatted || last.time === candle.time) {
+          last.high = Math.max(last.high, Number(candle.high));
+          last.low = Math.min(last.low, Number(candle.low));
+          last.close = Number(candle.close);
+          last.volume = candle.volume;
+        } else {
+          currentCandles.push({ ...candle, time: formattedTimeKey });
+        }
+      }
+
+      updateOHLCDisplay(barData);
+    } catch (err) {
+      // Gracefully prevent tick sequence race conditions from stalling the engine
+    }
   }
 
   /**
@@ -439,7 +494,14 @@ const ChartManager = (() => {
     });
 
     try {
-      candleSeries.setMarkers(allMarkers);
+      const targetSeries = currentChartType === 'line' ? lineSeries : candleSeries;
+      if (targetSeries) {
+        targetSeries.setMarkers(allMarkers);
+      }
+      const otherSeries = currentChartType === 'line' ? candleSeries : lineSeries;
+      if (otherSeries) {
+        try { otherSeries.setMarkers([]); } catch (e) {}
+      }
     } catch (e) {
       console.warn('Error setting chart markers:', e);
     }
@@ -527,11 +589,28 @@ const ChartManager = (() => {
    * Clear Trade Execution Lines
    */
   function clearTradeLevels() {
-    if (!candleSeries || !tradePriceLines.length) return;
-    tradePriceLines.forEach(line => {
-      try { candleSeries.removePriceLine(line); } catch (e) {}
+    tradePriceLines.forEach(item => {
+      try {
+        if (item.series && item.line) item.series.removePriceLine(item.line);
+        else if (candleSeries) candleSeries.removePriceLine(item);
+      } catch (e) {}
     });
     tradePriceLines = [];
+  }
+
+  function addTradePriceLine(options) {
+    if (candleSeries) {
+      try {
+        const line = candleSeries.createPriceLine(options);
+        tradePriceLines.push({ series: candleSeries, line });
+      } catch (e) {}
+    }
+    if (lineSeries) {
+      try {
+        const line = lineSeries.createPriceLine(options);
+        tradePriceLines.push({ series: lineSeries, line });
+      } catch (e) {}
+    }
   }
 
   /**
@@ -539,7 +618,7 @@ const ChartManager = (() => {
    */
   function setTradeLevels(setup) {
     clearTradeLevels();
-    if (!candleSeries) return;
+    if (!candleSeries && !lineSeries) return;
 
     try {
       let entry = setup && setup.entryPrice;
@@ -562,47 +641,47 @@ const ChartManager = (() => {
 
       if (entry) {
         const entryTitle = isPositionOpen ? `BOUGHT @ ₹${entry.toFixed(2)}` : (isBuy ? 'BUY ENTRY' : 'SELL / EXIT');
-        tradePriceLines.push(candleSeries.createPriceLine({
+        addTradePriceLine({
           price: entry,
           color: isBuy ? '#10b981' : '#f43f5e',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
           title: entryTitle,
-        }));
+        });
       }
 
       if (target1) {
-        tradePriceLines.push(candleSeries.createPriceLine({
+        addTradePriceLine({
           price: target1,
           color: '#10b981',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
           title: 'TARGET 1 (TP1)',
-        }));
+        });
       }
 
       if (target2) {
-        tradePriceLines.push(candleSeries.createPriceLine({
+        addTradePriceLine({
           price: target2,
           color: '#059669',
           lineWidth: 1,
           lineStyle: LightweightCharts.LineStyle.Dotted,
           axisLabelVisible: true,
           title: 'TARGET 2 (TP2)',
-        }));
+        });
       }
 
       if (stopLoss) {
-        tradePriceLines.push(candleSeries.createPriceLine({
+        addTradePriceLine({
           price: stopLoss,
           color: '#f43f5e',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
           title: 'STOP LOSS',
-        }));
+        });
       }
     } catch (e) {
       console.warn('Error setting trade levels:', e);
@@ -613,11 +692,28 @@ const ChartManager = (() => {
    * Clear Support / Resistance Price Lines
    */
   function clearSupportResistanceLevels() {
-    if (!candleSeries || !srPriceLines.length) return;
-    srPriceLines.forEach(line => {
-      try { candleSeries.removePriceLine(line); } catch (e) {}
+    srPriceLines.forEach(item => {
+      try {
+        if (item.series && item.line) item.series.removePriceLine(item.line);
+        else if (candleSeries) candleSeries.removePriceLine(item);
+      } catch (e) {}
     });
     srPriceLines = [];
+  }
+
+  function addSrPriceLine(options) {
+    if (candleSeries) {
+      try {
+        const line = candleSeries.createPriceLine(options);
+        srPriceLines.push({ series: candleSeries, line });
+      } catch (e) {}
+    }
+    if (lineSeries) {
+      try {
+        const line = lineSeries.createPriceLine(options);
+        srPriceLines.push({ series: lineSeries, line });
+      } catch (e) {}
+    }
   }
 
   /**
@@ -625,36 +721,36 @@ const ChartManager = (() => {
    */
   function setSupportResistanceLevels(levels) {
     clearSupportResistanceLevels();
-    if (!candleSeries || !levels) return;
+    if ((!candleSeries && !lineSeries) || !levels) return;
 
     try {
       if (levels.support) {
         levels.support.forEach((price, idx) => {
-          srPriceLines.push(candleSeries.createPriceLine({
+          addSrPriceLine({
             price,
             color: 'rgba(16, 185, 129, 0.75)',
             lineWidth: 1,
             lineStyle: LightweightCharts.LineStyle.Dotted,
             axisLabelVisible: true,
             title: `S${idx + 1} Support`,
-          }));
+          });
         });
       }
 
       if (levels.resistance) {
         levels.resistance.forEach((price, idx) => {
-          srPriceLines.push(candleSeries.createPriceLine({
+          addSrPriceLine({
             price,
             color: 'rgba(244, 63, 94, 0.75)',
             lineWidth: 1,
             lineStyle: LightweightCharts.LineStyle.Dotted,
             axisLabelVisible: true,
-            title: `R${idx + 1} Resist`,
-          }));
+            title: `R${idx + 1} Resistance`,
+          });
         });
       }
     } catch (e) {
-      console.warn('Error setting SR levels:', e);
+      console.warn('Error setting S/R levels:', e);
     }
   }
 
@@ -691,7 +787,6 @@ const ChartManager = (() => {
         width: containerEl.clientWidth || 800,
         height: containerEl.clientHeight || 560,
       });
-      autoFit();
     } catch (e) {
       console.warn('handleResize error:', e);
     }
@@ -707,6 +802,65 @@ const ChartManager = (() => {
     }
   }
 
+  function setChartType(type) {
+    if (type !== 'candlestick' && type !== 'line') return;
+    currentChartType = type;
+    try {
+      localStorage.setItem('kdelta_chart_type', type);
+    } catch (e) {}
+
+    if (candleSeries) {
+      candleSeries.applyOptions({ visible: type === 'candlestick' });
+    }
+    if (lineSeries) {
+      lineSeries.applyOptions({ visible: type === 'line' });
+    }
+
+    updateCombinedMarkers();
+    updateChartTypeButtonUI(type);
+
+    if (typeof showToast === 'function') {
+      showToast(type === 'line' ? 'Switched to Line Chart' : 'Switched to Candlestick Chart', 'info');
+    }
+  }
+
+  function getChartType() {
+    return currentChartType;
+  }
+
+  function toggleChartType() {
+    const next = currentChartType === 'candlestick' ? 'line' : 'candlestick';
+    setChartType(next);
+    return next;
+  }
+
+  function updateChartTypeButtonUI(type) {
+    const btn = document.getElementById('btn-chart-type');
+    const iconSpan = document.getElementById('chart-type-icon');
+    if (!btn || !iconSpan) return;
+
+    if (type === 'line') {
+      btn.title = 'Switch to Candlestick Chart';
+      btn.classList.add('active');
+      iconSpan.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+      `;
+    } else {
+      btn.title = 'Switch to Line Chart';
+      btn.classList.add('active');
+      iconSpan.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="9" y1="2" x2="9" y2="22"></line>
+          <rect x="6" y="6" width="6" height="12" fill="currentColor" fill-opacity="0.3"></rect>
+          <line x1="17" y1="2" x2="17" y2="22"></line>
+          <rect x="14" y="10" width="6" height="7" fill="currentColor" fill-opacity="0.3"></rect>
+        </svg>
+      `;
+    }
+  }
+
   function destroy() {
     if (chart) {
       try {
@@ -715,6 +869,7 @@ const ChartManager = (() => {
       chart = null;
     }
     candleSeries = null;
+    lineSeries = null;
     volumeSeries = null;
     overlayLines = {};
     tradePriceLines = [];
@@ -728,6 +883,10 @@ const ChartManager = (() => {
     init,
     setData,
     updateLiveCandle,
+    setChartType,
+    getChartType,
+    toggleChartType,
+    updateChartTypeButtonUI,
     setOverlay,
     removeOverlay,
     clearAllOverlays,
@@ -747,6 +906,24 @@ const ChartManager = (() => {
     destroy,
   };
 })();
+
+// Expose globally on window so inline onclick and external scripts can access
+if (typeof window !== 'undefined') {
+  window.ChartManager = ChartManager;
+}
+
+function toggleChartType() {
+  if (typeof ChartManager !== 'undefined' && typeof ChartManager.toggleChartType === 'function') {
+    return ChartManager.toggleChartType();
+  }
+  if (typeof window !== 'undefined' && window.ChartManager && typeof window.ChartManager.toggleChartType === 'function') {
+    return window.ChartManager.toggleChartType();
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.toggleChartType = toggleChartType;
+}
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ChartManager;
