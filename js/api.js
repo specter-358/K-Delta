@@ -327,14 +327,36 @@ const API = (() => {
    * Search Indian symbols (NSE/BSE)
    */
   async function searchSymbol(query) {
-    if (!query || query.trim().length < 1) return [];
-    try {
-      const data = await apiFetch('/api/search', { q: query.trim() });
-      return Array.isArray(data) ? data : [];
-    } catch (err) {
-      console.error('searchSymbol error:', err);
-      return [];
+    const catalog = (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.INDIAN_SECURITIES_CATALOG))
+      ? CONFIG.INDIAN_SECURITIES_CATALOG
+      : [];
+
+    const q = (query || '').trim();
+    if (!q) {
+      return catalog.slice(0, 8);
     }
+
+    const qClean = q.toLowerCase();
+    const localMatches = catalog.filter(s => {
+      const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+      return symClean.includes(qClean) || s.symbol.toLowerCase().includes(qClean) || (s.name && s.name.toLowerCase().includes(qClean));
+    });
+
+    try {
+      const data = await apiFetch('/api/search', { q });
+      if (Array.isArray(data) && data.length > 0) {
+        const combined = [...localMatches];
+        data.forEach(r => {
+          if (!combined.some(c => c.symbol === r.symbol)) {
+            combined.push(r);
+          }
+        });
+        return combined;
+      }
+    } catch (err) {
+      console.warn('searchSymbol API fallback to catalog matches:', err);
+    }
+    return localMatches;
   }
 
   /**
@@ -402,29 +424,21 @@ const API = (() => {
   }
 
   /**
-   * Fetch all quotes for the rolling ticker strip
+   * Fetch all quotes for the rolling ticker strip (indices only)
    */
   async function fetchRollingTickerQuotes() {
     try {
-      const symbols = CONFIG.ROLLING_TICKER_SYMBOLS || [
+      const symbols = (CONFIG.ROLLING_TICKER_SYMBOLS || [
         '^NSEI', '^BSESN', '^NSEBANK', '^CNXIT', '^INDIAVIX',
-        'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS', 'SBIN.NS', 'BHARTIARTL.NS'
-      ];
+        '^CNXAUTO', '^CNXFMCG', '^CNXPHARMA', '^CNXMETAL', '^CNXPSUBANK', '^CNXREALTY', '^CNXFIN'
+      ]).filter(s => s.startsWith('^'));
 
-      // Split into indices and equities
-      const indexSymbols = symbols.filter(s => s.startsWith('^'));
-      const equitySymbols = symbols.filter(s => !s.startsWith('^'));
-
-      const [indices, equities] = await Promise.all([
-        fetchMarketIndices().catch(() => []),
-        fetchMultipleQuotes(equitySymbols).catch(() => []),
-      ]);
-
+      // Fetch only indices — high-speed single cached request
+      const indices = await fetchMarketIndices().catch(() => []);
       const map = new Map();
       indices.forEach(idx => map.set(idx.symbol, idx));
-      equities.forEach(eq => map.set(eq.symbol, eq));
 
-      // Return ordered list
+      // Return ordered list of indices only
       const combined = [];
       for (const sym of symbols) {
         if (map.has(sym)) {

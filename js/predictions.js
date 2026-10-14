@@ -276,7 +276,7 @@ const Predictions = (() => {
    * @param {Object} options - { userPosition, isIntraday, currentTime }
    * @returns {Object} Complete Prediction result
    */
-  function analyze(candles, symbol = 'RELIANCE.NS', options = {}) {
+  function analyze(candles, symbol = '^NSEI', options = {}) {
     if (!candles || candles.length < 20) {
       return {
         signal: 'WAIT FOR CONFIRMATION',
@@ -462,11 +462,11 @@ const Predictions = (() => {
         actionType = totalScore > 60 ? 'strong-buy' : 'buy';
         confidence = Math.min(96, Math.round(62 + totalScore * 0.35));
       } else if (totalScore <= -35) {
-        // Bearish Structure
-        signal = 'NO BUY SETUP';
-        action = 'BEARISH STRUCTURE — AVOID BUYING';
+        // Confirmed Bearish Structure
+        signal = 'SELL STOCK';
+        action = totalScore < -60 ? 'STRONG SELL STOCK' : 'SELL / SHORT ON RALLY';
         actionType = 'sell';
-        confidence = Math.min(92, Math.round(55 + Math.abs(totalScore) * 0.35));
+        confidence = Math.min(96, Math.round(55 + Math.abs(totalScore) * 0.35));
       } else {
         // Low Edge / Consolidation
         signal = 'WAIT FOR CONFIRMATION';
@@ -589,8 +589,8 @@ const Predictions = (() => {
     let entry = currentPrice;
     let entryMin, entryMax, stopLoss, target1, target2, riskReward, actionHeadline, timingAdvice, checklist;
 
-    const isBuySignal = signal.includes('BUY');
-    const isSellSignal = signal.includes('SELL');
+    const isBuySignal = (signal.includes('BUY') || action.includes('BUY')) && !signal.includes('NO BUY') && !action.includes('AVOID') && !action.includes('BEARISH');
+    const isSellSignal = (signal.includes('SELL') || action.includes('SELL') || signal.includes('NO BUY') || action.includes('BEARISH')) && !signal.includes('WAIT');
 
     if (positionStatus === 'OPEN_LONG' && activeTrade) {
       // ══════════════════════════════════════════════════════════
@@ -649,13 +649,13 @@ const Predictions = (() => {
           },
           {
             type: 'target',
-            label: 'WHEN TO TAKE PROFIT (SELL)',
-            text: `Sell 50% at **Target 1 (₹${target1.toFixed(2)} / +${target1Pct}%)**. Move stop to breakeven for **Target 2 (₹${target2.toFixed(2)} / +${target2Pct}%)**.`,
+            label: 'WHEN TO TAKE PROFIT (EXIT BUY)',
+            text: `Exit 50% at **Target 1 (₹${target1.toFixed(2)} / +${target1Pct}%)**. Move stop to breakeven for **Target 2 (₹${target2.toFixed(2)} / +${target2Pct}%)**.`,
           },
           {
             type: 'exit',
-            label: 'WHEN TO CUT LOSS (SELL)',
-            text: `Sell 100% immediately if price touches or closes below **Stop Loss (₹${stopLoss.toFixed(2)} / ${riskPct}%)**.`,
+            label: 'WHEN TO CUT LOSS (EXIT BUY)',
+            text: `Exit 100% immediately if price touches or closes below **Stop Loss (₹${stopLoss.toFixed(2)} / ${riskPct}%)**.`,
           },
           {
             type: 'exit',
@@ -729,13 +729,13 @@ const Predictions = (() => {
         },
         {
           type: 'target',
-          label: 'WHEN TO SELL (PROFIT TARGET)',
-          text: `Sell 50% at **Target 1 (₹${target1.toFixed(2)} / +${target1Pct}%)**. Move stop to entry and target **₹${target2.toFixed(2)} (+${target2Pct}%)**.`,
+          label: 'WHEN TO EXIT BUY (PROFIT TARGET)',
+          text: `Exit 50% at **Target 1 (₹${target1.toFixed(2)} / +${target1Pct}%)**. Move stop to entry and target **₹${target2.toFixed(2)} (+${target2Pct}%)**.`,
         },
         {
           type: 'exit',
-          label: 'WHEN TO SELL (STOP LOSS)',
-          text: `Sell 100% if candle drops below **Stop Loss (₹${stopLoss.toFixed(2)} / ${riskPct}%)** to cap downside.`,
+          label: 'WHEN TO EXIT BUY (STOP LOSS)',
+          text: `Exit 100% immediately if candle drops below **Stop Loss (₹${stopLoss.toFixed(2)} / ${riskPct}%)** to cap downside.`,
         },
         {
           type: 'exit',
@@ -768,20 +768,94 @@ const Predictions = (() => {
         checklist,
       };
 
+    } else if (isSellSignal) {
+      // ══════════════════════════════════════════════════════════
+      // FRESH BEARISH / SELL / SHORT OPPORTUNITY (NO POSITION)
+      // ══════════════════════════════════════════════════════════
+      const isStrong = action.includes('STRONG');
+      entry = currentPrice;
+      entryMin = +(currentPrice - validATR * 0.2).toFixed(2);
+      entryMax = +(currentPrice + validATR * 0.3).toFixed(2);
+
+      // Stop loss 1.5 ATR above entry
+      stopLoss = +(currentPrice + validATR * 1.5).toFixed(2);
+      // Target 1: 2 ATR below or lower BB
+      target1 = +(Math.min(currentPrice - validATR * 2.0, (bbLower + currentPrice) / 2)).toFixed(2);
+      // Target 2: 3.5 ATR below
+      target2 = +(currentPrice - validATR * 3.5).toFixed(2);
+
+      const risk = Math.max(0.1, stopLoss - entry);
+      const reward = Math.max(0.1, entry - target1);
+      riskReward = (reward / risk).toFixed(1);
+
+      const riskPct = (((stopLoss - entry) / entry) * 100).toFixed(2);
+      const target1Pct = (((target1 - entry) / entry) * 100).toFixed(2);
+      const target2Pct = (((target2 - entry) / entry) * 100).toFixed(2);
+
+      actionHeadline = isStrong
+        ? `SELL / SHORT NOW — Bearish breakdown confluence at ₹${entry.toFixed(2)}`
+        : `SELL ON RALLY — Short entry zone ₹${entryMin.toFixed(2)} – ₹${entryMax.toFixed(2)}`;
+
+      timingAdvice = isStrong
+        ? `Bearish pressure confirmed by multi-indicator breakdown. Exit long or initiate short. Exit Cover Target is ₹${target1.toFixed(2)} (${target1Pct}%).`
+        : `Place sell order near ₹${entry.toFixed(2)}. Stop Loss at ₹${stopLoss.toFixed(2)} (+${riskPct}%).`;
+
+      checklist = [
+        {
+          type: 'exit',
+          label: 'WHEN TO SELL (ENTRY)',
+          text: `Sell / Short around **₹${entry.toFixed(2)}** (Optimal Zone: ₹${entryMin.toFixed(2)} – ₹${entryMax.toFixed(2)}).`,
+        },
+        {
+          type: 'target',
+          label: 'WHEN TO EXIT SELL (COVER TARGET)',
+          text: `Cover 50% at **Target 1 (₹${target1.toFixed(2)} / ${target1Pct}%)**. Move stop to entry and cover remaining at **Target 2 (₹${target2.toFixed(2)} / ${target2Pct}%)**.`,
+        },
+        {
+          type: 'exit',
+          label: 'WHEN TO EXIT SELL (STOP LOSS)',
+          text: `Cover 100% immediately if price crosses above **Stop Loss (₹${stopLoss.toFixed(2)} / +${riskPct}%)** to cap upside risk.`,
+        },
+        {
+          type: 'exit',
+          label: 'INTRADAY EXIT RULE',
+          text: `Mandatory square-off by **15:15 IST** or upon bullish reversal signal.`,
+        },
+      ];
+
+      return {
+        hasSetup: true,
+        positionStatus: 'NO_POSITION',
+        boughtPrice: null,
+        currentPrice,
+        pnl: null,
+        pnlPct: null,
+        type: 'SELL STOCK',
+        actionHeadline,
+        timingAdvice,
+        entryPrice: entry,
+        entryZone: `₹${entryMin.toFixed(2)} – ₹${entryMax.toFixed(2)}`,
+        stopLoss,
+        stopLossPct: `+${riskPct}%`,
+        target1,
+        target1Pct: `${target1Pct}%`,
+        target2,
+        target2Pct: `${target2Pct}%`,
+        riskReward: `1 : ${riskReward}`,
+        timeHorizon: isIntraday ? 'Intraday (Same Day)' : '1 – 5 Days (Swing)',
+        exitReason: null,
+        checklist,
+      };
+
     } else {
       // ══════════════════════════════════════════════════════════
-      // CONSOLIDATION / NO CLEAR SIGNAL / BEARISH AVOID
+      // CONSOLIDATION / NO CLEAR SIGNAL
       // ══════════════════════════════════════════════════════════
       const breakoutBuy = +(currentPrice + validATR * 1.2).toFixed(2);
       const breakdownSell = +(currentPrice - validATR * 1.2).toFixed(2);
 
-      actionHeadline = isSellSignal
-        ? `AVOID BUYING — Bearish structure at ₹${currentPrice.toFixed(2)}`
-        : `WAIT FOR CONFIRMATION — Consolidation at ₹${currentPrice.toFixed(2)}`;
-
-      timingAdvice = isSellSignal
-        ? `Overhead selling pressure is elevated. Do not buy long. Wait for market stabilization.`
-        : `No clear intraday edge right now. Wait for confirmed breakout above ₹${breakoutBuy.toFixed(2)} before initiating new buys.`;
+      actionHeadline = `WAIT FOR CONFIRMATION — Consolidation at ₹${currentPrice.toFixed(2)}`;
+      timingAdvice = `No clear intraday edge right now. Wait for confirmed breakout above ₹${breakoutBuy.toFixed(2)} before initiating new buys.`;
 
       checklist = [
         {

@@ -46,7 +46,7 @@ function isIndianMarketOpen(date = new Date()) {
  * Clean & normalize Indian stock ticker symbols and aliases
  */
 function normalizeSymbol(sym) {
-  if (!sym) return 'RELIANCE.NS';
+  if (!sym) return '^NSEI';
   let s = sym.trim().toUpperCase();
 
   // Index aliases
@@ -69,14 +69,15 @@ function normalizeSymbol(sym) {
 
   // Stock name alias map to official NSE tickers
   const STOCK_MAP = {
-    'TATA': 'TATAMOTORS',
+    'TATAMOTORS': 'TMCV',
+    'TATA MOTORS': 'TMCV',
+    'TATA': 'TMCV',
     'ADANI': 'ADANIENT',
     'BAJAJ': 'BAJFINANCE',
     'HDFC': 'HDFCBANK',
     'ICICI': 'ICICIBANK',
     'INFOSYS': 'INFY',
     'TATA STEEL': 'TATASTEEL',
-    'TATA MOTORS': 'TATAMOTORS',
     'TATA POWER': 'TATAPOWER',
     'TATA CONSULTANCY SERVICES': 'TCS',
     'HDFC BANK': 'HDFCBANK',
@@ -212,47 +213,115 @@ const POPULAR_INDIAN_SECURITIES = [
   { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'TATASTEEL.NS', name: 'Tata Steel Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'TATAMOTORS.NS', name: 'Tata Motors Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'TATAPOWER.NS', name: 'Tata Power Company Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'TATACONSUM.NS', name: 'Tata Consumer Products Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'TATACHEM.NS', name: 'Tata Chemicals Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'TATACOMM.NS', name: 'Tata Communications Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'TATAELXSI.NS', name: 'Tata Elxsi Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'TATATECH.NS', name: 'Tata Technologies Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'VOLTAS.NS', name: 'Voltas Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'ITC.NS', name: 'ITC Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'LT.NS', name: 'Larsen & Toubro Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'KOTAKBANK.NS', name: 'Kotak Mahindra Bank Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'AXISBANK.NS', name: 'Axis Bank Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'PNB.NS', name: 'Punjab National Bank', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'BANKBARODA.NS', name: 'Bank of Baroda', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'CANBK.NS', name: 'Canara Bank', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'IDFCFIRSTB.NS', name: 'IDFC First Bank Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'FEDERALBNK.NS', name: 'Federal Bank Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'INDUSINDBK.NS', name: 'IndusInd Bank Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'BANDHANBNK.NS', name: 'Bandhan Bank Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'AUBANK.NS', name: 'AU Small Finance Bank Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'ADANIENT.NS', name: 'Adani Enterprises Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'ADANIPORTS.NS', name: 'Adani Ports & Special Economic Zone', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'ADANIGREEN.NS', name: 'Adani Green Energy Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'ADANIPOWER.NS', name: 'Adani Power Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'ADANIENSOL.NS', name: 'Adani Energy Solutions Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'ATGL.NS', name: 'Adani Total Gas Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'AWL.NS', name: 'Adani Wilmar Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'WIPRO.NS', name: 'Wipro Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'HCLTECH.NS', name: 'HCL Technologies Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'TECHM.NS', name: 'Tech Mahindra Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'LTIM.NS', name: 'LTIMindtree Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'PERSISTENT.NS', name: 'Persistent Systems Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'COFORGE.NS', name: 'Coforge Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'MARUTI.NS', name: 'Maruti Suzuki India Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'M&M.NS', name: 'Mahindra & Mahindra Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'BAJAJ-AUTO.NS', name: 'Bajaj Auto Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'HEROMOTOCO.NS', name: 'Hero MotoCorp Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'EICHERMOT.NS', name: 'Eicher Motors Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'SUNPHARMA.NS', name: 'Sun Pharmaceutical Industries Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'CIPLA.NS', name: 'Cipla Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'DRREDDY.NS', name: "Dr. Reddy's Laboratories Ltd.", type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'DIVISLAB.NS', name: "Divi's Laboratories Ltd.", type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'LUPIN.NS', name: 'Lupin Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'ASIANPAINT.NS', name: 'Asian Paints Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'BERGEPAINT.NS', name: 'Berger Paints India Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'BAJFINANCE.NS', name: 'Bajaj Finance Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'BAJAJFINSV.NS', name: 'Bajaj Finserv Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'TITAN.NS', name: 'Titan Company Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'ULTRACEMCO.NS', name: 'UltraTech Cement Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'GRASIM.NS', name: 'Grasim Industries Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'SHREECEM.NS', name: 'Shree Cement Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'AMBUJACEM.NS', name: 'Ambuja Cements Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'NTPC.NS', name: 'NTPC Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'ONGC.NS', name: 'Oil & Natural Gas Corporation', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'POWERGRID.NS', name: 'Power Grid Corporation of India', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'COALINDIA.NS', name: 'Coal India Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'BPCL.NS', name: 'Bharat Petroleum Corporation Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'IOC.NS', name: 'Indian Oil Corporation Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'GAIL.NS', name: 'GAIL (India) Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'HINDPETRO.NS', name: 'Hindustan Petroleum Corporation', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'NESTLEIND.NS', name: 'Nestle India Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
-  { symbol: 'M&M.NS', name: 'Mahindra & Mahindra Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
-  { symbol: 'BAJAJ-AUTO.NS', name: 'Bajaj Auto Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
-  { symbol: 'TECHM.NS', name: 'Tech Mahindra Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
-  { symbol: 'GRASIM.NS', name: 'Grasim Industries Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
-  { symbol: 'HEROMOTOCO.NS', name: 'Hero MotoCorp Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
-  { symbol: 'EICHERMOT.NS', name: 'Eicher Motors Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
-  { symbol: 'CIPLA.NS', name: 'Cipla Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
-  { symbol: 'DRREDDY.NS', name: "Dr. Reddy's Laboratories Ltd.", type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'BRITANNIA.NS', name: 'Britannia Industries Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'DABUR.NS', name: 'Dabur India Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'GODREJCP.NS', name: 'Godrej Consumer Products Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'JSWSTEEL.NS', name: 'JSW Steel Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'HINDALCO.NS', name: 'Hindalco Industries Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'VEDL.NS', name: 'Vedanta Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'BEL.NS', name: 'Bharat Electronics Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'HAL.NS', name: 'Hindustan Aeronautics Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'BHEL.NS', name: 'Bharat Heavy Electricals Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'DLF.NS', name: 'DLF Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'GODREJPROP.NS', name: 'Godrej Properties Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'OBEROIRLTY.NS', name: 'Oberoi Realty Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'TRENT.NS', name: 'Trent Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'ZOMATO.NS', name: 'Zomato Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: 'JIOFIN.NS', name: 'Jio Financial Services Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'PAYTM.NS', name: 'One97 Communications (Paytm)', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'NYKAA.NS', name: 'FSN E-Commerce (Nykaa)', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'POLICYBZR.NS', name: 'PB Fintech (Policybazaar)', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'DMART.NS', name: 'Avenue Supermarts Ltd. (DMart)', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'VBL.NS', name: 'Varun Beverages Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'PIDILITIND.NS', name: 'Pidilite Industries Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'HAVELLS.NS', name: 'Havells India Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'SIEMENS.NS', name: 'Siemens Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'ABB.NS', name: 'ABB India Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'MUTHOOTFIN.NS', name: 'Muthoot Finance Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'CHOLAFIN.NS', name: 'Cholamandalam Investment & Finance', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'RECLTD.NS', name: 'REC Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'PFC.NS', name: 'Power Finance Corporation', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'IREDA.NS', name: 'Indian Renewable Energy Dev Agency', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'IRCTC.NS', name: 'Indian Railway Catering & Tourism', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'IRFC.NS', name: 'Indian Railway Finance Corporation', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'RVNL.NS', name: 'Rail Vikas Nigam Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'MAZDOCK.NS', name: 'Mazagon Dock Shipbuilders Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
+  { symbol: 'COCHINSHIP.NS', name: 'Cochin Shipyard Ltd.', type: 'Equity', exchange: 'NSE', country: 'India' },
   { symbol: '^NSEI', name: 'NIFTY 50 Index', type: 'Index', exchange: 'NSE', country: 'India' },
   { symbol: '^BSESN', name: 'BSE SENSEX Index', type: 'Index', exchange: 'BSE', country: 'India' },
   { symbol: '^NSEBANK', name: 'NIFTY BANK Index', type: 'Index', exchange: 'NSE', country: 'India' },
   { symbol: '^CNXIT', name: 'NIFTY IT Index', type: 'Index', exchange: 'NSE', country: 'India' },
   { symbol: '^INDIAVIX', name: 'INDIA VIX', type: 'Index', exchange: 'NSE', country: 'India' },
+  { symbol: '^CNXAUTO', name: 'NIFTY Auto Index', type: 'Index', exchange: 'NSE', country: 'India' },
+  { symbol: '^CNXFMCG', name: 'NIFTY FMCG Index', type: 'Index', exchange: 'NSE', country: 'India' },
+  { symbol: '^CNXPHARMA', name: 'NIFTY Pharma Index', type: 'Index', exchange: 'NSE', country: 'India' },
+  { symbol: '^CNXMETAL', name: 'NIFTY Metal Index', type: 'Index', exchange: 'NSE', country: 'India' },
+  { symbol: '^CNXPSUBANK', name: 'NIFTY PSU Bank Index', type: 'Index', exchange: 'NSE', country: 'India' },
+  { symbol: '^CNXREALTY', name: 'NIFTY Realty Index', type: 'Index', exchange: 'NSE', country: 'India' },
+  { symbol: '^CNXFIN', name: 'NIFTY Financial Services', type: 'Index', exchange: 'NSE', country: 'India' },
+  { symbol: '^CNXMEDIA', name: 'NIFTY Media Index', type: 'Index', exchange: 'NSE', country: 'India' },
+  { symbol: '^CNXCOMMODITIES', name: 'NIFTY Commodities Index', type: 'Index', exchange: 'NSE', country: 'India' },
 ];
 
 /**
@@ -322,15 +391,23 @@ class YahooMarketProvider extends BaseMarketProvider {
 
   async getQuote(rawSymbol) {
     const symbol = normalizeSymbol(rawSymbol);
-    const cacheKey = `quote_${symbol}`;
+    const rawUpper = (rawSymbol || '').trim().toUpperCase();
+    const cacheKey = `quote_${rawUpper || symbol}`;
     const cached = this._getCached(cacheKey, 5000);
     if (cached) return cached;
 
     try {
-      const q = await withTimeout(yf.quote(symbol), 4500, null);
+      let q = await withTimeout(yf.quote(symbol), 4500, null);
+      if (!q && symbol !== rawUpper && rawUpper) {
+        q = await withTimeout(yf.quote(rawUpper), 4500, null);
+      }
       if (!q) return null;
       const normalized = MarketDataNormalizer.normalizeQuote(q);
       if (normalized) {
+        if (rawUpper && rawUpper !== normalized.symbol.toUpperCase()) {
+          normalized.aliasSymbol = normalized.symbol;
+          normalized.symbol = rawUpper;
+        }
         this._setCache(cacheKey, normalized);
       }
       return normalized;
@@ -342,28 +419,41 @@ class YahooMarketProvider extends BaseMarketProvider {
 
   async getQuotes(symbolsList) {
     if (!Array.isArray(symbolsList) || symbolsList.length === 0) return [];
-    const normalizedSymbols = symbolsList.map(s => normalizeSymbol(s)).filter(Boolean);
-    const results = [];
-    const missing = [];
+    const requestedMap = new Map(); // normSym -> [rawSymbols]
+    symbolsList.forEach(raw => {
+      if (!raw) return;
+      const rawUpper = raw.trim().toUpperCase();
+      const norm = normalizeSymbol(rawUpper);
+      if (!requestedMap.has(norm)) requestedMap.set(norm, []);
+      requestedMap.get(norm).push(rawUpper);
+    });
 
-    for (const sym of normalizedSymbols) {
-      const cached = this._getCached(`quote_${sym}`, 5000);
+    const results = [];
+    const missingNorm = [];
+
+    for (const [norm, raws] of requestedMap.entries()) {
+      const cached = this._getCached(`quote_${norm}`, 5000);
       if (cached) {
-        results.push(cached);
+        raws.forEach(raw => {
+          results.push({ ...cached, symbol: raw });
+        });
       } else {
-        missing.push(sym);
+        missingNorm.push(norm);
       }
     }
 
-    if (missing.length > 0) {
+    if (missingNorm.length > 0) {
       try {
-        const rawQuotes = await withTimeout(yf.quote(missing), 5500, []);
+        const rawQuotes = await withTimeout(yf.quote(missingNorm), 5500, []);
         const rawList = Array.isArray(rawQuotes) ? rawQuotes : (rawQuotes ? [rawQuotes] : []);
         for (const q of rawList) {
-          const norm = MarketDataNormalizer.normalizeQuote(q);
-          if (norm) {
-            this._setCache(`quote_${norm.symbol}`, norm);
-            results.push(norm);
+          const normQuote = MarketDataNormalizer.normalizeQuote(q);
+          if (normQuote) {
+            this._setCache(`quote_${normQuote.symbol}`, normQuote);
+            const matchingRaws = requestedMap.get(normQuote.symbol) || [normQuote.symbol];
+            matchingRaws.forEach(raw => {
+              results.push({ ...normQuote, symbol: raw });
+            });
           }
         }
       } catch (err) {
@@ -512,7 +602,7 @@ class YahooMarketProvider extends BaseMarketProvider {
   }
 
   async searchSymbols(query) {
-    if (!query || query.trim().length < 1) return POPULAR_INDIAN_SECURITIES.slice(0, 8);
+    if (!query || query.trim().length < 1) return POPULAR_INDIAN_SECURITIES.slice(0, 10);
     const qClean = query.trim().toLowerCase();
     const cacheKey = `search_${qClean}`;
     const cached = this._getCached(cacheKey);
@@ -521,15 +611,16 @@ class YahooMarketProvider extends BaseMarketProvider {
     // Instant local matches from curated catalog
     const localMatches = POPULAR_INDIAN_SECURITIES.filter(s => {
       const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
-      return symClean.includes(qClean) || s.symbol.toLowerCase().includes(qClean) || s.name.toLowerCase().includes(qClean);
+      return symClean.includes(qClean) || s.symbol.toLowerCase().includes(qClean) || (s.name && s.name.toLowerCase().includes(qClean));
     });
 
     let remoteResults = [];
     try {
-      const searchRes = await yf.search(query.trim());
+      // Guard external search with 1.5s hard timeout to eliminate stalls
+      const searchRes = await withTimeout(yf.search(query.trim()), 1500, null);
       if (searchRes && searchRes.quotes) {
         remoteResults = searchRes.quotes
-          .filter(q => q.symbol && (q.symbol.endsWith('.NS') || q.symbol.endsWith('.BO') || q.exchange === 'NSI' || q.exchange === 'BSE' || q.exchDisp === 'NSE' || q.exchDisp === 'BSE' || q.symbol.startsWith('^')))
+          .filter(q => q && q.symbol && (q.symbol.endsWith('.NS') || q.symbol.endsWith('.BO') || q.exchange === 'NSI' || q.exchange === 'BSE' || q.exchDisp === 'NSE' || q.exchDisp === 'BSE' || q.symbol.startsWith('^')))
           .map(q => ({
             symbol: q.symbol,
             name: q.shortname || q.longname || q.symbol,
@@ -549,8 +640,9 @@ class YahooMarketProvider extends BaseMarketProvider {
       }
     });
 
-    this._setCache(cacheKey, combined);
-    return combined;
+    const finalResults = combined.length > 0 ? combined : localMatches;
+    this._setCache(cacheKey, finalResults);
+    return finalResults;
   }
 
   async getMarketIndices() {

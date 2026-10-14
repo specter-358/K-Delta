@@ -43,7 +43,7 @@ const PositionStore = {
   }
 };
 
-let currentSymbol = getSavedSymbol() || 'RELIANCE.NS';
+let currentSymbol = getSavedSymbol() || '^NSEI';
 let currentInterval = getSavedTimeframe() || '1day';
 let currentCandles = [];
 let currentPrediction = null;
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentSymbol = sym.toUpperCase();
     saveSymbol(currentSymbol);
   } else {
-    currentSymbol = getSavedSymbol() || 'RELIANCE.NS';
+    currentSymbol = getSavedSymbol() || '^NSEI';
   }
 
   // Restore saved timeframe preference
@@ -70,9 +70,11 @@ document.addEventListener('DOMContentLoaded', () => {
   setupTimeframeSelector();
   setupIndicatorButtons();
   setupStockSearchModal();
+  setupDashboardSearch();
   setupWatchlistButton();
   setupChartTypeButton();
   loadLiveTickerTape();
+  loadWatchlist();
   updateMarketStatus();
   startLiveClock();
   setupWebSocketListeners();
@@ -81,8 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
   switchInspectorTab(getSavedInspectorTab());
 
   // Restore saved sidebar states
-  const { leftCollapsed, rightCollapsed } = getSavedSidebarStates();
-  if (leftCollapsed) toggleSidebarLeft(true);
+  const { rightCollapsed } = getSavedSidebarStates();
   if (rightCollapsed) toggleSidebarRight(true);
 
   // Load initial symbol
@@ -1212,6 +1213,42 @@ function setupDashboardSearch() {
   if (!input || !results) return;
 
   let debounceTimer;
+  const catalog = (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.INDIAN_SECURITIES_CATALOG))
+    ? CONFIG.INDIAN_SECURITIES_CATALOG
+    : [];
+
+  function filterCatalog(query) {
+    if (!query) return [];
+    const qClean = query.trim().toLowerCase();
+    return catalog.filter(s => {
+      const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+      return symClean.includes(qClean) || s.symbol.toLowerCase().includes(qClean) || (s.name && s.name.toLowerCase().includes(qClean));
+    });
+  }
+
+  function renderList(list) {
+    if (!list || list.length === 0) {
+      results.innerHTML = '<div style="padding:10px;color:var(--text-muted);font-size:0.75rem">No matching securities found.</div>';
+      results.classList.add('active');
+      return;
+    }
+
+    results.innerHTML = list.slice(0, 6).map(r => {
+      const cleanSym = (r.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
+      const cleanName = getCleanStockName(r.symbol, r.name);
+      return `
+        <div class="search-result-item" onclick="loadSymbol('${r.symbol}')">
+          <div style="text-align:left; align-items:flex-start;">
+            <div class="search-result-item__symbol" style="text-align:left;">${cleanSym}</div>
+            <div class="search-result-item__name" style="text-align:left;">${cleanName}</div>
+          </div>
+          <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
+        </div>
+      `;
+    }).join('');
+
+    results.classList.add('active');
+  }
 
   input.addEventListener('input', () => {
     clearTimeout(debounceTimer);
@@ -1222,37 +1259,47 @@ function setupDashboardSearch() {
       return;
     }
 
+    // 1. Instant local matching (0ms response time)
+    const localMatches = filterCatalog(query);
+    if (localMatches.length > 0) {
+      renderList(localMatches);
+    }
+
+    // 2. Debounced backend search
     debounceTimer = setTimeout(async () => {
       const searchResults = await API.searchSymbol(query);
       if (!searchResults || searchResults.length === 0) {
-        results.innerHTML = '<div style="padding:10px;color:var(--text-muted);font-size:0.75rem">No matching securities found.</div>';
-        results.classList.add('active');
+        if (localMatches.length === 0) {
+          results.innerHTML = '<div style="padding:10px;color:var(--text-muted);font-size:0.75rem">No matching securities found.</div>';
+          results.classList.add('active');
+        }
         return;
       }
-
-      results.innerHTML = searchResults.slice(0, 6).map(r => {
-        const cleanSym = (r.symbol || '').replace('.NS', '').replace('.BO', '').replace('^', '');
-        const cleanName = getCleanStockName(r.symbol, r.name);
-        return `
-          <div class="search-result-item" onclick="loadSymbol('${r.symbol}')">
-            <div style="text-align:left; align-items:flex-start;">
-              <div class="search-result-item__symbol" style="text-align:left;">${cleanSym}</div>
-              <div class="search-result-item__name" style="text-align:left;">${cleanName}</div>
-            </div>
-            <span class="search-result-item__exchange">${r.exchange || 'NSE'}</span>
-          </div>
-        `;
-      }).join('');
-
-      results.classList.add('active');
-    }, 250);
+      renderList(searchResults);
+    }, 150);
   });
 
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
-      const query = input.value.trim().toUpperCase();
-      if (query) {
-        loadSymbol(query);
+      const raw = input.value.trim();
+      if (raw) {
+        const qUpper = raw.toUpperCase();
+        let match = catalog.find(s => s.symbol.toUpperCase() === qUpper || s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toUpperCase() === qUpper);
+        if (!match) {
+          const qClean = raw.toLowerCase();
+          match = catalog.find(s => {
+            const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+            return symClean.startsWith(qClean) || (s.name && s.name.toLowerCase().startsWith(qClean));
+          }) || catalog.find(s => {
+            const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+            return symClean.includes(qClean) || (s.name && s.name.toLowerCase().includes(qClean));
+          });
+        }
+        let finalSymbol = match ? match.symbol : qUpper;
+        if (!finalSymbol.endsWith('.NS') && !finalSymbol.endsWith('.BO') && !finalSymbol.startsWith('^')) {
+          finalSymbol = `${finalSymbol}.NS`;
+        }
+        loadSymbol(finalSymbol);
         results.classList.remove('active');
       }
     }
@@ -1416,9 +1463,12 @@ function toggleCurrentSymbolWatchlist() {
     showToast(`Added ${currentSymbol} to Watchlist`, 'success');
   }
 
-  // Sync with API
+  // Sync with API and update left sidebar watchlist immediately
   if (typeof API !== 'undefined' && typeof API.syncWatchlist === 'function') {
     API.syncWatchlist(getWatchlist()).catch(() => {});
+  }
+  if (typeof loadWatchlist === 'function') {
+    loadWatchlist();
   }
 }
 window.toggleCurrentSymbolWatchlist = toggleCurrentSymbolWatchlist;
@@ -1434,15 +1484,17 @@ function setupChartTypeButton() {
   const btn = document.getElementById('btn-chart-type');
   if (!btn) return;
 
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  btn.onclick = function (e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (typeof window.toggleChartType === 'function') {
       window.toggleChartType();
     } else if (typeof ChartManager !== 'undefined' && typeof ChartManager.toggleChartType === 'function') {
       ChartManager.toggleChartType();
     }
-  });
+  };
 
   // Sync initial button icon with saved/current chart type
   if (typeof ChartManager !== 'undefined' && typeof ChartManager.getChartType === 'function') {
@@ -1451,7 +1503,7 @@ function setupChartTypeButton() {
 }
 
 /**
- * Setup Institutional Stock Search Modal (Command Palette)
+ * Setup Stock Search Modal (Command Palette)
  */
 function getPopularStockList() {
   return (CONFIG && CONFIG.INDIAN_SECURITIES_CATALOG) ? CONFIG.INDIAN_SECURITIES_CATALOG : [
@@ -1623,29 +1675,12 @@ function triggerSmoothChartResize() {
   requestAnimationFrame(animate);
 }
 
-function toggleSidebarLeft(forceState) {
-  const dashboard = document.querySelector('.dashboard');
-  const btn = document.getElementById('btn-toggle-sidebar-left');
-  if (!dashboard) return;
-
-  const isCollapsed = typeof forceState === 'boolean'
-    ? (forceState ? dashboard.classList.add('left-collapsed') || true : dashboard.classList.remove('left-collapsed') || false)
-    : dashboard.classList.toggle('left-collapsed');
-
-  if (btn) {
-    btn.title = isCollapsed ? 'Expand Market Explorer' : 'Minimize Market Explorer';
-    btn.innerHTML = isCollapsed
-      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>`
-      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
-  }
-
-  saveSidebarStates(dashboard.classList.contains('left-collapsed'), dashboard.classList.contains('right-collapsed'));
-  triggerSmoothChartResize();
-}
+function toggleSidebarLeft() {}
 
 function toggleSidebarRight(forceState) {
   const dashboard = document.querySelector('.dashboard');
   const btn = document.getElementById('btn-toggle-sidebar-right');
+  const headerBtn = document.getElementById('btn-toggle-sidebar-right-header');
   if (!dashboard) return;
 
   const isCollapsed = typeof forceState === 'boolean'
@@ -1653,10 +1688,17 @@ function toggleSidebarRight(forceState) {
     : dashboard.classList.toggle('right-collapsed');
 
   if (btn) {
-    btn.title = isCollapsed ? 'Expand Trade Plan' : 'Minimize Trade Plan';
+    btn.title = isCollapsed ? 'Expand Technical Inspector' : 'Minimize Technical Inspector';
     btn.innerHTML = isCollapsed
-      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`
-      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+      ? `<svg class="sidebar-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`
+      : `<svg class="sidebar-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+  }
+
+  if (headerBtn) {
+    headerBtn.title = isCollapsed ? 'Expand Technical Inspector' : 'Minimize Technical Inspector';
+    headerBtn.innerHTML = isCollapsed
+      ? `<svg class="sidebar-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`
+      : `<svg class="sidebar-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
   }
 
   saveSidebarStates(dashboard.classList.contains('left-collapsed'), dashboard.classList.contains('right-collapsed'));

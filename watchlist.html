@@ -42,11 +42,10 @@
     <div class="navbar__market-status">
       <div class="navbar-alert-controls">
         <button class="navbar-audio-btn active" id="btn-navbar-audio-toggle" onclick="AudioAlerts.toggleMute()" title="Toggle Alert Audio Chimes">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
           </svg>
-          <span class="audio-toggle-label">Audio ON</span>
         </button>
         <button class="navbar-alert-btn" id="btn-navbar-alerts" onclick="AlertEngine.openAlertsCenter()" title="Open Live Alerts Center">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -106,6 +105,42 @@
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>
           Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ Real-Time Radar & Push Notification Banner ═══ -->
+    <div class="watchlist-notification-banner" id="watchlist-notification-banner">
+      <div class="notif-banner-left">
+        <div class="notif-pulse-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="notif-banner-title">
+            <span>Watchlist Automated Buy & Sell Notification Radar</span>
+            <span class="live-tag">LIVE MONITORED</span>
+          </div>
+          <div class="notif-banner-sub">
+            Real-time algorithmic Buy & Sell notifications with exact Exit Targets (TP1, TP2) and Exit Stop Loss for all watchlist stocks.
+          </div>
+        </div>
+      </div>
+      <div class="notif-banner-right">
+        <div class="notif-status-badge" id="watchlist-push-status">
+          <span class="status-dot" id="watchlist-push-dot"></span>
+          <span id="watchlist-push-text">Desktop Push: Checking...</span>
+        </div>
+        <button class="btn btn--primary btn--sm" id="btn-enable-push" onclick="enableWatchlistPush()">
+          Enable Desktop Notifications
+        </button>
+        <button class="btn btn--ghost btn--sm" onclick="testWatchlistNotification('BUY')" title="Test Buy Notification with Exit Targets">
+          Test BUY Alert
+        </button>
+        <button class="btn btn--ghost btn--sm" onclick="testWatchlistNotification('SELL')" title="Test Sell Notification with Cover Exits">
+          Test SELL Alert
         </button>
       </div>
     </div>
@@ -170,6 +205,7 @@
             <th>Last Price (LTP)</th>
             <th>Change (₹)</th>
             <th>% Change</th>
+            <th>Signal & Exit Strategy</th>
             <th>Day High / Low</th>
             <th>Volume</th>
             <th>Market Status</th>

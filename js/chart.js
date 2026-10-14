@@ -10,6 +10,8 @@ const ChartManager = (() => {
   let lineSeries = null;
   let volumeSeries = null;
   let currentChartType = (typeof localStorage !== 'undefined' && localStorage.getItem('kdelta_chart_type')) || 'candlestick';
+  let lastFormattedCandles = [];
+  let isToggling = false;
   let overlayLines = {};
   let tradePriceLines = [];
   let srPriceLines = [];
@@ -73,7 +75,7 @@ const ChartManager = (() => {
     }
 
     containerEl = container;
-    const bgColor = '#080b11';
+    const bgColor = '#000000';
     const textColor = '#94a3b8';
     const gridColor = 'rgba(255, 255, 255, 0.04)';
     const borderColor = 'rgba(255, 255, 255, 0.08)';
@@ -117,13 +119,13 @@ const ChartManager = (() => {
           color: '#38bdf8',
           width: 1,
           style: LightweightCharts.LineStyle.Dashed,
-          labelBackgroundColor: '#101623',
+          labelBackgroundColor: '#000000',
         },
         horzLine: {
           color: '#38bdf8',
           width: 1,
           style: LightweightCharts.LineStyle.Dashed,
-          labelBackgroundColor: '#101623',
+          labelBackgroundColor: '#000000',
         },
       },
       rightPriceScale: {
@@ -151,7 +153,7 @@ const ChartManager = (() => {
       visible: currentChartType === 'candlestick',
     });
 
-    // Area / Line Series (Smooth Institutional Line Chart with Cyan Gradient)
+    // Area / Line Series (Smooth Line Chart with Cyan Gradient)
     lineSeries = chart.addAreaSeries({
       topColor: 'rgba(56, 189, 248, 0.28)',
       bottomColor: 'rgba(56, 189, 248, 0.01)',
@@ -297,6 +299,7 @@ const ChartManager = (() => {
       return String(a.time).localeCompare(String(b.time));
     });
 
+    lastFormattedCandles = formattedCandles;
     candleSeries.setData(formattedCandles);
     if (lineSeries) {
       lineSeries.setData(formattedCandles.map(c => ({
@@ -406,9 +409,9 @@ const ChartManager = (() => {
     try {
       const config = OVERLAY_CONFIGS[name] || { color: '#38bdf8', lineWidth: 1.5, title: name };
       
-      let lineSeries = overlayLines[name];
-      if (!lineSeries) {
-        lineSeries = chart.addLineSeries({
+      let overlaySeries = overlayLines[name];
+      if (!overlaySeries) {
+        overlaySeries = chart.addLineSeries({
           color: config.color,
           lineWidth: config.lineWidth || 1.5,
           title: config.title || name,
@@ -416,7 +419,7 @@ const ChartManager = (() => {
           lastValueVisible: true,
           crosshairMarkerVisible: true,
         });
-        overlayLines[name] = lineSeries;
+        overlayLines[name] = overlaySeries;
       }
 
       const validPoints = dataPoints.filter(p => p && p.time != null && p.value != null && !isNaN(p.value));
@@ -438,7 +441,7 @@ const ChartManager = (() => {
       });
 
       if (formattedData.length > 0) {
-        lineSeries.setData(formattedData);
+        overlaySeries.setData(formattedData);
       }
     } catch (err) {
       console.warn(`Error setting overlay ${name}:`, err);
@@ -814,6 +817,20 @@ const ChartManager = (() => {
     }
     if (lineSeries) {
       lineSeries.applyOptions({ visible: type === 'line' });
+      if (type === 'line' && lastFormattedCandles && lastFormattedCandles.length > 0) {
+        try {
+          lineSeries.setData(lastFormattedCandles.map(c => ({
+            time: c.time,
+            value: Number(c.close),
+          })));
+        } catch (e) {}
+      }
+    }
+
+    if (chart) {
+      try {
+        chart.priceScale('right').applyOptions({ autoScale: true });
+      } catch (e) {}
     }
 
     updateCombinedMarkers();
@@ -829,6 +846,10 @@ const ChartManager = (() => {
   }
 
   function toggleChartType() {
+    if (isToggling) return currentChartType;
+    isToggling = true;
+    setTimeout(() => { isToggling = false; }, 200);
+
     const next = currentChartType === 'candlestick' ? 'line' : 'candlestick';
     setChartType(next);
     return next;
@@ -840,16 +861,18 @@ const ChartManager = (() => {
     if (!btn || !iconSpan) return;
 
     if (type === 'line') {
-      btn.title = 'Switch to Candlestick Chart';
-      btn.classList.add('active');
+      btn.title = 'Current: Line Chart (Click to switch to Candlestick Chart)';
+      btn.classList.add('active', 'chart-type--line');
+      btn.classList.remove('chart-type--candles');
       iconSpan.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
         </svg>
       `;
     } else {
-      btn.title = 'Switch to Line Chart';
-      btn.classList.add('active');
+      btn.title = 'Current: Candlestick Chart (Click to switch to Line Chart)';
+      btn.classList.add('active', 'chart-type--candles');
+      btn.classList.remove('chart-type--line');
       iconSpan.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="9" y1="2" x2="9" y2="22"></line>

@@ -84,7 +84,7 @@ const AlertEngine = (() => {
     if (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.DEFAULT_WATCHLIST)) {
       return [...CONFIG.DEFAULT_WATCHLIST];
     }
-    return ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'TATAMOTORS.NS'];
+    return ['^NSEI', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'TATAMOTORS.NS'];
   }
 
   /**
@@ -325,7 +325,7 @@ const AlertEngine = (() => {
     if (alertEvent.label) alertEvent.label = removeAllEmojis(alertEvent.label);
     if (alertEvent.reason) alertEvent.reason = removeAllEmojis(alertEvent.reason);
 
-    // 1. Play Institutional Web Audio Chime
+    // 1. Play Web Audio Chime
     const audio = getAudioAlertsModule();
     if (audio && typeof audio.play === 'function') {
       const soundMap = {
@@ -644,7 +644,12 @@ const AlertEngine = (() => {
     let signalType = null;
     let relevantReason = '';
 
-    if (rawSignal.includes('BUY')) {
+    const isBuy = (rawSignal.startsWith('BUY') || rawSignal.includes('BUY')) &&
+                  !rawSignal.includes('NO BUY') &&
+                  !rawAction.includes('AVOID') &&
+                  !rawAction.includes('BEARISH');
+
+    if (isBuy) {
       signalType = 'BUY';
       relevantReason = tradeSetup.action || prediction.action || 'A BUY signal has been generated.';
     } else if (
@@ -664,7 +669,7 @@ const AlertEngine = (() => {
     ) {
       signalType = 'EXIT';
       relevantReason = exitReason || (rawAction ? rawAction.replace(/^EXIT:\s*/, '') : '') || 'Exit condition triggered';
-    } else if (rawSignal.includes('SELL') || rawAction.includes('SELL')) {
+    } else if (rawSignal.includes('SELL') || rawAction.includes('SELL') || rawAction.includes('BEARISH') || rawSignal.includes('NO BUY')) {
       signalType = 'SELL';
       relevantReason = exitReason || (rawAction ? rawAction.replace(/^EXIT:\s*/, '') : '') || 'A SELL signal has been generated.';
     } else {
@@ -687,21 +692,57 @@ const AlertEngine = (() => {
       return; // No notification for HOLD
     }
 
-    // Requirement 4: Prevent duplicate notifications on unchanged signal (BUY -> BUY -> BUY)
-    if (previousState && previousState.signal === signalType) {
-      return; // Already notified for this exact state!
+    // Precise calculation of Exit Targets and Stop Loss
+    const priceNum = currentPrice ? parseFloat(currentPrice) : 0;
+    let target1 = tradeSetup.target1 ? parseFloat(tradeSetup.target1) : null;
+    let target2 = tradeSetup.target2 ? parseFloat(tradeSetup.target2) : null;
+    let stopLoss = tradeSetup.stopLoss ? parseFloat(tradeSetup.stopLoss) : null;
+    let target1Pct = tradeSetup.target1Pct || null;
+    let target2Pct = tradeSetup.target2Pct || null;
+    let stopLossPct = tradeSetup.stopLossPct || null;
+
+    if (signalType === 'BUY' && priceNum > 0) {
+      if (!target1) target1 = +(priceNum * 1.02).toFixed(2);
+      if (!target2) target2 = +(priceNum * 1.035).toFixed(2);
+      if (!stopLoss) stopLoss = +(priceNum * 0.985).toFixed(2);
+      if (!target1Pct) target1Pct = `+${(((target1 - priceNum) / priceNum) * 100).toFixed(1)}%`;
+      if (!target2Pct) target2Pct = `+${(((target2 - priceNum) / priceNum) * 100).toFixed(1)}%`;
+      if (!stopLossPct) stopLossPct = `${(((stopLoss - priceNum) / priceNum) * 100).toFixed(1)}%`;
+    } else if (signalType === 'SELL' && !exitReason && priceNum > 0) {
+      if (!target1) target1 = +(priceNum * 0.98).toFixed(2);
+      if (!target2) target2 = +(priceNum * 0.965).toFixed(2);
+      if (!stopLoss) stopLoss = +(priceNum * 1.015).toFixed(2);
+      if (!target1Pct) target1Pct = `-${(((priceNum - target1) / priceNum) * 100).toFixed(1)}%`;
+      if (!target2Pct) target2Pct = `-${(((priceNum - target2) / priceNum) * 100).toFixed(1)}%`;
+      if (!stopLossPct) stopLossPct = `+${(((stopLoss - priceNum) / priceNum) * 100).toFixed(1)}%`;
     }
 
-    // State transition detected! (e.g. NONE -> BUY, BUY -> SELL, SELL -> EXIT, HOLD -> BUY)
-    watchlistSignalStates.set(sym, {
+    const statePayload = {
       signal: signalType,
       action: rawAction,
       price: currentPrice,
       reason: relevantReason,
       timestamp: now,
-    });
+      target1,
+      target2,
+      stopLoss,
+      target1Pct,
+      target2Pct,
+      stopLossPct,
+      confidence: prediction.confidence || null,
+      exitReason: exitReason || null,
+    };
 
-    // Dispatch Trade Signal Notification
+    // Requirement 4: Prevent duplicate notifications on unchanged signal (BUY -> BUY -> BUY)
+    if (previousState && previousState.signal === signalType) {
+      watchlistSignalStates.set(sym, { ...previousState, ...statePayload });
+      return; // Already notified for this exact state!
+    }
+
+    // State transition detected! (e.g. NONE -> BUY, BUY -> SELL, SELL -> EXIT, HOLD -> BUY)
+    watchlistSignalStates.set(sym, statePayload);
+
+    // Dispatch Trade Signal Notification with explicit Exit targets
     dispatchTradeNotification({
       symbol: sym,
       signalType,
@@ -709,23 +750,61 @@ const AlertEngine = (() => {
       reason: relevantReason,
       timestamp: now,
       confidence: prediction.confidence,
+      target1,
+      target2,
+      stopLoss,
+      target1Pct,
+      target2Pct,
+      stopLossPct,
+      exitReason,
+      tradeSetup,
     });
   }
 
   /**
    * Dispatch BUY, SELL, or EXIT notification for a Watchlist stock
+   * Every BUY states the exact Exit Target & Stop Loss.
+   * Every SELL states the exact Cover Target & Stop Loss (or exit reason for open long).
    */
-  function dispatchTradeNotification({ symbol, signalType, price, reason, timestamp, confidence }) {
+  function dispatchTradeNotification({
+    symbol,
+    signalType,
+    price,
+    reason,
+    timestamp,
+    confidence,
+    target1,
+    target2,
+    stopLoss,
+    target1Pct,
+    stopLossPct,
+    exitReason,
+    tradeSetup,
+  }) {
     const cleanSym = symbol.replace('.NS', '').replace('.BO', '').replace('^', '');
     const timeFormatted = formatAlertISTTime(timestamp);
     const company = (typeof getCleanStockName === 'function') ? getCleanStockName(symbol) : cleanSym;
+    const priceFormatted = price ? `₹${parseFloat(price).toFixed(2)}` : 'Market Price';
 
     const levelType = signalType.toLowerCase(); // 'buy', 'sell', 'exit'
     const title = `${signalType} Signal`;
 
-    let message = `A ${signalType} signal has been generated for ${cleanSym}.`;
-    if (reason) {
-      message = reason;
+    let message = '';
+
+    if (signalType === 'BUY') {
+      const t1Str = target1 ? `₹${target1.toFixed(2)} (${target1Pct || '+2.0%'})` : 'Target 1';
+      const slStr = stopLoss ? `₹${stopLoss.toFixed(2)} (${stopLossPct || '-1.5%'})` : 'Stop Loss';
+      message = `BUY ${cleanSym} @ ${priceFormatted} | EXIT TARGET: ${t1Str} | EXIT STOP LOSS: ${slStr}. Exit order active upon target or stop loss touch.`;
+    } else if (signalType === 'SELL' && exitReason) {
+      message = `EXIT BUY (${exitReason}): ${cleanSym} live price is ${priceFormatted}. Exit open long position immediately to lock in trade outcome.`;
+    } else if (signalType === 'EXIT') {
+      message = `EXIT BUY (${exitReason || reason || 'Stop loss triggered'}): ${cleanSym} live price is ${priceFormatted}. Exit open position immediately.`;
+    } else if (signalType === 'SELL') {
+      const t1Str = target1 ? `₹${target1.toFixed(2)} (${target1Pct || '-2.0%'})` : 'Cover Target';
+      const slStr = stopLoss ? `₹${stopLoss.toFixed(2)} (${stopLossPct || '+1.5%'})` : 'Stop Loss';
+      message = `SELL ${cleanSym} @ ${priceFormatted} | EXIT COVER TARGET: ${t1Str} | EXIT STOP LOSS: ${slStr}. Exit short order active upon cover target or stop loss touch.`;
+    } else {
+      message = reason ? `${signalType}: ${reason}` : `A ${signalType} signal has been generated for ${cleanSym}.`;
     }
 
     const alertEvent = {
@@ -741,6 +820,25 @@ const AlertEngine = (() => {
       title,
       message,
       confidence: confidence || null,
+      target1: target1 || null,
+      target2: target2 || null,
+      stopLoss: stopLoss || null,
+      target1Pct: target1Pct || null,
+      stopLossPct: stopLossPct || null,
+      exitPlan: {
+        action: signalType,
+        entryPrice: price ? parseFloat(price) : null,
+        target1: target1 || null,
+        target2: target2 || null,
+        stopLoss: stopLoss || null,
+        target1Pct: target1Pct || null,
+        stopLossPct: stopLossPct || null,
+        exitRule: signalType === 'BUY'
+          ? `Exit Long on Target 1 (₹${target1 ? target1.toFixed(2) : '—'}) or Stop Loss (₹${stopLoss ? stopLoss.toFixed(2) : '—'})`
+          : signalType === 'SELL' && !exitReason
+          ? `Exit Short on Cover Target (₹${target1 ? target1.toFixed(2) : '—'}) or Stop Loss (₹${stopLoss ? stopLoss.toFixed(2) : '—'})`
+          : `Exit on ${exitReason || reason || 'trigger'}`,
+      },
       timestamp,
       timeFormatted,
     };
@@ -774,13 +872,13 @@ const AlertEngine = (() => {
         }
       }
 
-      // 2. Evaluate signals for each monitored watchlist stock
-      for (const sym of symbols) {
+      // 2. Evaluate signals concurrently for all monitored watchlist stocks
+      await Promise.allSettled(symbols.map(async (sym) => {
         try {
           // If viewing this symbol on dashboard, use currentPrediction directly
           if (typeof window !== 'undefined' && window.currentSymbol === sym && window.currentPrediction) {
             processSignalUpdate(sym, window.currentPrediction);
-            continue;
+            return;
           }
 
           // Fetch candles if API is available
@@ -798,7 +896,7 @@ const AlertEngine = (() => {
         } catch (e) {
           console.warn(`[AlertEngine] Watchlist eval error for ${sym}:`, e);
         }
-      }
+      }));
     } finally {
       isEvaluatingWatchlist = false;
     }
@@ -1044,8 +1142,8 @@ const AlertEngine = (() => {
     if (muteBtn && typeof AudioAlerts !== 'undefined') {
       const { isMuted } = AudioAlerts.getSettings();
       muteBtn.innerHTML = isMuted
-        ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg><span class="audio-toggle-label">Muted</span>`
-        : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg><span class="audio-toggle-label">Audio ON</span>`;
+        ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>`
+        : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
       muteBtn.className = `navbar-audio-btn ${isMuted ? 'muted' : 'active'}`;
     }
   }
@@ -1115,7 +1213,7 @@ const AlertEngine = (() => {
     content.innerHTML = `
       <!-- Audio Settings Bar -->
       <div class="alerts-section">
-        <div class="alerts-section-title">Institutional Audio Engine</div>
+        <div class="alerts-section-title">Audio Alert Engine</div>
         <div class="alerts-audio-card">
           <div class="audio-ctrl-row">
             <label class="audio-switch-label">
@@ -1173,7 +1271,7 @@ const AlertEngine = (() => {
       <div class="alerts-section">
         <div class="alerts-section-title">Set Custom Price Alert</div>
         <div class="custom-alert-form">
-          <input type="text" id="custom-alert-sym" placeholder="Symbol (e.g. RELIANCE.NS)" class="alert-input">
+          <input type="text" id="custom-alert-sym" placeholder="Symbol (e.g. ^NSEI, TCS)" class="alert-input">
           <input type="number" id="custom-alert-price" placeholder="Target Price (₹)" step="0.05" class="alert-input">
           <button class="btn btn--primary btn--sm" onclick="AlertEngine.handleAddCustomFromModal()">Arm Alert</button>
         </div>
@@ -1275,6 +1373,39 @@ const AlertEngine = (() => {
     }) + ' IST';
   }
 
+  function triggerTestNotification(type = 'BUY') {
+    const isBull = type.toUpperCase() === 'BUY';
+    const sym = 'TATASTEEL.NS';
+    const mockPrice = 3020.50;
+    const mockT1 = isBull ? +(mockPrice * 1.02).toFixed(2) : +(mockPrice * 0.98).toFixed(2);
+    const mockSL = isBull ? +(mockPrice * 0.985).toFixed(2) : +(mockPrice * 1.015).toFixed(2);
+    const mockT1Pct = isBull ? '+2.0%' : '-2.0%';
+    const mockSLPct = isBull ? '-1.5%' : '+1.5%';
+
+    dispatchTradeNotification({
+      symbol: sym,
+      signalType: isBull ? 'BUY' : 'SELL',
+      price: mockPrice,
+      reason: isBull ? 'High Conviction Bullish Confluence (>85%)' : 'Bearish Breakdown Confluence (>85%)',
+      timestamp: Date.now(),
+      confidence: 88,
+      target1: mockT1,
+      target2: isBull ? +(mockPrice * 1.035).toFixed(2) : +(mockPrice * 0.965).toFixed(2),
+      stopLoss: mockSL,
+      target1Pct: mockT1Pct,
+      target2Pct: isBull ? '+3.5%' : '-3.5%',
+      stopLossPct: mockSLPct,
+      exitReason: null,
+      tradeSetup: {
+        entryPrice: mockPrice,
+        target1: mockT1,
+        stopLoss: mockSL,
+        target1Pct: mockT1Pct,
+        stopLossPct: mockSLPct,
+      },
+    });
+  }
+
   // Auto initialize when DOM is ready
   if (typeof window !== 'undefined') {
     if (document.readyState === 'loading') {
@@ -1304,9 +1435,12 @@ const AlertEngine = (() => {
     openAlertsCenter,
     closeAlertsCenter,
     handleAddCustomFromModal,
+    triggerTestNotification,
     getActiveAlerts: () => activeAlerts,
     getHistory: () => alertHistory,
     getWatchlistSignalStates: () => watchlistSignalStates,
+    getWatchlistSignalState: (symbol) => (symbol ? watchlistSignalStates.get(symbol.toUpperCase()) : null) || null,
+    getAllWatchlistSignalStates: () => new Map(watchlistSignalStates),
     getLastKnownPrices: () => lastKnownPrices,
     getMonitoredWatchlistSymbols,
     resetMovementSoundCooldown,

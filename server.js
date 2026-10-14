@@ -201,7 +201,7 @@ app.get('/api/market/status', (req, res) => {
 });
 
 /**
- * GET /api/quote?symbol=RELIANCE.NS
+ * GET /api/quote?symbol=^NSEI
  */
 app.get('/api/quote', async (req, res, next) => {
   const rawSymbol = String(req.query.symbol || '').replace(/[^a-zA-Z0-9^.-]/g, '').slice(0, 30);
@@ -221,7 +221,7 @@ app.get('/api/quote', async (req, res, next) => {
 });
 
 /**
- * GET /api/quotes?symbols=RELIANCE.NS,TCS.NS
+ * GET /api/quotes?symbols=^NSEI,TCS.NS
  */
 app.get('/api/quotes', async (req, res, next) => {
   const rawSymbols = req.query.symbols;
@@ -230,7 +230,7 @@ app.get('/api/quotes', async (req, res, next) => {
   }
 
   try {
-    const symbolsList = rawSymbols.split(',').map(s => normalizeSymbol(s)).filter(Boolean);
+    const symbolsList = rawSymbols.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
     if (symbolsList.length === 0) return res.json([]);
 
     const results = await provider.getQuotes(symbolsList);
@@ -253,7 +253,7 @@ app.get('/api/market/indices', async (req, res, next) => {
 });
 
 /**
- * GET /api/candles?symbol=RELIANCE.NS&interval=1d&outputsize=120
+ * GET /api/candles?symbol=^NSEI&interval=1d&outputsize=120
  */
 app.get('/api/candles', async (req, res, next) => {
   const rawSymbol = req.query.symbol;
@@ -279,14 +279,10 @@ app.get('/api/candles', async (req, res, next) => {
  * GET /api/search?q=Tata
  */
 app.get('/api/search', async (req, res, next) => {
-  const query = req.query.q;
-  if (!query || query.trim().length < 1) {
-    return res.json([]);
-  }
-
+  const query = req.query.q || '';
   try {
     const results = await provider.searchSymbols(query);
-    res.json(results);
+    res.json(results || []);
   } catch (err) {
     next(err);
   }

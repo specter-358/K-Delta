@@ -45,24 +45,13 @@
       <a href="index.html">Home</a>
       <a href="watchlist.html">Watchlist</a>
     </div>
-    <div class="navbar__search">
-      <button class="navbar-search-btn" id="btn-navbar-search" onclick="openStockSearchModal()" title="Search Indian Stocks (Press /)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <span class="search-placeholder">Search stock (e.g. RELIANCE, ITC)...</span>
-        <kbd class="search-kbd">/</kbd>
-      </button>
-    </div>
     <div class="navbar__market-status">
       <div class="navbar-alert-controls">
         <button class="navbar-audio-btn active" id="btn-navbar-audio-toggle" onclick="AudioAlerts.toggleMute()" title="Toggle Alert Audio Chimes">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
           </svg>
-          <span class="audio-toggle-label">Audio ON</span>
         </button>
         <button class="navbar-alert-btn" id="btn-navbar-alerts" onclick="AlertEngine.openAlertsCenter()" title="Open Live Alerts Center">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -90,8 +79,8 @@
 
         <!-- Stock Identity Header -->
         <div class="chart-header__stock-info" id="chart-stock-info">
-          <span class="chart-header__symbol" id="chart-symbol">RELIANCE</span>
-          <span class="chart-header__company" id="chart-company">Reliance Industries Ltd.</span>
+          <span class="chart-header__symbol" id="chart-symbol">NIFTY 50</span>
+          <span class="chart-header__company" id="chart-company">NSE Benchmark Index</span>
         </div>
 
         <!-- Add / Remove Current Stock to Watchlist Button -->
@@ -119,7 +108,7 @@
         <div class="toolbar-divider"></div>
 
         <!-- Chart Type Switcher (Candlestick / Line) -->
-        <button class="toolbar-icon-btn active" id="btn-chart-type" onclick="toggleChartType()" title="Switch to Line Chart">
+        <button class="toolbar-icon-btn active" id="btn-chart-type" title="Switch to Line Chart">
           <span id="chart-type-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="9" y1="2" x2="9" y2="22"></line>
@@ -210,25 +199,13 @@
         <!-- Live Crosshair OHLC readout -->
         <div class="chart-live-ohlc" id="chart-live-ohlc"
           style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary)"></div>
-
-        <div class="toolbar-divider"></div>
-
-        <!-- Screenshot Button -->
-        <button class="toolbar-icon-btn toolbar-icon-btn--camera" id="btn-chart-screenshot"
-          onclick="takeChartScreenshot()" title="Take Chart Screenshot">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-          </svg>
-        </button>
-
       </div>
+
 
       <!-- Right Sidebar Edge Minimize/Expand Toggle -->
       <button class="sidebar-edge-toggle sidebar-edge-toggle--right" id="btn-toggle-sidebar-right"
-        title="Minimize Technical Inspector" onclick="toggleSidebarRight()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        title="Toggle Technical Inspector" onclick="toggleSidebarRight()">
+        <svg class="sidebar-icon" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="9 18 15 12 9 6"></polyline>
         </svg>
       </button>
@@ -258,16 +235,37 @@
     </main>
 
     <!-- ── Right Sidebar — Technical Inspector ── -->
-    <aside class="sidebar-right">
+    <aside class="sidebar-right" id="sidebar-right">
+
+      <!-- Right Sidebar Header -->
+      <div class="sidebar-right__header">
+        <div class="sidebar-right__title">
+          <svg class="sidebar-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span>Technical Inspector</span>
+        </div>
+      </div>
 
       <!-- Inspector Nav Tabs -->
       <div class="inspector-tabs">
-        <button class="inspector-tab active" data-tab="plan" onclick="switchInspectorTab('plan')">Trade Plan</button>
-        <button class="inspector-tab" data-tab="patterns" onclick="switchInspectorTab('patterns')">Patterns</button>
-        <button class="inspector-tab" data-tab="backtest" onclick="switchInspectorTab('backtest')">Accuracy
-          (Backtest)</button>
-        <button class="inspector-tab" data-tab="forecast" onclick="switchInspectorTab('forecast')">5-Bar
-          Forecast</button>
+        <button class="inspector-tab active" data-tab="plan" onclick="switchInspectorTab('plan')">
+          <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span>Trade Plan</span>
+        </button>
+        <button class="inspector-tab" data-tab="patterns" onclick="switchInspectorTab('patterns')">
+          <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          <span>Patterns</span>
+        </button>
+        <button class="inspector-tab" data-tab="backtest" onclick="switchInspectorTab('backtest')">
+          <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20V10M18 20V4"></path></svg>
+          <span>Accuracy</span>
+        </button>
+        <button class="inspector-tab" data-tab="forecast" onclick="switchInspectorTab('forecast')">
+          <svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+          <span>Forecast</span>
+        </button>
       </div>
 
       <!-- Overall Signal & Action Card -->
@@ -560,7 +558,7 @@
 
   </div>
 
-  <!-- ═══ Quick Stock Search Modal (Institutional Command Palette) ═══ -->
+  <!-- ═══ Quick Stock Search Modal (Command Palette) ═══ -->
   <div class="stock-search-modal-backdrop" id="stock-search-modal" onclick="closeStockSearchModal(event)">
     <div class="stock-search-modal-card" onclick="event.stopPropagation()">
       <div class="stock-search-modal-header">
@@ -568,7 +566,7 @@
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input type="text" id="stock-modal-search-input" placeholder="Type stock name or symbol (e.g. INFY, TCS, ITC, RELIANCE)..." autocomplete="off" spellcheck="false">
+        <input type="text" id="stock-modal-search-input" placeholder="Type stock name or symbol (e.g. INFY, TCS, ITC, TATASTEEL)..." autocomplete="off" spellcheck="false">
         <button class="stock-search-modal-close" onclick="closeStockSearchModal()" title="Close (Esc)">✕</button>
       </div>
       <div class="stock-search-modal-results" id="stock-modal-search-results">

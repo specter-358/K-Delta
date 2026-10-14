@@ -42,11 +42,10 @@
     <div class="navbar__market-status">
       <div class="navbar-alert-controls">
         <button class="navbar-audio-btn active" id="btn-navbar-audio-toggle" onclick="AudioAlerts.toggleMute()" title="Toggle Alert Audio Chimes">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
           </svg>
-          <span class="audio-toggle-label">Audio ON</span>
         </button>
         <button class="navbar-alert-btn" id="btn-navbar-alerts" onclick="AlertEngine.openAlertsCenter()" title="Open Live Alerts Center">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -196,7 +195,7 @@
             <div class="section-header__subtitle">Live technical analysis, price targets & risk parameters for your
               recently searched stocks</div>
           </div>
-          <a href="dashboard.html?symbol=RELIANCE.NS" class="btn btn--primary btn--sm">Launch Full Terminal →</a>
+          <a href="dashboard.html" class="btn btn--primary btn--sm">Launch Full Terminal →</a>
         </div>
         <div class="recent-grid" id="recent-grid">
           <!-- Populated dynamically by JS with genuine Indian equity data -->
@@ -204,27 +203,6 @@
       </div>
     </section>
 
-    <!-- Top Movers -->
-    <section class="movers-section">
-      <div class="container">
-        <div class="section-header">
-          <div>
-            <div class="section-eyebrow"><span class="eyebrow-code">// VOLUME & MOMENTUM</span> TOP MARKET MOVERS</div>
-            <div class="section-header__title">Overall Market Top Gainers & Decliners</div>
-            <div class="section-header__subtitle">Daily analysis ranking top performing gainers and decliners across NSE
-            </div>
-          </div>
-          <div class="movers-tabs">
-            <button class="movers-tab active" data-filter="all" onclick="switchMoverTab(this)">Overall Market</button>
-            <button class="movers-tab" data-filter="gainers" onclick="switchMoverTab(this)">Top Gainers</button>
-            <button class="movers-tab" data-filter="losers" onclick="switchMoverTab(this)">Top Decliners</button>
-          </div>
-        </div>
-        <div class="movers-list" id="movers-list">
-          <!-- Populated dynamically by JS from real /api/movers -->
-        </div>
-      </div>
-    </section>
 
     <!-- Candlestick Pattern Cheatsheet & Guide -->
     <section class="patterns-guide-section" id="patterns-guide">

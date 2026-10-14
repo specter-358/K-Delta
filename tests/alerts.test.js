@@ -398,6 +398,79 @@ async function runAlertTests() {
     AudioAlerts.play = origPlay;
   });
 
+  // ════════════════════════════════════════════════════════════
+  // 13. BUY and SELL Signals Always Provide Explicit Exit Plan
+  // ════════════════════════════════════════════════════════════
+  await test('BUY Signal Notification Always Contains Exit Target and Stop Loss', () => {
+    localStorage.setItem('kdelta_watchlist', JSON.stringify(['INFY.NS', 'WIPRO.NS']));
+    AlertEngine.syncWatchlist();
+
+    AlertEngine.processSignalUpdate('INFY.NS', {
+      signal: 'BUY STOCK',
+      action: 'STRONG BUY STOCK',
+      confidence: 90,
+      tradeSetup: {
+        entryPrice: 1800.00,
+        currentPrice: 1800.00,
+        target1: 1836.00,
+        target2: 1863.00,
+        stopLoss: 1773.00,
+        target1Pct: '+2.0%',
+        target2Pct: '+3.5%',
+        stopLossPct: '-1.5%',
+      },
+    });
+
+    const history = AlertEngine.getHistory();
+    const buyAlert = history[0];
+    assert.strictEqual(buyAlert.symbol, 'INFY');
+    assert.strictEqual(buyAlert.signalType, 'BUY');
+    assert(buyAlert.message.includes('EXIT TARGET'), `Notification message must specify EXIT TARGET, got: ${buyAlert.message}`);
+    assert(buyAlert.message.includes('EXIT STOP LOSS'), `Notification message must specify EXIT STOP LOSS, got: ${buyAlert.message}`);
+    assert(buyAlert.message.includes('1836'), 'Message must include target price 1836');
+    assert(buyAlert.message.includes('1773'), 'Message must include stop loss price 1773');
+
+    // Verify watchlist signal state retrieval
+    const state = AlertEngine.getWatchlistSignalState('INFY.NS');
+    assert(state, 'Watchlist state should exist for INFY.NS');
+    assert.strictEqual(state.signal, 'BUY');
+    assert.strictEqual(state.target1, 1836.00);
+    assert.strictEqual(state.stopLoss, 1773.00);
+  });
+
+  await test('SELL Signal Notification Always Contains Cover Target and Stop Loss', () => {
+    AlertEngine.processSignalUpdate('WIPRO.NS', {
+      signal: 'SELL STOCK',
+      action: 'STRONG SELL STOCK',
+      confidence: 86,
+      tradeSetup: {
+        entryPrice: 500.00,
+        currentPrice: 500.00,
+        target1: 490.00,
+        target2: 482.50,
+        stopLoss: 507.50,
+        target1Pct: '-2.0%',
+        target2Pct: '-3.5%',
+        stopLossPct: '+1.5%',
+      },
+    });
+
+    const history = AlertEngine.getHistory();
+    const sellAlert = history[0];
+    assert.strictEqual(sellAlert.symbol, 'WIPRO');
+    assert.strictEqual(sellAlert.signalType, 'SELL');
+    assert(sellAlert.message.includes('EXIT COVER TARGET') || sellAlert.message.includes('EXIT TARGET'), `Message must include cover target, got: ${sellAlert.message}`);
+    assert(sellAlert.message.includes('EXIT STOP LOSS'), `Message must include stop loss, got: ${sellAlert.message}`);
+    assert(sellAlert.message.includes('490'), 'Message must include target 490');
+    assert(sellAlert.message.includes('507.5'), 'Message must include stop loss 507.5');
+
+    const state = AlertEngine.getWatchlistSignalState('WIPRO.NS');
+    assert(state, 'Watchlist state should exist for WIPRO.NS');
+    assert.strictEqual(state.signal, 'SELL');
+    assert.strictEqual(state.target1, 490.00);
+    assert.strictEqual(state.stopLoss, 507.50);
+  });
+
   console.log(`\n----------------------------------------------------`);
   console.log(`Alert Engine Test Results: ${passed} passed, ${failed} failed`);
   console.log(`----------------------------------------------------`);

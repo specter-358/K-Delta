@@ -131,7 +131,6 @@ async function loadHomeData() {
   await Promise.all([
     loadMarketOverview(),
     loadRecentSetups(),
-    loadTopMovers(),
   ]);
 }
 
@@ -213,44 +212,76 @@ function toggleSectorIndices() {
 }
 
 /**
- * Load Live High-Conviction Technical Setups for Indian Equities
+/**
+ * Load Live High-Conviction Technical Setups for Indian Equities (Exactly 6 Cards)
  */
 async function loadRecentSetups() {
   const grid = document.getElementById('recent-grid');
   if (!grid) return;
 
-  grid.innerHTML = Array(3).fill('<div class="stock-card skeleton" style="height:190px"></div>').join('');
+  grid.innerHTML = Array(6).fill('<div class="stock-card skeleton" style="height:190px"></div>').join('');
 
-  const recents = getRecentStocks();
-  let targetStocks = [];
+  const recents = getRecentStocks() || [];
+  const DEFAULT_STOCKS = [
+    { symbol: 'TCS.NS', name: 'Tata Consultancy Services' },
+    { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.' },
+    { symbol: 'INFY.NS', name: 'Infosys Ltd.' },
+    { symbol: 'ICICIBANK.NS', name: 'ICICI Bank Ltd.' },
+    { symbol: 'TATAMOTORS.NS', name: 'Tata Motors Ltd.' },
+    { symbol: 'SBIN.NS', name: 'State Bank of India' },
+    { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel Ltd.' },
+    { symbol: 'KOTAKBANK.NS', name: 'Kotak Mahindra Bank Ltd.' },
+    { symbol: 'LT.NS', name: 'Larsen & Toubro Ltd.' },
+    { symbol: 'RELIANCE.NS', name: 'Reliance Industries Ltd.' },
+  ];
 
-  if (recents && recents.length > 0) {
-    targetStocks = recents.slice(0, 3);
-  } else {
-    targetStocks = [
-      { symbol: 'RELIANCE.NS', name: 'Reliance Industries Ltd.' },
-      { symbol: 'TCS.NS', name: 'Tata Consultancy Services' },
-      { symbol: 'HDFCBANK.NS', name: 'HDFC Bank Ltd.' },
-    ];
+  // Prioritize recently searched stocks, then backfill to reach exactly 6
+  const targetStocks = [];
+  const seenSymbols = new Set();
+
+  for (const s of recents) {
+    if (s && s.symbol && !seenSymbols.has(s.symbol)) {
+      seenSymbols.add(s.symbol);
+      targetStocks.push(s);
+      if (targetStocks.length === 6) break;
+    }
   }
+
+  for (const def of DEFAULT_STOCKS) {
+    if (targetStocks.length >= 6) break;
+    if (!seenSymbols.has(def.symbol)) {
+      seenSymbols.add(def.symbol);
+      targetStocks.push(def);
+    }
+  }
+
+  // Fetch quotes & daily candles in parallel
+  const stockResults = await Promise.all(
+    targetStocks.map(async (stock) => {
+      try {
+        const [quote, candles] = await Promise.all([
+          API.fetchQuote(stock.symbol),
+          API.fetchCandles(stock.symbol, '1day', 70),
+        ]);
+        if (!quote || !candles || candles.length < 10) return null;
+        return { stock, quote, candles };
+      } catch (e) {
+        return null;
+      }
+    })
+  );
 
   const cards = [];
 
-  for (const stock of targetStocks) {
+  for (const res of stockResults) {
+    if (!res) continue;
+    const { stock, quote, candles } = res;
     try {
-      const [quote, candles] = await Promise.all([
-        API.fetchQuote(stock.symbol),
-        API.fetchCandles(stock.symbol, '1day', 70),
-      ]);
-
-      if (!quote || !candles || candles.length < 15) continue;
-
       const prediction = PredictionEngine.analyze(candles, stock.symbol);
       const isBuy = (prediction.signal || '').includes('BUY');
       const isSell = (prediction.signal || '').includes('SELL');
       const badgeClass = isBuy ? 'badge--bullish' : isSell ? 'badge--bearish' : 'badge--neutral';
-      const badgeIcon = isBuy ? '▲' : isSell ? '▼' : '■';
-      const actionText = prediction.action || prediction.signal;
+      const actionText = prediction.action || prediction.signal || 'ANALYZING';
       const targetText = prediction.tradeSetup && prediction.tradeSetup.hasSetup
         ? `Target: ₹${prediction.tradeSetup.target1.toFixed(2)} (${prediction.tradeSetup.target1Pct})`
         : 'Consolidation Zone';
@@ -286,7 +317,7 @@ async function loadRecentSetups() {
             <span class="stock-card__action">Trade Plan →</span>
           </div>
         </a>`);
-      if (cards.length >= 3) break;
+      if (cards.length >= 6) break;
     } catch (e) {
       console.warn(`Failed to render setup card for ${stock.symbol}:`, e);
     }

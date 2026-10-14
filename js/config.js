@@ -10,7 +10,10 @@ var CONFIG = window.CONFIG = {
   // Default Indian stocks for the watchlist (empty by default)
   DEFAULT_WATCHLIST: [],
 
-  // List of market & sectoral index symbols for the scrolling header ticker tape
+  // Default terminal benchmark symbol (NIFTY 50 benchmark index)
+  DEFAULT_SYMBOL: '^NSEI',
+
+  // List of market & sectoral indices for the scrolling header ticker tape (strictly indices only)
   ROLLING_TICKER_SYMBOLS: [
     '^NSEI',
     '^BSESN',
@@ -24,24 +27,10 @@ var CONFIG = window.CONFIG = {
     '^CNXPSUBANK',
     '^CNXREALTY',
     '^CNXFIN',
-    '^CNXMEDIA',
-    '^CNXCOMMODITIES',
     '^CNX100',
     '^CNX500',
     '^NSEMDCP100',
-    '^CNXSMALLCAP',
-    '^NSEMDCP50',
-    '^NIFTYMIDCAP150',
-    '^NIFTYSMLCAP250',
-    '^NSEMDCPSEL',
-    '^NIFTYTOTALMKT',
-    '^BSEBANK',
-    '^BSEMID',
-    '^BSESML',
-    '^BSE100',
-    '^BSEIT',
-    '^BSEIPO',
-    '^NIFTYPVTBANK',
+    '^CNXSMALLCAP'
   ],
 
   // Indian Market & Sectoral Indices
@@ -94,6 +83,8 @@ var CONFIG = window.CONFIG = {
     { symbol: 'TATACHEM.NS', name: 'Tata Chemicals Ltd.', type: 'Equity', exchange: 'NSE' },
     { symbol: 'TATACOMM.NS', name: 'Tata Communications Ltd.', type: 'Equity', exchange: 'NSE' },
     { symbol: 'TATAELXSI.NS', name: 'Tata Elxsi Ltd.', type: 'Equity', exchange: 'NSE' },
+    { symbol: 'TATATECH.NS', name: 'Tata Technologies Ltd.', type: 'Equity', exchange: 'NSE' },
+    { symbol: 'VOLTAS.NS', name: 'Voltas Ltd.', type: 'Equity', exchange: 'NSE' },
     { symbol: 'ITC.NS', name: 'ITC Ltd.', type: 'Equity', exchange: 'NSE' },
     { symbol: 'LT.NS', name: 'Larsen & Toubro Ltd.', type: 'Equity', exchange: 'NSE' },
     { symbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever Ltd.', type: 'Equity', exchange: 'NSE' },
@@ -286,7 +277,7 @@ function getSavedSymbol() {
       return saved.trim().toUpperCase();
     }
   } catch (e) {}
-  return 'RELIANCE.NS';
+  return '^NSEI';
 }
 
 /**

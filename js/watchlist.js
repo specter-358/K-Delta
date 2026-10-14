@@ -13,12 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
   startLiveClock();
   setupWatchlistSearchAdd();
   setupWatchlistFilterInput();
+  updateWatchlistPushUI();
   loadWatchlistData();
 
   // Polling intervals
   setInterval(loadMarketStatus, 20000);
   setInterval(loadLiveTickerTape, 25000);
   setInterval(() => loadWatchlistData(true), 15000);
+  setInterval(updateWatchlistPushUI, 5000);
 });
 
 /**
@@ -91,7 +93,7 @@ async function loadWatchlistData(isBackground = false) {
   if (!isBackground && (!watchlistQuotes || watchlistQuotes.length === 0)) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">
+        <td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted)">
           <div class="spinner" style="margin:0 auto 8px"></div>
           Loading persistent watchlist securities...
         </td>
@@ -152,7 +154,7 @@ async function loadWatchlistData(isBackground = false) {
     if (!isBackground) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="9" style="text-align:center;padding:24px;color:var(--bearish)">
+          <td colspan="10" style="text-align:center;padding:24px;color:var(--bearish)">
             Failed to refresh watchlist quotes. Please try again.
           </td>
         </tr>
@@ -258,7 +260,7 @@ function renderWatchlistTable() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">
+        <td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted)">
           No securities match the selected filter.
         </td>
       </tr>
@@ -283,6 +285,69 @@ function renderWatchlistTable() {
 
     const exchangeBadge = displayInfo.isIndex ? `INDEX (${displayInfo.exchangeDisplay})` : displayInfo.exchangeDisplay;
 
+    // Retrieve active algorithmic trade signal and exit targets from AlertEngine
+    const signalState = (typeof AlertEngine !== 'undefined' && typeof AlertEngine.getWatchlistSignalState === 'function')
+      ? AlertEngine.getWatchlistSignalState(q.symbol)
+      : null;
+
+    let signalHtml = '';
+    if (signalState && signalState.signal === 'BUY') {
+      const entryP = signalState.price ? formatPrice(signalState.price) : (q.price ? formatPrice(q.price) : 'Market');
+      const tp = signalState.target1 ? formatPrice(signalState.target1) : '—';
+      const sl = signalState.stopLoss ? formatPrice(signalState.stopLoss) : '—';
+      signalHtml = `
+        <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="High-Conviction BUY Setup. Click to open in terminal.">
+          <div class="watchlist-signal-badge badge--buy">
+            <span class="signal-dot buy"></span> BUY @ ${entryP}
+          </div>
+          <div class="watchlist-exit-plan">
+            <span class="exit-item exit-tp">Exit TP: <strong>${tp}</strong> (${signalState.target1Pct || '+2.0%'})</span>
+            <span class="exit-sep">•</span>
+            <span class="exit-item exit-sl">Exit SL: <strong>${sl}</strong> (${signalState.stopLossPct || '-1.5%'})</span>
+          </div>
+        </div>
+      `;
+    } else if (signalState && signalState.signal === 'SELL' && !signalState.exitReason) {
+      const entryP = signalState.price ? formatPrice(signalState.price) : (q.price ? formatPrice(q.price) : 'Market');
+      const tp = signalState.target1 ? formatPrice(signalState.target1) : '—';
+      const sl = signalState.stopLoss ? formatPrice(signalState.stopLoss) : '—';
+      signalHtml = `
+        <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="High-Conviction SELL / SHORT Setup. Click to open in terminal.">
+          <div class="watchlist-signal-badge badge--sell">
+            <span class="signal-dot sell"></span> SELL @ ${entryP}
+          </div>
+          <div class="watchlist-exit-plan">
+            <span class="exit-item exit-tp">Exit Cover: <strong>${tp}</strong> (${signalState.target1Pct || '-2.0%'})</span>
+            <span class="exit-sep">•</span>
+            <span class="exit-item exit-sl">Exit SL: <strong>${sl}</strong> (${signalState.stopLossPct || '+1.5%'})</span>
+          </div>
+        </div>
+      `;
+    } else if (signalState && (signalState.signal === 'EXIT' || signalState.exitReason)) {
+      const exitTitle = signalState.exitReason || signalState.reason || 'Exit Condition Met';
+      signalHtml = `
+        <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="Position Exit Triggered. Click to view analysis.">
+          <div class="watchlist-signal-badge badge--exit">
+            <span class="signal-dot exit"></span> EXIT: ${exitTitle}
+          </div>
+          <div class="watchlist-exit-plan">
+            <span class="exit-item" style="color:var(--text-secondary)">Exit Trigger @ ${formatPrice(signalState.price || q.price)}</span>
+          </div>
+        </div>
+      `;
+    } else {
+      signalHtml = `
+        <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="Technical Consolidation. Monitoring for breakout.">
+          <div class="watchlist-signal-badge badge--neutral">
+            <span class="signal-dot neutral"></span> HOLD / WAIT
+          </div>
+          <div class="watchlist-exit-plan">
+            <span class="exit-item" style="color:var(--text-muted)">Monitoring confluence...</span>
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <tr id="row-${q.symbol.replace(/[^A-Z0-9]/g, '_')}">
         <td>
@@ -305,6 +370,9 @@ function renderWatchlistTable() {
         </td>
         <td class="${changeClass}" style="font-family:var(--font-mono);font-weight:700">
           ${formatPercent(q.percentChange)}
+        </td>
+        <td class="signal-cell">
+          ${signalHtml}
         </td>
         <td class="range-cell">${rangeText}</td>
         <td class="volume-cell">${volumeText}</td>
@@ -361,6 +429,21 @@ function setupWatchlistSearchAdd() {
   const results = document.getElementById('watchlist-add-results');
   if (!input || !results) return;
 
+  let debounceTimer = null;
+
+  const catalog = (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.INDIAN_SECURITIES_CATALOG))
+    ? CONFIG.INDIAN_SECURITIES_CATALOG
+    : [];
+
+  function filterCatalog(query) {
+    if (!query) return catalog.slice(0, 8);
+    const qClean = query.trim().toLowerCase();
+    return catalog.filter(s => {
+      const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+      return symClean.includes(qClean) || s.symbol.toLowerCase().includes(qClean) || (s.name && s.name.toLowerCase().includes(qClean));
+    });
+  }
+
   function renderWatchlistResults(items) {
     if (!items || items.length === 0) {
       results.innerHTML = '<div style="padding:10px;color:var(--text-muted);font-size:0.75rem">No matching securities found.</div>';
@@ -389,11 +472,13 @@ function setupWatchlistSearchAdd() {
     results.classList.add('active');
   }
 
-  // Show popular suggestions on focus
-  const showSuggestionsOnFocus = async () => {
-    if (!input.value.trim()) {
-      const popular = await API.searchSymbol('');
-      renderWatchlistResults(popular);
+  // Show popular suggestions on focus or click
+  const showSuggestionsOnFocus = () => {
+    const q = input.value.trim();
+    if (!q) {
+      renderWatchlistResults(catalog.slice(0, 8));
+    } else {
+      renderWatchlistResults(filterCatalog(q));
     }
   };
 
@@ -405,19 +490,33 @@ function setupWatchlistSearchAdd() {
     const query = input.value.trim();
 
     if (query.length < 1) {
-      showSuggestionsOnFocus();
+      renderWatchlistResults(catalog.slice(0, 8));
       return;
     }
 
+    // 1. Instant local filter across Indian catalog (0ms latency)
+    const localMatches = filterCatalog(query);
+    renderWatchlistResults(localMatches);
+
+    // 2. Debounced live backend search merge
     debounceTimer = setTimeout(async () => {
-      const searchResults = await API.searchSymbol(query);
-      renderWatchlistResults(searchResults);
-    }, 150);
+      try {
+        const searchResults = await API.searchSymbol(query);
+        if (searchResults && searchResults.length > 0) {
+          renderWatchlistResults(searchResults);
+        }
+      } catch (err) {
+        // Keep local matches rendered
+      }
+    }, 120);
   });
 
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       triggerSearchAdd();
+    } else if (e.key === 'Escape') {
+      results.classList.remove('active');
     }
   });
 
@@ -429,21 +528,42 @@ function setupWatchlistSearchAdd() {
 }
 
 /**
- * Handle Add Stock from Input or Button
+ * Handle Add Stock from Input or Button with smart symbol resolution
  */
 function triggerSearchAdd() {
   const input = document.getElementById('watchlist-add-input');
   const results = document.getElementById('watchlist-add-results');
   if (!input) return;
 
-  let query = input.value.trim().toUpperCase();
-  if (!query) return;
+  const rawQuery = input.value.trim();
+  if (!rawQuery) return;
 
-  if (!query.endsWith('.NS') && !query.endsWith('.BO') && !query.startsWith('^')) {
-    query = `${query}.NS`;
+  const qUpper = rawQuery.toUpperCase();
+  const catalog = (typeof CONFIG !== 'undefined' && Array.isArray(CONFIG.INDIAN_SECURITIES_CATALOG))
+    ? CONFIG.INDIAN_SECURITIES_CATALOG
+    : [];
+
+  // Check if query matches a symbol in catalog
+  let match = catalog.find(s => s.symbol.toUpperCase() === qUpper || s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toUpperCase() === qUpper);
+
+  // If not exact symbol, check if name or prefix matches
+  if (!match) {
+    const qClean = rawQuery.toLowerCase();
+    match = catalog.find(s => {
+      const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+      return symClean.startsWith(qClean) || (s.name && s.name.toLowerCase().startsWith(qClean));
+    }) || catalog.find(s => {
+      const symClean = s.symbol.replace('.NS', '').replace('.BO', '').replace('^', '').toLowerCase();
+      return symClean.includes(qClean) || (s.name && s.name.toLowerCase().includes(qClean));
+    });
   }
 
-  handleAddSymbol(query);
+  let finalSymbol = match ? match.symbol : qUpper;
+  if (!finalSymbol.endsWith('.NS') && !finalSymbol.endsWith('.BO') && !finalSymbol.startsWith('^')) {
+    finalSymbol = `${finalSymbol}.NS`;
+  }
+
+  handleAddSymbol(finalSymbol);
   input.value = '';
   if (results) results.classList.remove('active');
 }
@@ -454,6 +574,11 @@ function triggerSearchAdd() {
 async function handleAddSymbol(symbol) {
   if (!symbol) return;
   const cleanSym = symbol.trim().toUpperCase();
+
+  const input = document.getElementById('watchlist-add-input');
+  const results = document.getElementById('watchlist-add-results');
+  if (input) input.value = '';
+  if (results) results.classList.remove('active');
 
   if (watchlistSymbols.includes(cleanSym)) {
     showToast(`${cleanSym} is already in your watchlist`, 'info');
@@ -536,6 +661,47 @@ function openSymbolAlertModal(symbol, price) {
   }
 }
 
+function updateWatchlistPushUI() {
+  const dot = document.getElementById('watchlist-push-dot');
+  const text = document.getElementById('watchlist-push-text');
+  const btn = document.getElementById('btn-enable-push');
+  if (!text) return;
+
+  const perm = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+  if (perm === 'granted') {
+    if (dot) dot.className = 'status-dot open';
+    text.textContent = 'Desktop Push Active (Buy/Sell Radar)';
+    if (btn) btn.style.display = 'none';
+  } else if (perm === 'denied') {
+    if (dot) dot.className = 'status-dot';
+    text.textContent = 'Desktop Push Blocked in Browser';
+    if (btn) {
+      btn.textContent = 'Notification Settings';
+      btn.style.display = 'inline-flex';
+    }
+  } else {
+    if (dot) dot.className = 'status-dot';
+    text.textContent = 'Desktop Push Inactive';
+    if (btn) {
+      btn.textContent = 'Enable Desktop Push';
+      btn.style.display = 'inline-flex';
+    }
+  }
+}
+
+async function enableWatchlistPush() {
+  if (typeof AlertEngine !== 'undefined') {
+    await AlertEngine.requestNotificationPermission();
+    updateWatchlistPushUI();
+  }
+}
+
+function testWatchlistNotification(type = 'BUY') {
+  if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.triggerTestNotification === 'function') {
+    AlertEngine.triggerTestNotification(type);
+  }
+}
+
 // Global window bindings
 if (typeof window !== 'undefined') {
   window.loadWatchlistData = loadWatchlistData;
@@ -546,4 +712,7 @@ if (typeof window !== 'undefined') {
   window.restoreDefaultWatchlist = restoreDefaultWatchlist;
   window.launchTerminal = launchTerminal;
   window.openSymbolAlertModal = openSymbolAlertModal;
+  window.updateWatchlistPushUI = updateWatchlistPushUI;
+  window.enableWatchlistPush = enableWatchlistPush;
+  window.testWatchlistNotification = testWatchlistNotification;
 }
