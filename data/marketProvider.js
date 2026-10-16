@@ -733,23 +733,38 @@ class YahooMarketProvider extends BaseMarketProvider {
           exchange: idx.exchange,
         });
       } else {
-        // Provide clean realistic fallback for indices
-        const price = idx.base;
-        const change = parseFloat(((Math.random() - 0.45) * (price * 0.012)).toFixed(2));
-        const percentChange = parseFloat(((change / price) * 100).toFixed(2));
-        results.push({
-          symbol: idx.symbol,
-          name: idx.name,
-          displayName: idx.name,
-          price: parseFloat(price.toFixed(2)),
-          change,
-          percentChange,
-          open: parseFloat((price - change * 0.2).toFixed(2)),
-          high: parseFloat((price + Math.abs(change) * 0.8).toFixed(2)),
-          low: parseFloat((price - Math.abs(change) * 0.8).toFixed(2)),
-          previousClose: parseFloat((price - change).toFixed(2)),
-          exchange: idx.exchange,
-        });
+        // Authentic deterministic fallback (cached real quote or official base reference, no synthetic random values)
+        const prevCached = this._getCached(`quote_${idx.symbol}`, 3600000);
+        if (prevCached && prevCached.price) {
+          results.push({
+            symbol: idx.symbol,
+            name: idx.name,
+            displayName: idx.name,
+            price: prevCached.price,
+            change: prevCached.change || 0,
+            percentChange: prevCached.percentChange || 0,
+            open: prevCached.open || prevCached.price,
+            high: prevCached.high || prevCached.price,
+            low: prevCached.low || prevCached.price,
+            previousClose: prevCached.previousClose || prevCached.price,
+            exchange: idx.exchange,
+          });
+        } else {
+          const price = idx.base;
+          results.push({
+            symbol: idx.symbol,
+            name: idx.name,
+            displayName: idx.name,
+            price: parseFloat(price.toFixed(2)),
+            change: 0.00,
+            percentChange: 0.00,
+            open: parseFloat(price.toFixed(2)),
+            high: parseFloat(price.toFixed(2)),
+            low: parseFloat(price.toFixed(2)),
+            previousClose: parseFloat(price.toFixed(2)),
+            exchange: idx.exchange,
+          });
+        }
       }
     }
 

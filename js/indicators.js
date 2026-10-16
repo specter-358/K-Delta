@@ -60,9 +60,30 @@ const Indicators = (() => {
     const result = [];
     let cumTypicalVol = 0;
     let cumVol = 0;
+    let lastDateStr = null;
 
     for (let i = 0; i < candles.length; i++) {
       const c = candles[i];
+      let dayKey = null;
+
+      if (c && c.time != null) {
+        if (typeof c.time === 'number') {
+          const d = new Date(c.time * 1000);
+          dayKey = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        } else if (typeof c.time === 'string') {
+          dayKey = c.time.split('T')[0];
+        }
+      }
+
+      // Reset intraday accumulators on each new trading day
+      if (lastDateStr !== null && dayKey !== null && dayKey !== lastDateStr) {
+        cumTypicalVol = 0;
+        cumVol = 0;
+      }
+      if (dayKey !== null) {
+        lastDateStr = dayKey;
+      }
+
       const typicalPrice = (c.high + c.low + c.close) / 3;
       const vol = Math.max(1, c.volume || 1);
 
@@ -98,8 +119,7 @@ const Indicators = (() => {
     let avgGain = gains / period;
     let avgLoss = losses / period;
 
-    let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    result[period] = parseFloat((100 - 100 / (1 + rs)).toFixed(2));
+    result[period] = avgLoss === 0 ? 100.00 : parseFloat((100 - (100 / (1 + (avgGain / avgLoss)))).toFixed(2));
 
     for (let i = period + 1; i < closes.length; i++) {
       const change = closes[i] - closes[i - 1];
@@ -109,8 +129,8 @@ const Indicators = (() => {
       avgGain = (avgGain * (period - 1) + currentGain) / period;
       avgLoss = (avgLoss * (period - 1) + currentLoss) / period;
 
-      rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      result.push(parseFloat((100 - 100 / (1 + rs)).toFixed(2)));
+      const rsiVal = avgLoss === 0 ? 100.00 : (100 - (100 / (1 + (avgGain / avgLoss))));
+      result.push(parseFloat(rsiVal.toFixed(2)));
     }
 
     return result;

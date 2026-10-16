@@ -32,6 +32,55 @@ const AlertEngine = (() => {
   // Listeners for UI reactive updates
   const uiListeners = new Set();
 
+  const STORAGE_KEY_PUSH_ENABLED = 'kdelta_push_enabled';
+  let isPushEnabled = true;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_PUSH_ENABLED);
+    if (saved !== null) {
+      isPushEnabled = saved === 'true';
+    }
+  } catch (e) {}
+
+  function setPushEnabled(enabled) {
+    isPushEnabled = !!enabled;
+    try {
+      localStorage.setItem(STORAGE_KEY_PUSH_ENABLED, isPushEnabled ? 'true' : 'false');
+    } catch (e) {}
+    notifySignalListeners(null, null);
+    if (isPushEnabled) {
+      showToast({
+        symbol: 'K-DELTA',
+        levelType: 'buy',
+        title: 'Push Notifications Active',
+        message: 'Live Buy & Sell Push Notifications are now enabled for all Watchlist stocks.',
+      });
+    } else {
+      showToast({
+        symbol: 'K-DELTA',
+        levelType: 'custom',
+        title: 'Push Notifications Muted',
+        message: 'Do Not Push mode is active. Desktop push notifications are paused.',
+      });
+    }
+  }
+
+  function getPushEnabled() {
+    return isPushEnabled;
+  }
+
+  function notifySignalListeners(sym, payload) {
+    uiListeners.forEach(listener => {
+      try { listener(sym, payload); } catch (e) { console.warn('[AlertEngine] UI listener error:', e); }
+    });
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('kdelta:watchlist-signal-updated', {
+          detail: { symbol: sym, state: payload }
+        }));
+      } catch (e) {}
+    }
+  }
+
   // Watchlist Signal Monitoring State
   // Map: symbol -> { signal: 'BUY'|'SELL'|'EXIT'|'HOLD', action: string, price: number, reason: string, timestamp: number }
   const watchlistSignalStates = new Map();
@@ -681,17 +730,6 @@ const AlertEngine = (() => {
     const now = Date.now();
     const previousState = watchlistSignalStates.get(sym);
 
-    if (signalType === 'HOLD') {
-      watchlistSignalStates.set(sym, {
-        signal: 'HOLD',
-        action: rawAction,
-        price: currentPrice,
-        reason: relevantReason,
-        timestamp: now,
-      });
-      return; // No notification for HOLD
-    }
-
     // Precise calculation of Exit Targets and Stop Loss
     const priceNum = currentPrice ? parseFloat(currentPrice) : 0;
     let target1 = tradeSetup.target1 ? parseFloat(tradeSetup.target1) : null;
@@ -715,6 +753,34 @@ const AlertEngine = (() => {
       if (!target1Pct) target1Pct = `-${(((priceNum - target1) / priceNum) * 100).toFixed(1)}%`;
       if (!target2Pct) target2Pct = `-${(((priceNum - target2) / priceNum) * 100).toFixed(1)}%`;
       if (!stopLossPct) stopLossPct = `+${(((stopLoss - priceNum) / priceNum) * 100).toFixed(1)}%`;
+    } else if (signalType === 'HOLD' && priceNum > 0) {
+      if (!target1) target1 = +(priceNum * 1.025).toFixed(2);
+      if (!target2) target2 = +(priceNum * 1.04).toFixed(2);
+      if (!stopLoss) stopLoss = +(priceNum * 0.98).toFixed(2);
+      if (!target1Pct) target1Pct = `+${(((target1 - priceNum) / priceNum) * 100).toFixed(1)}%`;
+      if (!target2Pct) target2Pct = `+${(((target2 - priceNum) / priceNum) * 100).toFixed(1)}%`;
+      if (!stopLossPct) stopLossPct = `${(((stopLoss - priceNum) / priceNum) * 100).toFixed(1)}%`;
+    }
+
+    if (signalType === 'HOLD') {
+      const holdPayload = {
+        signal: 'HOLD',
+        action: rawAction || 'HOLD / WATCH',
+        price: currentPrice,
+        reason: relevantReason || 'Consolidation Range',
+        timestamp: now,
+        target1,
+        target2,
+        stopLoss,
+        target1Pct,
+        target2Pct,
+        stopLossPct,
+        confidence: prediction.confidence || null,
+        exitReason: null,
+      };
+      watchlistSignalStates.set(sym, holdPayload);
+      notifySignalListeners(sym, holdPayload);
+      return; // No notification for HOLD
     }
 
     const statePayload = {
@@ -736,11 +802,13 @@ const AlertEngine = (() => {
     // Requirement 4: Prevent duplicate notifications on unchanged signal (BUY -> BUY -> BUY)
     if (previousState && previousState.signal === signalType) {
       watchlistSignalStates.set(sym, { ...previousState, ...statePayload });
+      notifySignalListeners(sym, statePayload);
       return; // Already notified for this exact state!
     }
 
     // State transition detected! (e.g. NONE -> BUY, BUY -> SELL, SELL -> EXIT, HOLD -> BUY)
     watchlistSignalStates.set(sym, statePayload);
+    notifySignalListeners(sym, statePayload);
 
     // Dispatch Trade Signal Notification with explicit Exit targets
     dispatchTradeNotification({
@@ -780,6 +848,7 @@ const AlertEngine = (() => {
     stopLossPct,
     exitReason,
     tradeSetup,
+    isTest = false,
   }) {
     const cleanSym = symbol.replace('.NS', '').replace('.BO', '').replace('^', '');
     const timeFormatted = formatAlertISTTime(timestamp);
@@ -787,24 +856,25 @@ const AlertEngine = (() => {
     const priceFormatted = price ? `₹${parseFloat(price).toFixed(2)}` : 'Market Price';
 
     const levelType = signalType.toLowerCase(); // 'buy', 'sell', 'exit'
-    const title = `${signalType} Signal`;
+    const testPrefix = isTest ? '[TEST DEMO] ' : '';
+    const title = `${testPrefix}${signalType} Signal`;
 
     let message = '';
 
     if (signalType === 'BUY') {
       const t1Str = target1 ? `₹${target1.toFixed(2)} (${target1Pct || '+2.0%'})` : 'Target 1';
       const slStr = stopLoss ? `₹${stopLoss.toFixed(2)} (${stopLossPct || '-1.5%'})` : 'Stop Loss';
-      message = `BUY ${cleanSym} @ ${priceFormatted} | EXIT TARGET: ${t1Str} | EXIT STOP LOSS: ${slStr}. Exit order active upon target or stop loss touch.`;
+      message = `${testPrefix}BUY ${cleanSym} @ ${priceFormatted} | EXIT TARGET: ${t1Str} | EXIT STOP LOSS: ${slStr}. Exit order active upon target or stop loss touch.`;
     } else if (signalType === 'SELL' && exitReason) {
-      message = `EXIT BUY (${exitReason}): ${cleanSym} live price is ${priceFormatted}. Exit open long position immediately to lock in trade outcome.`;
+      message = `${testPrefix}EXIT BUY (${exitReason}): ${cleanSym} live price is ${priceFormatted}. Exit open long position immediately to lock in trade outcome.`;
     } else if (signalType === 'EXIT') {
-      message = `EXIT BUY (${exitReason || reason || 'Stop loss triggered'}): ${cleanSym} live price is ${priceFormatted}. Exit open position immediately.`;
+      message = `${testPrefix}EXIT BUY (${exitReason || reason || 'Stop loss triggered'}): ${cleanSym} live price is ${priceFormatted}. Exit open position immediately.`;
     } else if (signalType === 'SELL') {
       const t1Str = target1 ? `₹${target1.toFixed(2)} (${target1Pct || '-2.0%'})` : 'Cover Target';
       const slStr = stopLoss ? `₹${stopLoss.toFixed(2)} (${stopLossPct || '+1.5%'})` : 'Stop Loss';
-      message = `SELL ${cleanSym} @ ${priceFormatted} | EXIT COVER TARGET: ${t1Str} | EXIT STOP LOSS: ${slStr}. Exit short order active upon cover target or stop loss touch.`;
+      message = `${testPrefix}SELL ${cleanSym} @ ${priceFormatted} | EXIT COVER TARGET: ${t1Str} | EXIT STOP LOSS: ${slStr}. Exit short order active upon cover target or stop loss touch.`;
     } else {
-      message = reason ? `${signalType}: ${reason}` : `A ${signalType} signal has been generated for ${cleanSym}.`;
+      message = reason ? `${testPrefix}${signalType}: ${reason}` : `${testPrefix}A ${signalType} signal has been generated for ${cleanSym}.`;
     }
 
     const alertEvent = {
@@ -815,6 +885,7 @@ const AlertEngine = (() => {
       type: `signal_${levelType}`,
       levelType,
       signalType,
+      isTest: !!isTest,
       price: price ? parseFloat(price) : null,
       reason: reason || `A ${signalType} signal has been generated.`,
       title,
@@ -899,6 +970,7 @@ const AlertEngine = (() => {
       }));
     } finally {
       isEvaluatingWatchlist = false;
+      notifySignalListeners(null, null);
     }
   }
 
@@ -917,13 +989,13 @@ const AlertEngine = (() => {
       if (typeof setTimeout !== 'undefined') {
         setTimeout(() => {
           evaluateWatchlistSignals();
-        }, 1000);
+        }, 50);
       }
 
       if (typeof setInterval !== 'undefined') {
         watchlistMonitorTimer = setInterval(() => {
           evaluateWatchlistSignals();
-        }, 15000);
+        }, 20000);
       }
     }
   }
@@ -1029,21 +1101,26 @@ const AlertEngine = (() => {
    * Send Desktop Web Notification
    */
   function sendDesktopNotification(event) {
+    if (!isPushEnabled) return; // Muted / "Do Not Push" mode
     if (typeof Notification === 'undefined' || typeof Notification !== 'function' || Notification.permission !== 'granted') return;
 
     try {
-      const n = new Notification(event.title, {
+      const notifTitle = event.symbol && !event.title.includes(event.symbol)
+        ? `${event.title}: ${event.symbol}`
+        : event.title;
+
+      const n = new Notification(notifTitle, {
         body: event.message,
-        icon: 'images/logo-icon.png',
+        icon: 'images/logo.png',
         tag: `kdelta-${event.symbol}-${event.type}`,
-        badge: 'images/logo-icon.png',
+        badge: 'images/logo.png',
         requireInteraction: false,
       });
 
       n.onclick = () => {
         window.focus();
         if (event.symbol) {
-          window.location.href = `dashboard.html?symbol=${encodeURIComponent(event.symbol)}`;
+          window.location.href = `dashboard.html?symbol=${encodeURIComponent(event.rawSymbol || event.symbol)}`;
         }
         n.close();
       };
@@ -1071,7 +1148,9 @@ const AlertEngine = (() => {
     const toast = document.createElement('div');
     const badgeClass = `toast-badge--${event.levelType || 'entry'}`;
     const formattedPrice = event.price ? `₹${parseFloat(event.price).toFixed(2)}` : '';
-    const badgeLabel = event.signalType ? `${event.signalType} SIGNAL` : (event.levelType || 'ALERT').toUpperCase();
+    const badgeLabel = event.isTest
+      ? `TEST ${event.signalType || 'ALERT'}`
+      : (event.signalType ? `${event.signalType} SIGNAL` : (event.levelType || 'ALERT').toUpperCase());
     const timeDisplay = event.timeFormatted || (new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) + ' IST');
 
     const cleanMessage = removeAllEmojis(event.message || event.title || '');
@@ -1373,10 +1452,37 @@ const AlertEngine = (() => {
     }) + ' IST';
   }
 
-  function triggerTestNotification(type = 'BUY') {
+  function triggerTestNotification(type = 'BUY', targetSym = null, targetPrice = null) {
     const isBull = type.toUpperCase() === 'BUY';
-    const sym = 'TATASTEEL.NS';
-    const mockPrice = 3020.50;
+
+    let sym = targetSym;
+    let mockPrice = (targetPrice && parseFloat(targetPrice) > 0) ? parseFloat(targetPrice) : null;
+
+    // 1. If not provided, search lastKnownPrices for an active stock with a known price
+    if (!sym || !mockPrice) {
+      for (const [s, p] of lastKnownPrices.entries()) {
+        if (p && p > 0 && !s.startsWith('^')) {
+          sym = sym || s;
+          mockPrice = mockPrice || p;
+          break;
+        }
+      }
+    }
+
+    // 2. Realistic fallback defaults based on symbol
+    if (!sym) sym = 'TATASTEEL.NS';
+    if (!mockPrice) {
+      if (sym.includes('TATASTEEL')) {
+        mockPrice = 155.20; // Realistic post-split Tata Steel equity price
+      } else if (sym.includes('TCS')) {
+        mockPrice = 3450.00;
+      } else if (sym.includes('RELIANCE')) {
+        mockPrice = 2950.00;
+      } else {
+        mockPrice = 500.00;
+      }
+    }
+
     const mockT1 = isBull ? +(mockPrice * 1.02).toFixed(2) : +(mockPrice * 0.98).toFixed(2);
     const mockSL = isBull ? +(mockPrice * 0.985).toFixed(2) : +(mockPrice * 1.015).toFixed(2);
     const mockT1Pct = isBull ? '+2.0%' : '-2.0%';
@@ -1386,7 +1492,7 @@ const AlertEngine = (() => {
       symbol: sym,
       signalType: isBull ? 'BUY' : 'SELL',
       price: mockPrice,
-      reason: isBull ? 'High Conviction Bullish Confluence (>85%)' : 'Bearish Breakdown Confluence (>85%)',
+      reason: isBull ? 'Test Simulation: Bullish Confluence (>85%)' : 'Test Simulation: Bearish Breakdown (>85%)',
       timestamp: Date.now(),
       confidence: 88,
       target1: mockT1,
@@ -1396,6 +1502,7 @@ const AlertEngine = (() => {
       target2Pct: isBull ? '+3.5%' : '-3.5%',
       stopLossPct: mockSLPct,
       exitReason: null,
+      isTest: true,
       tradeSetup: {
         entryPrice: mockPrice,
         target1: mockT1,
@@ -1444,6 +1551,14 @@ const AlertEngine = (() => {
     getLastKnownPrices: () => lastKnownPrices,
     getMonitoredWatchlistSymbols,
     resetMovementSoundCooldown,
+    setPushEnabled,
+    getPushEnabled,
+    onSignalUpdate: (callback) => {
+      if (typeof callback === 'function') {
+        uiListeners.add(callback);
+        return () => uiListeners.delete(callback);
+      }
+    },
   };
 })();
 

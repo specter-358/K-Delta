@@ -37,24 +37,38 @@ const ChartManager = (() => {
     trendLower: { color: '#10b981', lineWidth: 1.5, title: 'Support Trendline' },
   };
 
+  const IST_OFFSET_SECONDS = 19800; // 5 hours 30 minutes in seconds (IST = UTC+05:30)
+
   /**
    * Format time for Lightweight Charts
+   * Lightweight Charts operates in UTC internally.
+   * To display authentic Indian Standard Time (IST, UTC+05:30) across all intraday
+   * timeframes on both the bottom time scale axis and crosshairs,
+   * unix epoch seconds are shifted forward by +19,800 seconds (+5:30).
    */
   function formatTime(timeVal) {
     if (timeVal == null) return timeVal;
-    if (typeof timeVal === 'number') return Math.floor(timeVal);
-    if (typeof timeVal === 'string' && /^\d{9,12}$/.test(timeVal.trim())) {
-      return parseInt(timeVal.trim(), 10);
-    }
     if (typeof timeVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(timeVal.trim())) {
       return timeVal.trim();
     }
     if (typeof timeVal === 'object' && timeVal.year && timeVal.month && timeVal.day) {
       return `${timeVal.year}-${String(timeVal.month).padStart(2, '0')}-${String(timeVal.day).padStart(2, '0')}`;
     }
-    const d = new Date(timeVal);
-    if (!isNaN(d.getTime())) {
-      return Math.floor(d.getTime() / 1000);
+
+    let sec = null;
+    if (typeof timeVal === 'number') {
+      sec = Math.floor(timeVal);
+    } else if (typeof timeVal === 'string' && /^\d{9,12}$/.test(timeVal.trim())) {
+      sec = parseInt(timeVal.trim(), 10);
+    } else {
+      const d = new Date(timeVal);
+      if (!isNaN(d.getTime())) {
+        sec = Math.floor(d.getTime() / 1000);
+      }
+    }
+
+    if (sec != null) {
+      return sec + IST_OFFSET_SECONDS;
     }
     return timeVal;
   }
@@ -95,7 +109,7 @@ const ChartManager = (() => {
           if (typeof timestamp === 'number') {
             const d = new Date(timestamp * 1000);
             return d.toLocaleString('en-IN', {
-              timeZone: 'Asia/Kolkata',
+              timeZone: 'UTC', // Timestamp is shifted by +19,800s to IST; format with UTC to preserve exact IST time
               hour: '2-digit',
               minute: '2-digit',
               hour12: true,
@@ -138,6 +152,24 @@ const ChartManager = (() => {
         borderColor: borderColor,
         timeVisible: true,
         secondsVisible: false,
+        tickMarkFormatter: (time, tickMarkType, locale) => {
+          if (typeof time === 'number') {
+            const d = new Date(time * 1000);
+            if (tickMarkType === 0) return String(d.getUTCFullYear());
+            if (tickMarkType === 1) return d.toLocaleDateString('en-IN', { timeZone: 'UTC', month: 'short' });
+            if (tickMarkType === 2) return String(d.getUTCDate());
+            const h = String(d.getUTCHours()).padStart(2, '0');
+            const m = String(d.getUTCMinutes()).padStart(2, '0');
+            return `${h}:${m}`;
+          }
+          if (typeof time === 'object' && time.year) {
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            if (tickMarkType === 1) return months[(time.month || 1) - 1];
+            if (tickMarkType === 0) return String(time.year);
+            return `${time.day} ${months[(time.month || 1) - 1]}`;
+          }
+          return String(time);
+        },
       },
       handleScroll: { vertTouchDrag: false },
     });
@@ -312,12 +344,22 @@ const ChartManager = (() => {
       volumeSeries.setData(isVolumeVisible ? formattedVolumes : []);
     }
 
-    // Default time scale visibility
+    // Default time scale visibility and spacing (matching TradingView India view)
     chart.timeScale().applyOptions({
       timeVisible: isIntraday,
+      barSpacing: isIntraday ? 9 : 6,
+      rightOffset: 6,
     });
 
-    chart.timeScale().fitContent();
+    if (isIntraday) {
+      try {
+        chart.timeScale().scrollToRealtime();
+      } catch (e) {
+        chart.timeScale().fitContent();
+      }
+    } else {
+      chart.timeScale().fitContent();
+    }
     updateOHLCDisplay(null);
   }
 
@@ -390,7 +432,7 @@ const ChartManager = (() => {
           last.close = Number(candle.close);
           last.volume = candle.volume;
         } else {
-          currentCandles.push({ ...candle, time: formattedTimeKey });
+          currentCandles.push({ ...candle, time: candle.time });
         }
       }
 

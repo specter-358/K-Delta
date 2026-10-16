@@ -13,10 +13,35 @@ document.addEventListener('DOMContentLoaded', () => {
   setupKeyboardShortcuts();
   updateMarketStatus();
 
-  // Polling intervals during market hours
-  setInterval(loadLiveTickerTape, 15000);
-  setInterval(updateMarketStatus, 30000);
-  setInterval(loadMarketOverview, 30000);
+  // Staggered polling intervals with visibilityState suspension
+  let tickerTimer = null;
+  let statusTimer = null;
+  let overviewTimer = null;
+
+  function startHomeTimers() {
+    if (!tickerTimer) tickerTimer = setInterval(() => { if (!document.hidden) loadLiveTickerTape(); }, 25000);
+    if (!statusTimer) statusTimer = setInterval(() => { if (!document.hidden) updateMarketStatus(); }, 40000);
+    if (!overviewTimer) overviewTimer = setInterval(() => { if (!document.hidden) loadMarketOverview(); }, 45000);
+  }
+
+  function stopHomeTimers() {
+    clearInterval(tickerTimer); tickerTimer = null;
+    clearInterval(statusTimer); statusTimer = null;
+    clearInterval(overviewTimer); overviewTimer = null;
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopHomeTimers();
+    } else {
+      startHomeTimers();
+      loadLiveTickerTape();
+      updateMarketStatus();
+      loadMarketOverview();
+    }
+  });
+
+  startHomeTimers();
 });
 
 function setupHomeWebSocketListeners() {
@@ -278,10 +303,29 @@ async function loadRecentSetups() {
     const { stock, quote, candles } = res;
     try {
       const prediction = PredictionEngine.analyze(candles, stock.symbol);
-      const isBuy = (prediction.signal || '').includes('BUY');
-      const isSell = (prediction.signal || '').includes('SELL');
-      const badgeClass = isBuy ? 'badge--bullish' : isSell ? 'badge--bearish' : 'badge--neutral';
-      const actionText = prediction.action || prediction.signal || 'ANALYZING';
+      const isExit = !!prediction.exitReason || (prediction.action || '').toUpperCase().startsWith('EXIT');
+
+      // Real-Time Directional Momentum & Prediction Confluence (Matching Watchlist single source of truth)
+      const pct = (quote && typeof quote.percentChange === 'number')
+        ? quote.percentChange
+        : ((quote && typeof quote.change === 'number' && quote.price) ? ((quote.change / quote.price) * 100) : 0);
+
+      let actionText = 'HOLD';
+      let badgeClass = 'badge--neutral';
+
+      if (isExit) {
+        actionText = 'EXIT';
+        badgeClass = 'badge--warning';
+      } else if (pct >= 0.8 || (prediction.signal && prediction.signal.includes('BUY') && pct > 0.3)) {
+        actionText = 'BUY';
+        badgeClass = 'badge--bullish';
+      } else if (pct <= -0.8 || (prediction.signal && prediction.signal.includes('SELL') && pct < -0.3)) {
+        actionText = 'SELL';
+        badgeClass = 'badge--bearish';
+      } else {
+        actionText = 'HOLD';
+        badgeClass = 'badge--neutral';
+      }
       const targetText = prediction.tradeSetup && prediction.tradeSetup.hasSetup
         ? `Target: ₹${prediction.tradeSetup.target1.toFixed(2)} (${prediction.tradeSetup.target1Pct})`
         : 'Consolidation Zone';

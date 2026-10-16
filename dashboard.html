@@ -7,6 +7,10 @@
   <title>K-Delta</title>
   <meta name="description"
     content="Candlestick chart with real-time pattern recognition, multi-indicator confluence scoring, and execution targets for Indian equities and indices.">
+  <!-- Google Fonts Preconnect & Stylesheet -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="stylesheet" href="css/main.css?v=4.0">
   <link rel="stylesheet" href="css/dashboard.css?v=4.0">
@@ -15,7 +19,9 @@
   <script src="node_modules/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
   <script>
     if (typeof LightweightCharts === 'undefined') {
-      document.write('<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"><\\/script>');
+      const lcScript = document.createElement('script');
+      lcScript.src = 'https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js';
+      document.head.appendChild(lcScript);
     }
   </script>
 </head>
@@ -581,15 +587,15 @@
   </div>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=4.2"></script>
-  <script src="js/api.js?v=4.2"></script>
-  <script src="js/indicators.js?v=4.2"></script>
-  <script src="js/patterns.js?v=4.2"></script>
-  <script src="js/predictions.js?v=4.2"></script>
-  <script src="js/audioAlerts.js?v=4.2"></script>
-  <script src="js/alertEngine.js?v=4.2"></script>
-  <script src="js/chart.js?v=4.2"></script>
-  <script src="js/dashboard.js?v=4.2"></script>
+  <script src="js/config.js?v=4.8"></script>
+  <script src="js/api.js?v=4.8"></script>
+  <script src="js/indicators.js?v=4.8"></script>
+  <script src="js/patterns.js?v=4.8"></script>
+  <script src="js/predictions.js?v=4.8"></script>
+  <script src="js/audioAlerts.js?v=4.8"></script>
+  <script src="js/alertEngine.js?v=4.8"></script>
+  <script src="js/chart.js?v=4.8"></script>
+  <script src="js/dashboard.js?v=4.8"></script>
 
 </body>
 

@@ -324,8 +324,8 @@
 }
 
 .alerts-modal-drawer {
-  width: 350px;
-  max-width: 90vw;
+  width: 440px;
+  max-width: 95vw;
   height: 100vh;
   background: var(--bg-card, #080808);
   border-left: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
@@ -393,7 +393,8 @@
 .alerts-drawer-body {
   flex: 1;
   overflow-y: auto;
-  padding: 14px 16px 36px;
+  overflow-x: hidden;
+  padding: 16px 20px 40px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -536,18 +537,22 @@
 /* Custom Alert Form */
 .custom-alert-form {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) auto;
+  gap: 8px;
   align-items: center;
+  width: 100%;
 }
 
 .alert-input,
 .alert-select {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   background: var(--bg-input, #000000);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   border-radius: var(--radius-xs, 3px);
-  padding: 6px 8px;
-  font-size: 0.75rem;
+  padding: 8px 10px;
+  font-size: 0.76rem;
   color: var(--text-primary, #f8fafc);
   font-family: var(--font-main, sans-serif);
 }
@@ -556,6 +561,15 @@
 .alert-select:focus {
   outline: none;
   border-color: var(--accent-cyan, #06b6d4);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+}
+
+.custom-alert-form .btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 /* Active Alerts List */
@@ -725,4 +739,19 @@
   box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
   transform: scale(1.05);
 }
+
+@media (max-width: 480px) {
+  .alerts-modal-drawer {
+    width: 100vw;
+    max-width: 100vw;
+  }
+  .custom-alert-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .custom-alert-form .btn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
 

@@ -26,6 +26,7 @@ const {
   optionalAuth,
 } = require('./middleware/auth');
 
+const compression = require('compression');
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
@@ -33,8 +34,9 @@ const PORT = process.env.PORT || 3000;
 // Initialize WebSocket Streaming Engine
 wsHub.init(server);
 
-// Security & Core Middleware
+// Security, Compression & Core Middleware
 app.disable('x-powered-by');
+app.use(compression());
 app.use(securityHeaders);
 app.use(corsPolicy);
 app.use(express.json({ limit: '1mb' }));
@@ -43,8 +45,11 @@ app.use(sanitizeInput);
 // Global API Rate Limiter (120 req/min)
 app.use('/api/', rateLimiter({ windowMs: 60000, maxRequests: 120 }));
 
-// Static Assets
-app.use(express.static(path.join(__dirname)));
+// Static Assets with ETag & Browser Cache Control
+app.use(express.static(path.join(__dirname), {
+  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
+  etag: true,
+}));
 
 /**
  * Get accurate Indian Market (IST) Status

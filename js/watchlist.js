@@ -16,11 +16,59 @@ document.addEventListener('DOMContentLoaded', () => {
   updateWatchlistPushUI();
   loadWatchlistData();
 
-  // Polling intervals
-  setInterval(loadMarketStatus, 20000);
-  setInterval(loadLiveTickerTape, 25000);
-  setInterval(() => loadWatchlistData(true), 15000);
-  setInterval(updateWatchlistPushUI, 5000);
+  // Subscribe to real-time WebSocket tick stream for zero-latency table price updates
+  if (typeof API !== 'undefined' && typeof API.onTick === 'function') {
+    API.onTick(tick => {
+      if (!tick || !tick.symbol || typeof tick.price !== 'number') return;
+      handleLiveTickUpdate(tick);
+    });
+  }
+
+  // Subscribe to AlertEngine signal updates for instant reactive table updates
+  if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.onSignalUpdate === 'function') {
+    AlertEngine.onSignalUpdate((symbol) => {
+      updateWatchlistSignalCells(symbol);
+    });
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('kdelta:watchlist-signal-updated', (e) => {
+      const sym = e.detail && e.detail.symbol;
+      updateWatchlistSignalCells(sym);
+    });
+  }
+
+  // Staggered polling intervals with visibilityState suspension
+  let watchlistDataTimer = null;
+  let tickerTapeTimer = null;
+  let marketStatusTimer = null;
+  let pushUITimer = null;
+
+  function startTimers() {
+    if (!watchlistDataTimer) watchlistDataTimer = setInterval(() => { if (!document.hidden) loadWatchlistData(true); }, 20000);
+    if (!tickerTapeTimer) tickerTapeTimer = setInterval(() => { if (!document.hidden) loadLiveTickerTape(); }, 30000);
+    if (!marketStatusTimer) marketStatusTimer = setInterval(() => { if (!document.hidden) loadMarketStatus(); }, 40000);
+    if (!pushUITimer) pushUITimer = setInterval(() => { if (!document.hidden) updateWatchlistPushUI(); }, 15000);
+  }
+
+  function stopTimers() {
+    clearInterval(watchlistDataTimer); watchlistDataTimer = null;
+    clearInterval(tickerTapeTimer); tickerTapeTimer = null;
+    clearInterval(marketStatusTimer); marketStatusTimer = null;
+    clearInterval(pushUITimer); pushUITimer = null;
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopTimers();
+    } else {
+      startTimers();
+      loadWatchlistData(true);
+      loadLiveTickerTape();
+      loadMarketStatus();
+    }
+  });
+
+  startTimers();
 });
 
 /**
@@ -102,9 +150,27 @@ async function loadWatchlistData(isBackground = false) {
   }
 
   try {
-    watchlistSymbols = await API.fetchWatchlist();
-    if (!watchlistSymbols || !Array.isArray(watchlistSymbols)) {
-      watchlistSymbols = getWatchlist();
+    // 1. Initialize from local storage if memory is not yet set
+    const localSaved = getWatchlist();
+    if (!watchlistSymbols || watchlistSymbols.length === 0) {
+      if (Array.isArray(localSaved) && localSaved.length > 0) {
+        watchlistSymbols = [...localSaved];
+      }
+    }
+
+    // 2. Fetch authoritative list from backend
+    try {
+      const serverSymbols = await API.fetchWatchlist();
+      if (Array.isArray(serverSymbols) && serverSymbols.length > 0) {
+        watchlistSymbols = [...serverSymbols];
+      }
+    } catch (apiErr) {
+      console.warn('API.fetchWatchlist fallback:', apiErr);
+    }
+
+    // 3. Fallback to default if still empty
+    if (!watchlistSymbols || !Array.isArray(watchlistSymbols) || watchlistSymbols.length === 0) {
+      watchlistSymbols = [...(CONFIG.DEFAULT_WATCHLIST || [])];
     }
 
     if (watchlistSymbols.length === 0) {
@@ -112,6 +178,11 @@ async function loadWatchlistData(isBackground = false) {
       renderWatchlistTable();
       updateWatchlistStats();
       return;
+    }
+
+    // Subscribe WebSocket for live updates
+    if (typeof API !== 'undefined' && typeof API.subscribeWatchlistSymbols === 'function') {
+      API.subscribeWatchlistSymbols(watchlistSymbols);
     }
 
     // Fetch batch quotes for all symbols
@@ -149,6 +220,11 @@ async function loadWatchlistData(isBackground = false) {
 
     renderWatchlistTable();
     updateWatchlistStats();
+
+    // Trigger immediate background algorithmic signal evaluation
+    if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.evaluateWatchlistSignals === 'function') {
+      AlertEngine.evaluateWatchlistSignals();
+    }
   } catch (err) {
     console.error('Failed to load watchlist data:', err);
     if (!isBackground) {
@@ -241,7 +317,15 @@ function renderWatchlistTable() {
   let filtered = [...watchlistQuotes];
 
   // Category filter
-  if (currentWatchlistFilter === 'GAINERS') {
+  if (currentWatchlistFilter === 'BUY') {
+    filtered = filtered.filter(q => getWatchlistSignalType(q) === 'BUY');
+  } else if (currentWatchlistFilter === 'SELL') {
+    filtered = filtered.filter(q => getWatchlistSignalType(q) === 'SELL');
+  } else if (currentWatchlistFilter === 'EXIT') {
+    filtered = filtered.filter(q => getWatchlistSignalType(q) === 'EXIT');
+  } else if (currentWatchlistFilter === 'HOLD') {
+    filtered = filtered.filter(q => getWatchlistSignalType(q) === 'HOLD');
+  } else if (currentWatchlistFilter === 'GAINERS') {
     filtered = filtered.filter(q => (q.percentChange || 0) > 0);
   } else if (currentWatchlistFilter === 'LOSERS') {
     filtered = filtered.filter(q => (q.percentChange || 0) < 0);
@@ -290,63 +374,7 @@ function renderWatchlistTable() {
       ? AlertEngine.getWatchlistSignalState(q.symbol)
       : null;
 
-    let signalHtml = '';
-    if (signalState && signalState.signal === 'BUY') {
-      const entryP = signalState.price ? formatPrice(signalState.price) : (q.price ? formatPrice(q.price) : 'Market');
-      const tp = signalState.target1 ? formatPrice(signalState.target1) : '—';
-      const sl = signalState.stopLoss ? formatPrice(signalState.stopLoss) : '—';
-      signalHtml = `
-        <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="High-Conviction BUY Setup. Click to open in terminal.">
-          <div class="watchlist-signal-badge badge--buy">
-            <span class="signal-dot buy"></span> BUY @ ${entryP}
-          </div>
-          <div class="watchlist-exit-plan">
-            <span class="exit-item exit-tp">Exit TP: <strong>${tp}</strong> (${signalState.target1Pct || '+2.0%'})</span>
-            <span class="exit-sep">•</span>
-            <span class="exit-item exit-sl">Exit SL: <strong>${sl}</strong> (${signalState.stopLossPct || '-1.5%'})</span>
-          </div>
-        </div>
-      `;
-    } else if (signalState && signalState.signal === 'SELL' && !signalState.exitReason) {
-      const entryP = signalState.price ? formatPrice(signalState.price) : (q.price ? formatPrice(q.price) : 'Market');
-      const tp = signalState.target1 ? formatPrice(signalState.target1) : '—';
-      const sl = signalState.stopLoss ? formatPrice(signalState.stopLoss) : '—';
-      signalHtml = `
-        <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="High-Conviction SELL / SHORT Setup. Click to open in terminal.">
-          <div class="watchlist-signal-badge badge--sell">
-            <span class="signal-dot sell"></span> SELL @ ${entryP}
-          </div>
-          <div class="watchlist-exit-plan">
-            <span class="exit-item exit-tp">Exit Cover: <strong>${tp}</strong> (${signalState.target1Pct || '-2.0%'})</span>
-            <span class="exit-sep">•</span>
-            <span class="exit-item exit-sl">Exit SL: <strong>${sl}</strong> (${signalState.stopLossPct || '+1.5%'})</span>
-          </div>
-        </div>
-      `;
-    } else if (signalState && (signalState.signal === 'EXIT' || signalState.exitReason)) {
-      const exitTitle = signalState.exitReason || signalState.reason || 'Exit Condition Met';
-      signalHtml = `
-        <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="Position Exit Triggered. Click to view analysis.">
-          <div class="watchlist-signal-badge badge--exit">
-            <span class="signal-dot exit"></span> EXIT: ${exitTitle}
-          </div>
-          <div class="watchlist-exit-plan">
-            <span class="exit-item" style="color:var(--text-secondary)">Exit Trigger @ ${formatPrice(signalState.price || q.price)}</span>
-          </div>
-        </div>
-      `;
-    } else {
-      signalHtml = `
-        <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="Technical Consolidation. Monitoring for breakout.">
-          <div class="watchlist-signal-badge badge--neutral">
-            <span class="signal-dot neutral"></span> HOLD / WAIT
-          </div>
-          <div class="watchlist-exit-plan">
-            <span class="exit-item" style="color:var(--text-muted)">Monitoring confluence...</span>
-          </div>
-        </div>
-      `;
-    }
+    const signalHtml = buildWatchlistSignalHtml(q, signalState);
 
     return `
       <tr id="row-${q.symbol.replace(/[^A-Z0-9]/g, '_')}">
@@ -397,6 +425,157 @@ function renderWatchlistTable() {
       </tr>
     `;
   }).join('');
+}
+
+/**
+ * Accurately determine whether an instrument is BUY, SELL, or HOLD
+ * Based on authentic algorithmic confluence, active alerts, and momentum
+ */
+function getWatchlistSignalType(q, signalState) {
+  if (!signalState && typeof AlertEngine !== 'undefined' && typeof AlertEngine.getWatchlistSignalState === 'function') {
+    signalState = AlertEngine.getWatchlistSignalState(q.symbol);
+  }
+
+  // 1. Explicit High-Conviction EXIT, BUY or SELL from AlertEngine / PredictionEngine
+  if (signalState) {
+    const sig = (signalState.signal || '').toUpperCase();
+    const act = (signalState.action || '').toUpperCase();
+
+    // Check confirmed EXIT signal first
+    if (sig === 'EXIT' || signalState.exitReason || act.startsWith('EXIT')) {
+      return 'EXIT';
+    }
+
+    // Check confirmed BUY signal (ensure not 'NO BUY' or 'AVOID BUY' or 'HOLD')
+    if (
+      sig === 'BUY' ||
+      (act.includes('BUY') && !act.includes('NO BUY') && !act.includes('AVOID BUY') && !act.includes('HOLD') && !act.includes('WAIT'))
+    ) {
+      return 'BUY';
+    }
+
+    // Check confirmed SELL signal
+    if (
+      sig === 'SELL' ||
+      ((act.includes('SELL') || act.includes('BEAR')) && !act.includes('HOLD') && !act.includes('WAIT'))
+    ) {
+      return 'SELL';
+    }
+  }
+
+  // 2. Real-Time Price Action & Directional Momentum
+  const pct = (q && typeof q.percentChange === 'number')
+    ? q.percentChange
+    : ((q && typeof q.change === 'number' && q.price) ? ((q.change / q.price) * 100) : 0);
+
+  // Clear directional momentum thresholds
+  if (pct >= 0.8) {
+    return 'BUY';
+  } else if (pct <= -0.8) {
+    return 'SELL';
+  } else {
+    // Within -0.8% to +0.8%: Consolidation / Range / Neutral -> accurately HOLD
+    return 'HOLD';
+  }
+}
+
+/**
+ * Generate Actionable Signal Cell HTML
+ * Displays clean, accurate BUY, SELL, EXIT, or HOLD badges.
+ * Eliminates bulky, confusing multi-line exit text from table cells.
+ */
+function buildWatchlistSignalHtml(q, signalState) {
+  const currentPriceNum = (signalState && signalState.price)
+    ? signalState.price
+    : (q && q.price ? q.price : null);
+
+  const signalType = getWatchlistSignalType(q, signalState);
+  const entryP = currentPriceNum ? formatPrice(currentPriceNum) : 'Market';
+
+  if (signalType === 'BUY') {
+    let target1 = signalState && signalState.target1 ? signalState.target1 : null;
+    let stopLoss = signalState && signalState.stopLoss ? signalState.stopLoss : null;
+    if (currentPriceNum && currentPriceNum > 0) {
+      if (!target1 || target1 <= currentPriceNum) target1 = +(currentPriceNum * 1.025).toFixed(2);
+      if (!stopLoss || stopLoss >= currentPriceNum) stopLoss = +(currentPriceNum * 0.985).toFixed(2);
+    }
+    const tpStr = target1 ? formatPrice(target1) : '—';
+    const slStr = stopLoss ? formatPrice(stopLoss) : '—';
+
+    return `
+      <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="BUY Signal @ ${entryP} | Target: ${tpStr} | Stop Loss: ${slStr}. Click to open in terminal.">
+        <div class="watchlist-signal-badge badge--buy">
+          <span class="signal-dot buy"></span> BUY @ ${entryP}
+        </div>
+      </div>
+    `;
+  } else if (signalType === 'SELL') {
+    let target1 = signalState && signalState.target1 ? signalState.target1 : null;
+    let stopLoss = signalState && signalState.stopLoss ? signalState.stopLoss : null;
+    if (currentPriceNum && currentPriceNum > 0) {
+      if (!target1 || target1 >= currentPriceNum) target1 = +(currentPriceNum * 0.975).toFixed(2);
+      if (!stopLoss || stopLoss <= currentPriceNum) stopLoss = +(currentPriceNum * 1.015).toFixed(2);
+    }
+    const tpStr = target1 ? formatPrice(target1) : '—';
+    const slStr = stopLoss ? formatPrice(stopLoss) : '—';
+
+    return `
+      <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="SELL Signal @ ${entryP} | Cover Target: ${tpStr} | Stop Loss: ${slStr}. Click to open in terminal.">
+        <div class="watchlist-signal-badge badge--sell">
+          <span class="signal-dot sell"></span> SELL @ ${entryP}
+        </div>
+      </div>
+    `;
+  } else if (signalType === 'EXIT') {
+    const exitReasonText = (signalState && (signalState.exitReason || signalState.reason)) || 'Exit target/stop reached';
+    return `
+      <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="EXIT Signal @ ${entryP} | ${exitReasonText}. Click to open in terminal.">
+        <div class="watchlist-signal-badge badge--exit">
+          <span class="signal-dot exit"></span> EXIT @ ${entryP}
+        </div>
+      </div>
+    `;
+  } else {
+    // HOLD (Consolidation / Neutral)
+    let target1 = signalState && signalState.target1 ? signalState.target1 : null;
+    let stopLoss = signalState && signalState.stopLoss ? signalState.stopLoss : null;
+    if (currentPriceNum && currentPriceNum > 0) {
+      if (!target1) target1 = +(currentPriceNum * 1.02).toFixed(2);
+      if (!stopLoss) stopLoss = +(currentPriceNum * 0.98).toFixed(2);
+    }
+    const tpStr = target1 ? formatPrice(target1) : '—';
+    const slStr = stopLoss ? formatPrice(stopLoss) : '—';
+
+    return `
+      <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="HOLD Signal @ ${entryP} | Resistance: ${tpStr} | Support: ${slStr}. Click to open in terminal.">
+        <div class="watchlist-signal-badge badge--hold">
+          <span class="signal-dot hold"></span> HOLD @ ${entryP}
+        </div>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Update Individual Signal Cells without refreshing the entire table
+ */
+function updateWatchlistSignalCells(specificSymbol = null) {
+  if (!watchlistQuotes || watchlistQuotes.length === 0) return;
+  const list = specificSymbol
+    ? watchlistQuotes.filter(q => q.symbol === specificSymbol)
+    : watchlistQuotes;
+
+  list.forEach(q => {
+    const rowId = `row-${q.symbol.replace(/[^A-Z0-9]/g, '_')}`;
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    const cell = row.querySelector('.signal-cell');
+    if (!cell) return;
+    const signalState = (typeof AlertEngine !== 'undefined' && typeof AlertEngine.getWatchlistSignalState === 'function')
+      ? AlertEngine.getWatchlistSignalState(q.symbol)
+      : null;
+    cell.innerHTML = buildWatchlistSignalHtml(q, signalState);
+  });
 }
 
 /**
@@ -585,20 +764,71 @@ async function handleAddSymbol(symbol) {
     return;
   }
 
-  // Update local list immediately for instant UX feedback
+  // 1. Immediately update UI state & local symbols list
   watchlistSymbols.push(cleanSym);
-  saveWatchlist(watchlistSymbols);
-  if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.checkSymbolSignal === 'function') {
-    AlertEngine.checkSymbolSignal(cleanSym);
-  }
+
+  // 2. Add placeholder quote to watchlistQuotes so it appears immediately in the table
+  const displayInfo = formatInstrumentDisplay(cleanSym);
+  const placeholderQuote = {
+    symbol: cleanSym,
+    name: displayInfo.nameDisplay || cleanSym.replace('.NS', '').replace('.BO', ''),
+    price: null,
+    change: null,
+    percentChange: null,
+    open: null,
+    high: null,
+    low: null,
+    volume: 0,
+    exchange: cleanSym.endsWith('.BO') || cleanSym === '^BSESN' ? 'BSE' : 'NSE',
+  };
+  watchlistQuotes.push(placeholderQuote);
+  renderWatchlistTable();
+  updateWatchlistStats();
 
   showToast(`Added ${cleanSym} to Watchlist`, 'success');
 
-  // Sync with backend API
-  API.addToWatchlistAPI(cleanSym).catch(() => {});
+  // 3. Immediately persist locally and monitor in AlertEngine
+  try {
+    localStorage.setItem('kdelta_watchlist', JSON.stringify(watchlistSymbols));
+    if (typeof AlertEngine !== 'undefined') {
+      if (typeof AlertEngine.checkSymbolSignal === 'function') {
+        AlertEngine.checkSymbolSignal(cleanSym);
+      }
+      if (typeof AlertEngine.syncWatchlist === 'function') {
+        AlertEngine.syncWatchlist();
+      }
+    }
+    if (typeof API !== 'undefined' && typeof API.subscribeWatchlistSymbols === 'function') {
+      API.subscribeWatchlistSymbols([cleanSym]);
+    }
+  } catch (e) {}
 
-  // Fetch updated quotes and re-render
-  await loadWatchlistData(true);
+  // 4. Synchronize with backend API
+  try {
+    if (typeof API !== 'undefined') {
+      const serverUpdated = await API.syncWatchlist(watchlistSymbols);
+      if (Array.isArray(serverUpdated) && serverUpdated.length > 0) {
+        watchlistSymbols = serverUpdated;
+      }
+    }
+  } catch (err) {
+    console.warn('Backend sync failed on add:', err);
+  }
+
+  // 5. Fetch quote for newly added symbol and update table
+  try {
+    const quote = await API.fetchQuote(cleanSym);
+    if (quote && quote.symbol === cleanSym) {
+      const idx = watchlistQuotes.findIndex(q => q.symbol === cleanSym);
+      if (idx !== -1) {
+        watchlistQuotes[idx] = quote;
+      }
+      renderWatchlistTable();
+      updateWatchlistStats();
+    }
+  } catch (err) {
+    console.warn('Failed to fetch quote for newly added stock:', err);
+  }
 }
 
 /**
@@ -608,23 +838,36 @@ async function handleRemoveSymbol(symbol) {
   if (!symbol) return;
   const cleanSym = symbol.trim().toUpperCase();
 
-  // Update local list immediately
+  // 1. Immediately remove from local arrays
   watchlistSymbols = watchlistSymbols.filter(s => s !== cleanSym);
   watchlistQuotes = watchlistQuotes.filter(q => q.symbol !== cleanSym);
 
-  // Save to localStorage immediately and unmonitor in AlertEngine
-  saveWatchlist(watchlistSymbols);
-  if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.unmonitorSymbol === 'function') {
-    AlertEngine.unmonitorSymbol(cleanSym);
-  }
-
+  // 2. Immediately re-render table and stats
   renderWatchlistTable();
   updateWatchlistStats();
   showToast(`Removed ${cleanSym} from Watchlist`, 'info');
 
-  // Sync complete list to backend cleanly (prevents race conditions)
+  // 3. Immediately persist locally and unmonitor in AlertEngine
   try {
-    await API.syncWatchlist(watchlistSymbols);
+    localStorage.setItem('kdelta_watchlist', JSON.stringify(watchlistSymbols));
+    if (typeof AlertEngine !== 'undefined') {
+      if (typeof AlertEngine.unmonitorSymbol === 'function') {
+        AlertEngine.unmonitorSymbol(cleanSym);
+      }
+      if (typeof AlertEngine.syncWatchlist === 'function') {
+        AlertEngine.syncWatchlist();
+      }
+    }
+    if (typeof API !== 'undefined' && typeof API.unsubscribeSymbol === 'function') {
+      API.unsubscribeSymbol(cleanSym);
+    }
+  } catch (e) {}
+
+  // 4. Synchronize with backend API
+  try {
+    if (typeof API !== 'undefined') {
+      await API.syncWatchlist(watchlistSymbols);
+    }
   } catch (err) {
     console.warn('Backend sync failed on remove:', err);
   }
@@ -634,11 +877,66 @@ async function handleRemoveSymbol(symbol) {
  * Restore Default Watchlist if user wants to reset
  */
 async function restoreDefaultWatchlist() {
-  watchlistSymbols = [...CONFIG.DEFAULT_WATCHLIST];
-  saveWatchlist(watchlistSymbols);
-  API.syncWatchlist(watchlistSymbols).catch(() => {});
+  watchlistSymbols = [...(CONFIG.DEFAULT_WATCHLIST || [])];
+  localStorage.setItem('kdelta_watchlist', JSON.stringify(watchlistSymbols));
+  if (typeof API !== 'undefined') {
+    await API.syncWatchlist(watchlistSymbols).catch(() => {});
+  }
   showToast('Default watchlist restored', 'success');
   await loadWatchlistData();
+}
+
+/**
+ * Handle real-time WebSocket tick update for watched securities
+ */
+function handleLiveTickUpdate(tick) {
+  if (!tick || !tick.symbol || typeof tick.price !== 'number') return;
+  const sym = tick.symbol;
+  const quote = watchlistQuotes.find(q => q.symbol === sym);
+  if (!quote) return;
+
+  const oldPrice = quote.price;
+  quote.price = tick.price;
+  if (typeof tick.change === 'number') quote.change = tick.change;
+  if (typeof tick.percentChange === 'number') quote.percentChange = tick.percentChange;
+  if (typeof tick.high === 'number' && tick.high > (quote.high || 0)) quote.high = tick.high;
+  if (typeof tick.low === 'number' && (quote.low === null || tick.low < quote.low)) quote.low = tick.low;
+  if (typeof tick.volume === 'number') quote.volume = tick.volume;
+
+  const rowId = `row-${sym.replace(/[^A-Z0-9]/g, '_')}`;
+  const row = document.getElementById(rowId);
+  if (row) {
+    const isUp = (quote.change || quote.percentChange) >= 0;
+    const changeClass = isUp ? 'price-up' : 'price-down';
+
+    const priceCell = row.querySelector('.price-cell');
+    if (priceCell) {
+      priceCell.textContent = formatPrice(quote.price);
+      if (oldPrice !== null && oldPrice !== undefined && oldPrice !== quote.price) {
+        priceCell.classList.remove('tick-up', 'tick-down');
+        void priceCell.offsetWidth; // force DOM reflow
+        priceCell.classList.add(quote.price >= oldPrice ? 'tick-up' : 'tick-down');
+      }
+    }
+
+    const cells = row.querySelectorAll('td');
+    if (cells[3]) {
+      cells[3].className = `${changeClass}`;
+      cells[3].textContent = formatChange(quote.change);
+    }
+    if (cells[4]) {
+      cells[4].className = `${changeClass}`;
+      cells[4].textContent = formatPercent(quote.percentChange);
+    }
+    if (cells[5]) {
+      const signalState = (typeof AlertEngine !== 'undefined' && typeof AlertEngine.getWatchlistSignalState === 'function')
+        ? AlertEngine.getWatchlistSignalState(quote.symbol)
+        : null;
+      cells[5].innerHTML = buildWatchlistSignalHtml(quote, signalState);
+    }
+  }
+
+  updateWatchlistStats();
 }
 
 /**
@@ -664,42 +962,83 @@ function openSymbolAlertModal(symbol, price) {
 function updateWatchlistPushUI() {
   const dot = document.getElementById('watchlist-push-dot');
   const text = document.getElementById('watchlist-push-text');
-  const btn = document.getElementById('btn-enable-push');
+  const btnOn = document.getElementById('btn-push-on');
+  const btnOff = document.getElementById('btn-push-off');
   if (!text) return;
 
+  const isEnabled = (typeof AlertEngine !== 'undefined' && typeof AlertEngine.getPushEnabled === 'function')
+    ? AlertEngine.getPushEnabled()
+    : true;
+
   const perm = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
-  if (perm === 'granted') {
+
+  if (!isEnabled) {
+    if (dot) dot.className = 'status-dot';
+    text.textContent = 'Do Not Push (Notifications Muted)';
+    if (btnOn) {
+      btnOn.className = 'btn btn--ghost btn--sm btn-push-toggle';
+      btnOn.style.opacity = '0.65';
+    }
+    if (btnOff) {
+      btnOff.className = 'btn btn--primary btn--sm btn-push-toggle btn-push-muted';
+      btnOff.style.opacity = '1';
+    }
+  } else if (perm === 'granted') {
     if (dot) dot.className = 'status-dot open';
-    text.textContent = 'Desktop Push Active (Buy/Sell Radar)';
-    if (btn) btn.style.display = 'none';
+    text.textContent = 'Push Notifications Active (Buy & Sell Radar)';
+    if (btnOn) {
+      btnOn.className = 'btn btn--primary btn--sm btn-push-toggle btn-push-active';
+      btnOn.style.opacity = '1';
+    }
+    if (btnOff) {
+      btnOff.className = 'btn btn--ghost btn--sm btn-push-toggle';
+      btnOff.style.opacity = '0.65';
+    }
   } else if (perm === 'denied') {
     if (dot) dot.className = 'status-dot';
-    text.textContent = 'Desktop Push Blocked in Browser';
-    if (btn) {
-      btn.textContent = 'Notification Settings';
-      btn.style.display = 'inline-flex';
+    text.textContent = 'Push Blocked in Browser Settings';
+    if (btnOn) {
+      btnOn.className = 'btn btn--ghost btn--sm btn-push-toggle';
+      btnOn.style.opacity = '0.65';
+    }
+    if (btnOff) {
+      btnOff.className = 'btn btn--ghost btn--sm btn-push-toggle';
+      btnOff.style.opacity = '0.65';
     }
   } else {
     if (dot) dot.className = 'status-dot';
-    text.textContent = 'Desktop Push Inactive';
-    if (btn) {
-      btn.textContent = 'Enable Desktop Push';
-      btn.style.display = 'inline-flex';
+    text.textContent = 'Push Notifications Inactive';
+    if (btnOn) {
+      btnOn.className = 'btn btn--primary btn--sm btn-push-toggle';
+      btnOn.style.opacity = '1';
+    }
+    if (btnOff) {
+      btnOff.className = 'btn btn--ghost btn--sm btn-push-toggle';
+      btnOff.style.opacity = '0.65';
     }
   }
 }
 
-async function enableWatchlistPush() {
-  if (typeof AlertEngine !== 'undefined') {
-    await AlertEngine.requestNotificationPermission();
-    updateWatchlistPushUI();
+async function setWatchlistPush(enable) {
+  if (enable) {
+    if (typeof AlertEngine !== 'undefined') {
+      if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+        const perm = await AlertEngine.requestNotificationPermission();
+        if (perm === 'granted') {
+          AlertEngine.setPushEnabled(true);
+        } else {
+          AlertEngine.setPushEnabled(false);
+        }
+      } else {
+        AlertEngine.setPushEnabled(true);
+      }
+    }
+  } else {
+    if (typeof AlertEngine !== 'undefined') {
+      AlertEngine.setPushEnabled(false);
+    }
   }
-}
-
-function testWatchlistNotification(type = 'BUY') {
-  if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.triggerTestNotification === 'function') {
-    AlertEngine.triggerTestNotification(type);
-  }
+  updateWatchlistPushUI();
 }
 
 // Global window bindings
@@ -713,6 +1052,6 @@ if (typeof window !== 'undefined') {
   window.launchTerminal = launchTerminal;
   window.openSymbolAlertModal = openSymbolAlertModal;
   window.updateWatchlistPushUI = updateWatchlistPushUI;
-  window.enableWatchlistPush = enableWatchlistPush;
-  window.testWatchlistNotification = testWatchlistNotification;
+  window.setWatchlistPush = setWatchlistPush;
+  window.handleLiveTickUpdate = handleLiveTickUpdate;
 }

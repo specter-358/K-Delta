@@ -7,11 +7,15 @@
   <title>K-Delta</title>
   <meta name="description"
     content="Persistent Indian stock market watchlist and real-time equity monitor for NSE & BSE securities.">
+  <!-- Google Fonts Preconnect & Stylesheet -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/logo.png">
-  <link rel="stylesheet" href="css/main.css?v=4.0">
-  <link rel="stylesheet" href="css/watchlist.css?v=4.0">
-  <link rel="stylesheet" href="css/alerts.css?v=4.0">
-  <script src="js/config.js"></script>
+  <link rel="stylesheet" href="css/main.css?v=5.2">
+  <link rel="stylesheet" href="css/watchlist.css?v=5.2">
+  <link rel="stylesheet" href="css/alerts.css?v=5.2">
+  <script src="js/config.js?v=5.2"></script>
 </head>
 
 <body class="dark-theme">
@@ -106,6 +110,13 @@
           </svg>
           Refresh
         </button>
+        <button class="btn btn--ghost btn--sm" onclick="restoreDefaultWatchlist()" title="Reset to Default Curated Securities" id="btn-reset-watchlist">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+          Reset Defaults
+        </button>
       </div>
     </div>
 
@@ -131,16 +142,23 @@
       <div class="notif-banner-right">
         <div class="notif-status-badge" id="watchlist-push-status">
           <span class="status-dot" id="watchlist-push-dot"></span>
-          <span id="watchlist-push-text">Desktop Push: Checking...</span>
+          <span id="watchlist-push-text">Push Notifications: Checking...</span>
         </div>
-        <button class="btn btn--primary btn--sm" id="btn-enable-push" onclick="enableWatchlistPush()">
-          Enable Desktop Notifications
+        <button class="btn btn--primary btn--sm btn-push-toggle" id="btn-push-on" onclick="setWatchlistPush(true)" title="Turn ON real-time Buy &amp; Sell Desktop Push Notifications">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          Push Notifications
         </button>
-        <button class="btn btn--ghost btn--sm" onclick="testWatchlistNotification('BUY')" title="Test Buy Notification with Exit Targets">
-          Test BUY Alert
-        </button>
-        <button class="btn btn--ghost btn--sm" onclick="testWatchlistNotification('SELL')" title="Test Sell Notification with Cover Exits">
-          Test SELL Alert
+        <button class="btn btn--ghost btn--sm btn-push-toggle" id="btn-push-off" onclick="setWatchlistPush(false)" title="Turn OFF / Mute Desktop Push Notifications">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            <path d="M18.63 13A17.89 17.89 0 0 1 18 8"></path>
+            <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path>
+            <path d="M1 1l22 22"></path>
+          </svg>
+          Do Not Push Notifications
         </button>
       </div>
     </div>
@@ -183,11 +201,23 @@
       </div>
       <div class="watchlist-filter-pills">
         <button class="filter-pill active" data-filter="ALL" onclick="filterWatchlist('ALL')">All Securities</button>
+        <button class="filter-pill" data-filter="BUY" onclick="filterWatchlist('BUY')">
+          <span class="badge-dot bullish"></span> Buy Signals
+        </button>
+        <button class="filter-pill" data-filter="SELL" onclick="filterWatchlist('SELL')">
+          <span class="badge-dot bearish"></span> Sell Signals
+        </button>
+        <button class="filter-pill" data-filter="EXIT" onclick="filterWatchlist('EXIT')">
+          <span class="badge-dot" style="background:#f59e0b"></span> Exit Signals
+        </button>
+        <button class="filter-pill" data-filter="HOLD" onclick="filterWatchlist('HOLD')">
+          <span class="badge-dot" style="background:#fbbf24"></span> Hold Signals
+        </button>
         <button class="filter-pill" data-filter="GAINERS" onclick="filterWatchlist('GAINERS')">
-          <span class="badge-dot bullish"></span> Gainers
+          Gainers
         </button>
         <button class="filter-pill" data-filter="LOSERS" onclick="filterWatchlist('LOSERS')">
-          <span class="badge-dot bearish"></span> Decliners
+          Decliners
         </button>
         <button class="filter-pill" data-filter="INDICES" onclick="filterWatchlist('INDICES')">
           <span class="badge-dot neutral"></span> Indices
@@ -205,7 +235,7 @@
             <th>Last Price (LTP)</th>
             <th>Change (₹)</th>
             <th>% Change</th>
-            <th>Signal & Exit Strategy</th>
+            <th>Signal (Buy / Sell / Exit / Hold)</th>
             <th>Day High / Low</th>
             <th>Volume</th>
             <th>Market Status</th>
@@ -265,14 +295,14 @@
   </footer>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=4.0"></script>
-  <script src="js/api.js?v=4.0"></script>
-  <script src="js/indicators.js?v=4.0"></script>
-  <script src="js/patterns.js?v=4.0"></script>
-  <script src="js/predictions.js?v=4.0"></script>
-  <script src="js/audioAlerts.js?v=4.0"></script>
-  <script src="js/alertEngine.js?v=4.0"></script>
-  <script src="js/watchlist.js?v=4.0"></script>
+  <script src="js/config.js?v=5.3"></script>
+  <script src="js/api.js?v=5.3"></script>
+  <script src="js/indicators.js?v=5.3"></script>
+  <script src="js/patterns.js?v=5.3"></script>
+  <script src="js/predictions.js?v=5.3"></script>
+  <script src="js/audioAlerts.js?v=5.3"></script>
+  <script src="js/alertEngine.js?v=5.3"></script>
+  <script src="js/watchlist.js?v=5.3"></script>
 
 </body>
 

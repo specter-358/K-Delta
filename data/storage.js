@@ -10,31 +10,41 @@ const DATA_DIR = path.join(__dirname);
 const WATCHLIST_FILE = path.join(DATA_DIR, 'watchlist.json');
 const USER_WATCHLISTS_FILE = path.join(DATA_DIR, 'user_watchlists.json');
 
-const DEFAULT_WATCHLIST = [];
+const DEFAULT_WATCHLIST = [
+  'TATASTEEL.NS',
+  'TATAMOTORS.NS',
+  'IFCI.NS',
+  'ITC.NS',
+  'RVNL.NS',
+  'HINDCOPPER.NS',
+];
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+let cachedUserWatchlists = null;
+let cachedGuestWatchlist = null;
+
 function loadUserWatchlists() {
+  if (cachedUserWatchlists !== null) return cachedUserWatchlists;
   try {
     if (fs.existsSync(USER_WATCHLISTS_FILE)) {
-      return JSON.parse(fs.readFileSync(USER_WATCHLISTS_FILE, 'utf8'));
+      cachedUserWatchlists = JSON.parse(fs.readFileSync(USER_WATCHLISTS_FILE, 'utf8'));
+      return cachedUserWatchlists;
     }
   } catch (err) {
     console.error('Error loading user watchlists:', err);
   }
-  return {};
+  cachedUserWatchlists = {};
+  return cachedUserWatchlists;
 }
 
 function saveUserWatchlists(map) {
-  try {
-    fs.writeFileSync(USER_WATCHLISTS_FILE, JSON.stringify(map, null, 2), 'utf8');
-    return true;
-  } catch (err) {
-    console.error('Error saving user watchlists:', err);
-    return false;
-  }
+  cachedUserWatchlists = map;
+  fs.promises.writeFile(USER_WATCHLISTS_FILE, JSON.stringify(map, null, 2), 'utf8')
+    .catch(err => console.error('Error saving user watchlists asynchronously:', err));
+  return true;
 }
 
 /**
@@ -43,18 +53,29 @@ function saveUserWatchlists(map) {
 function getWatchlist(userId = 'guest') {
   try {
     if (!userId || userId === 'guest') {
-      if (!fs.existsSync(WATCHLIST_FILE)) return [...DEFAULT_WATCHLIST];
+      if (cachedGuestWatchlist !== null) return [...cachedGuestWatchlist];
+      if (!fs.existsSync(WATCHLIST_FILE)) {
+        cachedGuestWatchlist = [...DEFAULT_WATCHLIST];
+        return cachedGuestWatchlist;
+      }
       let data = fs.readFileSync(WATCHLIST_FILE, 'utf8');
       if (data.charCodeAt(0) === 0xFEFF) data = data.slice(1);
       const parsed = JSON.parse(data.trim() || '[]');
-      return Array.isArray(parsed) ? parsed : [];
+      cachedGuestWatchlist = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...DEFAULT_WATCHLIST];
+      return [...cachedGuestWatchlist];
     }
 
     const map = loadUserWatchlists();
-    return Array.isArray(map[userId]) ? map[userId] : [];
+    if (!Object.prototype.hasOwnProperty.call(map, userId)) {
+      // First time user login: initialize watchlist with guest/default list
+      const fallbackList = getWatchlist('guest');
+      map[userId] = fallbackList && fallbackList.length > 0 ? [...fallbackList] : [...DEFAULT_WATCHLIST];
+      saveUserWatchlists(map);
+    }
+    return Array.isArray(map[userId]) ? [...map[userId]] : [...DEFAULT_WATCHLIST];
   } catch (err) {
     console.error('Error reading watchlist:', err);
-    return [];
+    return [...DEFAULT_WATCHLIST];
   }
 }
 
@@ -76,7 +97,9 @@ function saveWatchlist(userIdOrList, listParam) {
     const unique = Array.from(new Set(list.map(s => String(s).trim().toUpperCase()).filter(Boolean)));
 
     if (userId === 'guest') {
-      fs.writeFileSync(WATCHLIST_FILE, JSON.stringify(unique, null, 2), 'utf8');
+      cachedGuestWatchlist = unique;
+      fs.promises.writeFile(WATCHLIST_FILE, JSON.stringify(unique, null, 2), 'utf8')
+        .catch(err => console.error('Error saving guest watchlist asynchronously:', err));
     } else {
       const map = loadUserWatchlists();
       map[userId] = unique;

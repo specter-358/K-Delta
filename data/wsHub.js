@@ -5,7 +5,7 @@
    ============================================================ */
 
 const WebSocket = require('ws');
-const { provider, normalizeSymbol } = require('./marketProvider');
+const { provider, normalizeSymbol, isIndianMarketOpen } = require('./marketProvider');
 const { candleEngine } = require('./candleEngine');
 const authStore = require('./authStore');
 
@@ -95,7 +95,7 @@ class SecureWebSocketHub {
       });
 
       // Send initial secure acknowledgement with feed quality status
-      const isMarketOpen = provider.isMarketOpen ? provider.isMarketOpen() : true;
+      const isMarketOpen = isIndianMarketOpen();
       ws.send(JSON.stringify({
         type: 'connected',
         feedStatus: isMarketOpen ? 'LIVE' : 'DELAYED',

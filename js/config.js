@@ -7,8 +7,15 @@ var CONFIG = window.CONFIG = {
   // Backend API Base URL
   API_BASE: '', // Relative URL routes to Express backend on the same origin
 
-  // Default Indian stocks for the watchlist (empty by default)
-  DEFAULT_WATCHLIST: [],
+  // Default Indian stocks for the watchlist (curated high-liquidity NSE/BSE securities)
+  DEFAULT_WATCHLIST: [
+    'TATASTEEL.NS',
+    'TATAMOTORS.NS',
+    'IFCI.NS',
+    'ITC.NS',
+    'RVNL.NS',
+    'HINDCOPPER.NS',
+  ],
 
   // Default terminal benchmark symbol (NIFTY 50 benchmark index)
   DEFAULT_SYMBOL: '^NSEI',

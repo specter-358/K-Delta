@@ -89,11 +89,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load initial symbol
   loadSymbol(currentSymbol);
 
-  // Background ticker polling every 15 seconds during market hours
-  refreshTimer = setInterval(() => {
-    loadLiveTickerTape();
-    updateMarketStatus();
-  }, 15000);
+  // Background ticker polling every 25 seconds during market hours with visibilityState suspension
+  function startDashboardTimers() {
+    if (!refreshTimer) {
+      refreshTimer = setInterval(() => {
+        if (!document.hidden) {
+          loadLiveTickerTape();
+          updateMarketStatus();
+        }
+      }, 25000);
+    }
+  }
+
+  function stopDashboardTimers() {
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopDashboardTimers();
+    } else {
+      startDashboardTimers();
+      loadLiveTickerTape();
+      updateMarketStatus();
+    }
+  });
+
+  startDashboardTimers();
 });
 
 /**
@@ -573,6 +598,7 @@ function updateOverlays(prediction) {
 
 /**
  * Render Signal & Hero Confidence Card
+ * Strictly outputs: BUY, SELL, EXIT, or HOLD
  */
 function renderSignalHeader(pred) {
   const badge = document.getElementById('signal-badge');
@@ -581,36 +607,49 @@ function renderSignalHeader(pred) {
   const headlineEl = document.getElementById('action-headline');
 
   const isPosOpen = pred && pred.positionState === 'OPEN_LONG';
+  const isExit = !!(pred && (pred.exitReason || (pred.action && pred.action.toUpperCase().startsWith('EXIT'))));
+  const isBuy = !isExit && !isPosOpen && (pred && pred.signal && pred.signal.toUpperCase().includes('BUY'));
+  const isSell = !isExit && !isPosOpen && (pred && pred.signal && pred.signal.toUpperCase().includes('SELL'));
+
+  let directive = 'HOLD';
   let sigKey = 'hold';
 
-  if (isPosOpen) {
-    sigKey = (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold';
+  if (isExit) {
+    directive = 'EXIT';
+    sigKey = 'exit';
+  } else if (isBuy) {
+    directive = 'BUY';
+    sigKey = 'buy';
+  } else if (isSell) {
+    directive = 'SELL';
+    sigKey = 'sell';
   } else {
-    sigKey = (pred.signal || '').toLowerCase().includes('buy') ? 'buy'
-      : (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold';
+    directive = 'HOLD';
+    sigKey = 'hold';
   }
 
   if (badge) {
     badge.className = `signal-badge signal-badge--${sigKey}`;
-    badge.textContent = pred.signal;
+    badge.textContent = directive;
   }
 
   if (actionPill) {
     actionPill.className = `action-pill pill--${sigKey}`;
-    actionPill.textContent = pred.action || pred.signal;
+    actionPill.textContent = (pred && pred.action) ? pred.action : directive;
   }
 
   if (confEl) {
-    confEl.innerHTML = `Confluence Confidence: <strong>${pred.confidence}%</strong>`;
+    confEl.innerHTML = `Confluence Confidence: <strong>${pred ? pred.confidence : 0}%</strong>`;
   }
 
   if (headlineEl) {
-    headlineEl.textContent = pred.tradeSetup ? pred.tradeSetup.actionHeadline : 'Consolidation phase detected.';
+    headlineEl.textContent = pred && pred.tradeSetup ? pred.tradeSetup.actionHeadline : 'Consolidation phase detected.';
   }
 }
 
 /**
  * Render Banner Action Setup
+ * Strictly outputs: BUY, SELL, EXIT, or HOLD
  */
 function renderBannerAction(pred) {
   const banner = document.getElementById('action-alert-banner');
@@ -618,16 +657,18 @@ function renderBannerAction(pred) {
   const text = document.getElementById('banner-action-text');
   const levels = document.getElementById('banner-action-levels');
 
-  if (!banner || !pred.tradeSetup) return;
+  if (!banner || !pred || !pred.tradeSetup) return;
 
   const isPosOpen = pred && pred.positionState === 'OPEN_LONG';
-  const sigKey = isPosOpen
-    ? ((pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold')
-    : ((pred.signal || '').toLowerCase().includes('buy') ? 'buy'
-      : (pred.signal || '').toLowerCase().includes('sell') ? 'sell' : 'hold');
+  const isExit = !!(pred && (pred.exitReason || (pred.action && pred.action.toUpperCase().startsWith('EXIT'))));
+  const isBuy = !isExit && !isPosOpen && (pred.signal || '').toUpperCase().includes('BUY');
+  const isSell = !isExit && !isPosOpen && (pred.signal || '').toUpperCase().includes('SELL');
+
+  const sigKey = isExit ? 'exit' : (isBuy ? 'buy' : (isSell ? 'sell' : 'hold'));
+  const directive = isExit ? 'EXIT' : (isBuy ? 'BUY' : (isSell ? 'SELL' : 'HOLD'));
 
   banner.className = `action-alert-banner banner--${sigKey}`;
-  if (badge) badge.textContent = pred.action || pred.signal;
+  if (badge) badge.textContent = directive;
   if (text) text.textContent = pred.tradeSetup.timingAdvice || pred.tradeSetup.actionHeadline;
 
   if (levels && pred.tradeSetup.hasSetup) {

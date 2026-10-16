@@ -52,11 +52,8 @@ function loadData() {
 }
 
 function saveUsers() {
-  try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
-  } catch (err) {
-    console.error('[AUTH-STORE] Failed to save users:', err.message);
-  }
+  fs.promises.writeFile(USERS_FILE, JSON.stringify(users, null, 2), 'utf8')
+    .catch(err => console.error('[AUTH-STORE] Failed to save users asynchronously:', err.message));
 }
 
 function recordAudit(eventType, userId, ip, details = {}) {
@@ -71,11 +68,8 @@ function recordAudit(eventType, userId, ip, details = {}) {
   auditLogs.unshift(log);
   if (auditLogs.length > 500) auditLogs.pop();
 
-  try {
-    fs.writeFileSync(AUDIT_FILE, JSON.stringify(auditLogs.slice(0, 200), null, 2), 'utf8');
-  } catch (e) {
-    // Ignore audit write errors
-  }
+  fs.promises.writeFile(AUDIT_FILE, JSON.stringify(auditLogs.slice(0, 200), null, 2), 'utf8')
+    .catch(() => {});
 }
 
 // Initial load

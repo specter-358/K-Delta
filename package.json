@@ -22,6 +22,7 @@
   "homepage": "https://github.com/specter-358/K-Delta#readme",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

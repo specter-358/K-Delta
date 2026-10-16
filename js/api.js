@@ -141,6 +141,31 @@ const API = (() => {
   }
 
   /**
+   * Clear API Cache (in-memory Map and sessionStorage)
+   */
+  function clearCache(pattern) {
+    if (!pattern) {
+      cache.clear();
+      try {
+        for (let i = sessionStorage.length - 1; i >= 0; i--) {
+          const k = sessionStorage.key(i);
+          if (k && k.startsWith('kdelta_cache_')) sessionStorage.removeItem(k);
+        }
+      } catch (e) {}
+      return;
+    }
+    for (const key of cache.keys()) {
+      if (key.includes(pattern)) cache.delete(key);
+    }
+    try {
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const k = sessionStorage.key(i);
+        if (k && k.includes(pattern)) sessionStorage.removeItem(k);
+      }
+    } catch (e) {}
+  }
+
+  /**
    * Internal fetch with multi-level caching (Memory + SessionStorage) for instant page switches
    */
   async function apiFetch(endpoint, params = {}, options = {}) {
@@ -155,7 +180,12 @@ const API = (() => {
                                 endpoint.includes('/api/market/indices') || 
                                 endpoint.includes('/api/movers');
 
-    if (isGet) {
+    const isDynamicUserReq = endpoint.includes('/api/watchlist') ||
+                             endpoint.includes('/api/alerts') ||
+                             endpoint.includes('/api/paper') ||
+                             endpoint.includes('/api/auth');
+
+    if (isGet && !isDynamicUserReq) {
       const ttl = isRealTimeMarketReq ? 1000 : 30000;
       // 1. Check in-memory Map cache
       const memCached = cache.get(cacheKey);
@@ -173,7 +203,7 @@ const API = (() => {
             if (age < 60000) { // 60s session TTL
               cache.set(cacheKey, { data: ssCached.data, timestamp: ssCached.timestamp });
               if (age > 15000) {
-                fetchFreshAndStore(url, options, cacheKey).catch(() => {});
+                fetchFreshAndStore(url, options, cacheKey, false).catch(() => {});
               }
               return ssCached.data;
             }
@@ -182,10 +212,10 @@ const API = (() => {
       }
     }
 
-    return await fetchFreshAndStore(url, options, cacheKey);
+    return await fetchFreshAndStore(url, options, cacheKey, !isDynamicUserReq && isGet);
   }
 
-  async function fetchFreshAndStore(url, options, cacheKey) {
+  async function fetchFreshAndStore(url, options, cacheKey, shouldCache = true) {
     const isGet = !options.method || options.method === 'GET';
     const headers = {
       'Content-Type': 'application/json',
@@ -207,12 +237,17 @@ const API = (() => {
     }
 
     const data = await response.json();
-    if (isGet) {
+    if (isGet && shouldCache) {
       const payload = { data, timestamp: Date.now() };
       cache.set(cacheKey, payload);
       try {
         sessionStorage.setItem(`kdelta_cache_${cacheKey}`, JSON.stringify(payload));
       } catch (e) {}
+    } else if (!isGet) {
+      // Invalidate relevant cache on mutating requests
+      if (url.includes('/api/watchlist')) clearCache('/api/watchlist');
+      if (url.includes('/api/alerts')) clearCache('/api/alerts');
+      if (url.includes('/api/paper')) clearCache('/api/paper');
     }
     return data;
   }
@@ -360,14 +395,13 @@ const API = (() => {
   }
 
   /**
-   * Watchlist API Methods
+   * Watchlist API Methods (Authenticated with User Isolation)
    */
   async function fetchWatchlist() {
     try {
-      const response = await fetch('/api/watchlist');
-      if (!response.ok) throw new Error('Failed to load watchlist');
-      const data = await response.json();
-      if (Array.isArray(data)) {
+      clearCache('/api/watchlist');
+      const data = await apiFetch('/api/watchlist');
+      if (Array.isArray(data) && data.length > 0) {
         localStorage.setItem('kdelta_watchlist', JSON.stringify(data));
         return data;
       }
@@ -380,13 +414,16 @@ const API = (() => {
 
   async function syncWatchlist(symbols) {
     try {
-      const response = await fetch('/api/watchlist', {
+      clearCache('/api/watchlist');
+      const data = await apiFetch('/api/watchlist', {}, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbols }),
       });
-      if (!response.ok) throw new Error('Failed to sync watchlist');
-      return await response.json();
+      if (Array.isArray(data)) {
+        localStorage.setItem('kdelta_watchlist', JSON.stringify(data));
+        return data;
+      }
+      return symbols;
     } catch (err) {
       console.warn('syncWatchlist error:', err);
       return symbols;
@@ -395,13 +432,14 @@ const API = (() => {
 
   async function addToWatchlistAPI(symbol) {
     try {
-      const response = await fetch('/api/watchlist', {
+      clearCache('/api/watchlist');
+      const data = await apiFetch('/api/watchlist', {}, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol }),
       });
-      if (response.ok) {
-        return await response.json();
+      if (Array.isArray(data)) {
+        localStorage.setItem('kdelta_watchlist', JSON.stringify(data));
+        return data;
       }
     } catch (err) {
       console.warn('addToWatchlistAPI error:', err);
@@ -411,11 +449,13 @@ const API = (() => {
 
   async function removeFromWatchlistAPI(symbol) {
     try {
-      const response = await fetch(`/api/watchlist/${encodeURIComponent(symbol)}`, {
+      clearCache('/api/watchlist');
+      const data = await apiFetch(`/api/watchlist/${encodeURIComponent(symbol)}`, {}, {
         method: 'DELETE',
       });
-      if (response.ok) {
-        return await response.json();
+      if (Array.isArray(data)) {
+        localStorage.setItem('kdelta_watchlist', JSON.stringify(data));
+        return data;
       }
     } catch (err) {
       console.warn('removeFromWatchlistAPI error:', err);
@@ -454,6 +494,7 @@ const API = (() => {
 
   // Public API
   return {
+    clearCache,
     initWebSocket,
     subscribeSymbol,
     subscribeWatchlistSymbols,
