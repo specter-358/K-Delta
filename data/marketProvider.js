@@ -393,7 +393,8 @@ class YahooMarketProvider extends BaseMarketProvider {
     const symbol = normalizeSymbol(rawSymbol);
     const rawUpper = (rawSymbol || '').trim().toUpperCase();
     const cacheKey = `quote_${rawUpper || symbol}`;
-    const cached = this._getCached(cacheKey, 5000);
+    const quoteTTL = isIndianMarketOpen() ? 4000 : 60000;
+    const cached = this._getCached(cacheKey, quoteTTL);
     if (cached) return cached;
 
     try {
@@ -430,9 +431,10 @@ class YahooMarketProvider extends BaseMarketProvider {
 
     const results = [];
     const missingNorm = [];
+    const quoteTTL = isIndianMarketOpen() ? 4000 : 60000;
 
     for (const [norm, raws] of requestedMap.entries()) {
-      const cached = this._getCached(`quote_${norm}`, 5000);
+      const cached = this._getCached(`quote_${norm}`, quoteTTL);
       if (cached) {
         raws.forEach(raw => {
           results.push({ ...cached, symbol: raw });
@@ -506,8 +508,10 @@ class YahooMarketProvider extends BaseMarketProvider {
     const period1 = new Date();
     period1.setDate(period1.getDate() - lookbackDays);
 
-    const cacheKey = `candles_${symbol}_${normInterval}_${count}`;
-    const cached = this._getCached(cacheKey, 30000);
+    const isClosed = !isIndianMarketOpen();
+    const isDaily = normInterval === '1day' || normInterval === '1d' || normInterval === '1week' || normInterval === '1w';
+    const candlesTTL = isClosed ? 300000 : (isDaily ? 60000 : 15000);
+    const cached = this._getCached(cacheKey, candlesTTL);
     if (cached) return cached;
 
     try {
@@ -647,7 +651,8 @@ class YahooMarketProvider extends BaseMarketProvider {
 
   async getMarketIndices() {
     const cacheKey = 'market_indices';
-    const cached = this._getCached(cacheKey, 1500);
+    const indicesTTL = isIndianMarketOpen() ? 5000 : 60000;
+    const cached = this._getCached(cacheKey, indicesTTL);
     if (cached) return cached;
 
     const indices = [

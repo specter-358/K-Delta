@@ -208,25 +208,19 @@ function updateLiveTickElements(tick) {
     }
   }
 
-  // 2. Rolling Ticker Tape
+  // 2. Rolling Ticker Tape (O(1) Cached DOM Update)
   const displayInfo = formatInstrumentDisplay(tick.symbol, tick.name, tick.exchange);
-  const items = document.querySelectorAll('.ticker-tape__item');
-  items.forEach(item => {
-    const symSpan = item.querySelector('.ticker-tape__symbol');
-    if (symSpan && (symSpan.textContent.trim() === displayInfo.symbolDisplay || symSpan.textContent.trim() === tick.symbol)) {
-      const priceSpan = item.querySelector('.ticker-tape__price');
-      const changeSpan = item.querySelector('.ticker-tape__change');
-
-      if (priceSpan) {
-        priceSpan.textContent = formatPrice(tick.price);
-        prevTickerPrices.set(tick.symbol, tick.price);
-      }
-
-      if (changeSpan) {
-        const isUp = tick.change >= 0;
-        changeSpan.className = `ticker-tape__change ${isUp ? 'price-up' : 'price-down'}`;
-        changeSpan.textContent = formatPercent(tick.percentChange);
-      }
+  const tickerCache = getTickerDomItems();
+  const tickerNodes = tickerCache.get(displayInfo.symbolDisplay.toUpperCase()) || tickerCache.get(tick.symbol.toUpperCase()) || [];
+  tickerNodes.forEach(node => {
+    if (node.priceSpan) {
+      node.priceSpan.textContent = formatPrice(tick.price);
+      prevTickerPrices.set(tick.symbol, tick.price);
+    }
+    if (node.changeSpan) {
+      const isUp = tick.change >= 0;
+      node.changeSpan.className = `ticker-tape__change ${isUp ? 'price-up' : 'price-down'}`;
+      node.changeSpan.textContent = formatPercent(tick.percentChange);
     }
   });
 
@@ -272,6 +266,26 @@ function initChart() {
 }
 
 const prevTickerPrices = new Map();
+let tickerDomCache = null;
+
+function getTickerDomItems() {
+  if (!tickerDomCache) {
+    tickerDomCache = new Map();
+    const items = document.querySelectorAll('.ticker-tape__item');
+    items.forEach(item => {
+      const symSpan = item.querySelector('.ticker-tape__symbol');
+      if (symSpan) {
+        const symKey = symSpan.textContent.trim().toUpperCase();
+        if (!tickerDomCache.has(symKey)) tickerDomCache.set(symKey, []);
+        tickerDomCache.get(symKey).push({
+          priceSpan: item.querySelector('.ticker-tape__price'),
+          changeSpan: item.querySelector('.ticker-tape__change'),
+        });
+      }
+    });
+  }
+  return tickerDomCache;
+}
 
 /**
  * Load Continuous Rolling Market Ticker Tape (20+ Indices & Equities)
@@ -284,8 +298,8 @@ async function loadLiveTickerTape() {
     const quotes = await API.fetchRollingTickerQuotes();
     if (!quotes || quotes.length === 0) return;
 
-    const existingItems = tape.querySelectorAll('.ticker-tape__item');
-    if (existingItems.length > 0) {
+    const cache = getTickerDomItems();
+    if (cache.size > 0) {
       // In-place smooth update without breaking CSS animation marquee
       quotes.forEach(item => {
         const displayInfo = formatInstrumentDisplay(item.symbol, item.displayName || item.name, item.exchange);
@@ -296,20 +310,16 @@ async function loadLiveTickerTape() {
         }
         prevTickerPrices.set(item.symbol, item.price);
 
-        existingItems.forEach(el => {
-          const symSpan = el.querySelector('.ticker-tape__symbol');
-          if (symSpan && (symSpan.textContent.trim() === displayInfo.symbolDisplay || symSpan.textContent.trim() === item.symbol)) {
-            const priceSpan = el.querySelector('.ticker-tape__price');
-            const changeSpan = el.querySelector('.ticker-tape__change');
-            if (priceSpan) {
-              if (flashClass) priceSpan.className = `ticker-tape__price ${flashClass}`;
-              priceSpan.textContent = formatPrice(item.price);
-            }
-            if (changeSpan) {
-              const isUp = (item.change || item.percentChange) >= 0;
-              changeSpan.className = `ticker-tape__change ${isUp ? 'price-up' : 'price-down'}`;
-              changeSpan.textContent = formatPercent(item.percentChange);
-            }
+        const targets = cache.get(displayInfo.symbolDisplay.toUpperCase()) || cache.get(item.symbol.toUpperCase()) || [];
+        targets.forEach(node => {
+          if (node.priceSpan) {
+            if (flashClass) node.priceSpan.className = `ticker-tape__price ${flashClass}`;
+            node.priceSpan.textContent = formatPrice(item.price);
+          }
+          if (node.changeSpan) {
+            const isUp = (item.change || item.percentChange) >= 0;
+            node.changeSpan.className = `ticker-tape__change ${isUp ? 'price-up' : 'price-down'}`;
+            node.changeSpan.textContent = formatPercent(item.percentChange);
           }
         });
       });
@@ -339,6 +349,7 @@ async function loadLiveTickerTape() {
 
     // Duplicate list once to allow infinite seamless marquee scroll
     tape.innerHTML = renderItems(quotes) + renderItems(quotes);
+    tickerDomCache = null;
   } catch (err) {
     console.warn('Ticker tape error:', err);
   }

@@ -45,10 +45,20 @@ app.use(sanitizeInput);
 // Global API Rate Limiter (120 req/min)
 app.use('/api/', rateLimiter({ windowMs: 60000, maxRequests: 120 }));
 
-// Static Assets with ETag & Browser Cache Control
+// Static Assets with ETag, Last-Modified & High-Performance Browser Cache Control
 app.use(express.static(path.join(__dirname), {
-  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
+  maxAge: '1d',
   etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      // HTML files always revalidate to ensure immediate updates
+      res.setHeader('Cache-Control', 'no-cache');
+    } else if (filePath.match(/\.(css|js|woff2?|png|jpg|jpeg|svg|ico)$/i)) {
+      // Assets, stylesheets and scripts cached for 1 day with stale-while-revalidate for instant loads
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=3600');
+    }
+  },
 }));
 
 /**

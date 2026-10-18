@@ -167,6 +167,11 @@ const API = (() => {
 
   /**
    * Internal fetch with multi-level caching (Memory + SessionStorage) for instant page switches
+  const inFlightRequests = new Map();
+
+  /**
+   * Internal fetch with multi-level caching (Memory + SessionStorage + In-Flight Deduplication)
+   * Eliminates duplicate simultaneous network calls and provides instant page responsiveness
    */
   async function apiFetch(endpoint, params = {}, options = {}) {
     const queryString = new URLSearchParams(params).toString();
@@ -186,14 +191,20 @@ const API = (() => {
                              endpoint.includes('/api/auth');
 
     if (isGet && !isDynamicUserReq) {
-      const ttl = isRealTimeMarketReq ? 1000 : 30000;
+      const open = typeof isMarketOpen === 'function' ? isMarketOpen() : false;
+      const ttl = isRealTimeMarketReq ? (open ? 3000 : 25000) : 30000;
       // 1. Check in-memory Map cache
       const memCached = cache.get(cacheKey);
       if (memCached && (Date.now() - memCached.timestamp) < ttl) {
         return memCached.data;
       }
 
-      // 2. Check sessionStorage if not a real-time market request
+      // 2. Return in-flight promise if duplicate request is already pending
+      if (inFlightRequests.has(cacheKey)) {
+        return inFlightRequests.get(cacheKey);
+      }
+
+      // 3. Check sessionStorage if not a real-time market request
       if (!isRealTimeMarketReq) {
         try {
           const ssRaw = sessionStorage.getItem(`kdelta_cache_${cacheKey}`);
@@ -210,6 +221,18 @@ const API = (() => {
           }
         } catch (e) {}
       }
+
+      // Create deduplicated in-flight fetch promise
+      const fetchPromise = (async () => {
+        try {
+          return await fetchFreshAndStore(url, options, cacheKey, true);
+        } finally {
+          inFlightRequests.delete(cacheKey);
+        }
+      })();
+
+      inFlightRequests.set(cacheKey, fetchPromise);
+      return await fetchPromise;
     }
 
     return await fetchFreshAndStore(url, options, cacheKey, !isDynamicUserReq && isGet);

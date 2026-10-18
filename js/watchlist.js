@@ -341,22 +341,19 @@ function renderWatchlistTable() {
     );
   }
 
-  // Sort so securities with active signals (BUY, SELL, EXIT) are shifted to the upper side (top of list)
-  // so the trader can see them early!
-  const getSignalPriority = (item) => {
+  // Precompute signal priorities once for high-speed O(N log N) sorting
+  const prioMap = new Map();
+  filtered.forEach(item => {
     const sigState = (typeof AlertEngine !== 'undefined' && typeof AlertEngine.getWatchlistSignalState === 'function')
       ? AlertEngine.getWatchlistSignalState(item.symbol)
       : null;
     const type = getWatchlistSignalType(item, sigState);
-    if (type === 'BUY') return 1;
-    if (type === 'SELL') return 2;
-    if (type === 'EXIT') return 3;
-    return 4; // HOLD
-  };
+    prioMap.set(item.symbol, type === 'BUY' ? 1 : (type === 'SELL' ? 2 : (type === 'EXIT' ? 3 : 4)));
+  });
 
   filtered.sort((a, b) => {
-    const prioA = getSignalPriority(a);
-    const prioB = getSignalPriority(b);
+    const prioA = prioMap.get(a.symbol) || 4;
+    const prioB = prioMap.get(b.symbol) || 4;
     if (prioA !== prioB) return prioA - prioB;
     const pctA = Math.abs(a.percentChange || 0);
     const pctB = Math.abs(b.percentChange || 0);
@@ -371,6 +368,57 @@ function renderWatchlistTable() {
         </td>
       </tr>
     `;
+    return;
+  }
+
+  // High-performance in-place DOM update when row structure is identical
+  const existingRows = tbody.querySelectorAll('tr[id^="row-"]');
+  const targetIds = filtered.map(q => `row-${q.symbol.replace(/[^A-Z0-9]/g, '_')}`);
+  const canUpdateInPlace = existingRows.length === targetIds.length && 
+    Array.from(existingRows).every((r, i) => r.id === targetIds[i]);
+
+  if (canUpdateInPlace) {
+    filtered.forEach((q, i) => {
+      const row = existingRows[i];
+      const isUp = (q.change || q.percentChange) >= 0;
+      const changeClass = isUp ? 'price-up' : 'price-down';
+
+      const priceCell = row.querySelector('.price-cell');
+      if (priceCell) {
+        priceCell.textContent = formatPrice(q.price);
+      }
+
+      const cells = row.querySelectorAll('td');
+      if (cells[3]) {
+        cells[3].className = changeClass;
+        cells[3].textContent = formatChange(q.change);
+      }
+      if (cells[4]) {
+        cells[4].className = changeClass;
+        cells[4].textContent = formatPercent(q.percentChange);
+      }
+
+      const signalState = (typeof AlertEngine !== 'undefined' && typeof AlertEngine.getWatchlistSignalState === 'function')
+        ? AlertEngine.getWatchlistSignalState(q.symbol)
+        : null;
+      if (cells[5]) {
+        cells[5].innerHTML = buildWatchlistSignalHtml(q, signalState);
+      }
+
+      const rangeCell = row.querySelector('.range-cell');
+      if (rangeCell) {
+        rangeCell.textContent = (q.high != null && q.low != null)
+          ? `H: ${q.high.toFixed(1)} / L: ${q.low.toFixed(1)}`
+          : '—';
+      }
+
+      const volumeCell = row.querySelector('.volume-cell');
+      if (volumeCell) {
+        volumeCell.textContent = q.volume
+          ? (q.volume > 1000000 ? `${(q.volume / 1000000).toFixed(2)}M` : `${(q.volume / 1000).toFixed(1)}k`)
+          : '—';
+      }
+    });
     return;
   }
 
@@ -597,8 +645,9 @@ function updateWatchlistSignalCells(specificSymbol = null) {
       if (tbody && tbody.firstChild !== row) {
         tbody.insertBefore(row, tbody.firstChild);
         row.classList.remove('row-promoted-signal');
-        void row.offsetWidth;
-        row.classList.add('row-promoted-signal');
+        requestAnimationFrame(() => {
+          row.classList.add('row-promoted-signal');
+        });
       }
     }
   });
@@ -940,8 +989,9 @@ function handleLiveTickUpdate(tick) {
       priceCell.textContent = formatPrice(quote.price);
       if (oldPrice !== null && oldPrice !== undefined && oldPrice !== quote.price) {
         priceCell.classList.remove('tick-up', 'tick-down');
-        void priceCell.offsetWidth; // force DOM reflow
-        priceCell.classList.add(quote.price >= oldPrice ? 'tick-up' : 'tick-down');
+        requestAnimationFrame(() => {
+          priceCell.classList.add(quote.price >= oldPrice ? 'tick-up' : 'tick-down');
+        });
       }
     }
 
@@ -967,14 +1017,25 @@ function handleLiveTickUpdate(tick) {
         if (tbody && tbody.firstChild !== row) {
           tbody.insertBefore(row, tbody.firstChild);
           row.classList.remove('row-promoted-signal');
-          void row.offsetWidth;
-          row.classList.add('row-promoted-signal');
+          requestAnimationFrame(() => {
+            row.classList.add('row-promoted-signal');
+          });
         }
       }
     }
   }
 
-  updateWatchlistStats();
+  scheduleWatchlistStatsUpdate();
+}
+
+let watchlistStatsUpdateTimer = null;
+function scheduleWatchlistStatsUpdate() {
+  if (!watchlistStatsUpdateTimer) {
+    watchlistStatsUpdateTimer = requestAnimationFrame(() => {
+      updateWatchlistStats();
+      watchlistStatsUpdateTimer = null;
+    });
+  }
 }
 
 /**
