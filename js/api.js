@@ -5,6 +5,7 @@
 
 const API = (() => {
   const cache = new Map();
+  const inFlightRequests = new Map();
   let ws = null;
   let wsReconnectTimer = null;
   let currentSubscribedSymbol = null;
@@ -164,10 +165,6 @@ const API = (() => {
       }
     } catch (e) {}
   }
-
-  /**
-   * Internal fetch with multi-level caching (Memory + SessionStorage) for instant page switches
-  const inFlightRequests = new Map();
 
   /**
    * Internal fetch with multi-level caching (Memory + SessionStorage + In-Flight Deduplication)
