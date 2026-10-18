@@ -444,14 +444,12 @@ function runAnalysisAndRender(updateMarkers = true) {
 
   const isBuySync = !isExitSync && !isPosOpenSync && (
     (currentPrediction && currentPrediction.signal && currentPrediction.signal.toUpperCase().includes('BUY')) ||
-    (alertSignal && (alertSignal.signal === 'BUY' || (alertSignal.action && alertSignal.action.toUpperCase().includes('BUY')))) ||
-    quotePct >= 0.8
+    (alertSignal && (alertSignal.signal === 'BUY' || (alertSignal.action && alertSignal.action.toUpperCase().includes('BUY'))))
   );
 
   const isSellSync = !isExitSync && !isPosOpenSync && !isBuySync && (
     (currentPrediction && currentPrediction.signal && currentPrediction.signal.toUpperCase().includes('SELL')) ||
-    (alertSignal && (alertSignal.signal === 'SELL' || (alertSignal.action && alertSignal.action.toUpperCase().includes('SELL')))) ||
-    quotePct <= -0.8
+    (alertSignal && (alertSignal.signal === 'SELL' || (alertSignal.action && alertSignal.action.toUpperCase().includes('SELL'))))
   );
 
   if (isBuySync && (!currentPrediction.signal || !currentPrediction.signal.toUpperCase().includes('BUY'))) {

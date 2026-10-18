@@ -182,7 +182,10 @@ const ChartManager = (() => {
       borderDownColor: '#f43f5e',
       wickUpColor: '#10b981',
       wickDownColor: '#f43f5e',
-      priceLineVisible: false,
+      priceLineVisible: true,
+      priceLineColor: '#38bdf8',
+      priceLineWidth: 1,
+      priceLineStyle: LightweightCharts.LineStyle.Dashed,
       lastValueVisible: true,
       visible: currentChartType === 'candlestick',
     });
@@ -193,7 +196,10 @@ const ChartManager = (() => {
       bottomColor: 'rgba(56, 189, 248, 0.01)',
       lineColor: '#38bdf8',
       lineWidth: 2,
-      priceLineVisible: false,
+      priceLineVisible: true,
+      priceLineColor: '#38bdf8',
+      priceLineWidth: 1,
+      priceLineStyle: LightweightCharts.LineStyle.Dashed,
       lastValueVisible: true,
       crosshairMarkerVisible: true,
       visible: currentChartType === 'line',
@@ -667,12 +673,24 @@ const ChartManager = (() => {
       } catch (e) {}
       activeSignalPriceLine = null;
     }
+    // Restore clean default LTP price line on base series
+    try {
+      const defaultOpts = {
+        priceLineVisible: true,
+        priceLineColor: '#38bdf8',
+        priceLineWidth: 1,
+        priceLineStyle: LightweightCharts.LineStyle.Dashed,
+      };
+      if (candleSeries) candleSeries.applyOptions(defaultOpts);
+      if (lineSeries) lineSeries.applyOptions(defaultOpts);
+    } catch (e) {}
   }
 
   /**
    * Configure Signal Price Line visibility and distinct recognition color
-   * Shows price line ONLY when there is an active signal (BUY, SELL, EXIT, OPEN_LONG).
-   * Otherwise hides the price line completely.
+   * Ensures every stock ALWAYS has its current market price (LTP) line visible.
+   * When an active signal (BUY, SELL, EXIT) occurs, renders a highlighted signal line
+   * without duplicate overlapping lines or stacked axis price badges.
    */
   function setSignalPriceLine(signalState) {
     clearSignalPriceLine();
@@ -680,15 +698,23 @@ const ChartManager = (() => {
     if (!candleSeries && !lineSeries) return;
 
     if (!signalState || !signalState.hasSignal) {
+      // Standard stock state (no active signal / consolidation / hold):
+      // Keep standard current LTP price line clearly visible on all stocks!
       try {
-        if (candleSeries) candleSeries.applyOptions({ priceLineVisible: false });
-        if (lineSeries) lineSeries.applyOptions({ priceLineVisible: false });
+        const stdOpts = {
+          priceLineVisible: true,
+          priceLineColor: '#38bdf8',
+          priceLineWidth: 1,
+          priceLineStyle: LightweightCharts.LineStyle.Dashed,
+        };
+        if (candleSeries) candleSeries.applyOptions(stdOpts);
+        if (lineSeries) lineSeries.applyOptions(stdOpts);
       } catch (e) {}
       return;
     }
 
     // Active Signal detected:
-    // Make price line of a distinct recognizable color:
+    // Color scheme:
     // BUY: Electric Sky Cyan (#00e5ff) - stands out boldly from emerald green (#10b981) candles!
     // SELL: Vibrant Neon Coral (#ff6b35) - stands out boldly from crimson (#f43f5e) candles!
     // EXIT: Vivid Amber Gold (#fbbf24)
@@ -706,22 +732,25 @@ const ChartManager = (() => {
     }
 
     try {
-      const opts = {
-        priceLineVisible: true,
-        priceLineColor: color,
-        priceLineWidth: 2,
-        priceLineStyle: LightweightCharts.LineStyle.Dashed,
-      };
-      if (candleSeries) candleSeries.applyOptions(opts);
-      if (lineSeries) lineSeries.applyOptions(opts);
-
       // If targets overlay is active, setTradeLevels already draws the Entry line with its label,
-      // so avoid creating an overlapping duplicate line with title at the exact same price.
+      // so style the series price line cleanly without adding duplicate title line.
       if (signalState.isTargetsActive) {
+        const opts = {
+          priceLineVisible: true,
+          priceLineColor: color,
+          priceLineWidth: 1.5,
+          priceLineStyle: LightweightCharts.LineStyle.Dashed,
+        };
+        if (candleSeries) candleSeries.applyOptions(opts);
+        if (lineSeries) lineSeries.applyOptions(opts);
         return;
       }
 
-      // Create explicit high-contrast custom price line so it is 100% visible on canvas
+      // Draw custom signal price line with actionable title badge:
+      // Turn off default series priceLine during active signal to avoid duplicate stacked axis badges!
+      if (candleSeries) candleSeries.applyOptions({ priceLineVisible: false });
+      if (lineSeries) lineSeries.applyOptions({ priceLineVisible: false });
+
       const targetSeries = (currentChartType === 'line' ? lineSeries : candleSeries) || candleSeries;
       const lastCandle = (currentCandles && currentCandles.length > 0) ? currentCandles[currentCandles.length - 1] : null;
       const priceVal = (signalState.price && signalState.price > 0) ? signalState.price : (lastCandle ? lastCandle.close : null);

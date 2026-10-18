@@ -483,22 +483,13 @@ function getWatchlistSignalType(q, signalState) {
     ) {
       return 'SELL';
     }
+    if (sig === 'HOLD' || act.includes('HOLD') || act.includes('WAIT')) {
+      return 'HOLD';
+    }
   }
 
-  // 2. Real-Time Price Action & Directional Momentum
-  const pct = (q && typeof q.percentChange === 'number')
-    ? q.percentChange
-    : ((q && typeof q.change === 'number' && q.price) ? ((q.change / q.price) * 100) : 0);
-
-  // Clear directional momentum thresholds
-  if (pct >= 0.8) {
-    return 'BUY';
-  } else if (pct <= -0.8) {
-    return 'SELL';
-  } else {
-    // Within -0.8% to +0.8%: Consolidation / Range / Neutral -> accurately HOLD
-    return 'HOLD';
-  }
+  // Without a confirmed algorithmic signal from technical analysis, default to HOLD (Consolidation/Neutral)
+  return 'HOLD';
 }
 
 /**
