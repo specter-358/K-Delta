@@ -29,6 +29,6 @@
     "jsonwebtoken": "^9.0.3",
     "lightweight-charts": "^4.1.1",
     "ws": "^8.21.3",
-    "yahoo-finance2": "^4.0.2"
+    "yahoo-finance2": "^4.0.4"
   }
 }
