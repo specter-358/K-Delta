@@ -471,6 +471,67 @@ async function runAlertTests() {
     assert.strictEqual(state.stopLoss, 507.50);
   });
 
+  // 15. Market Closed Alerts Suppression
+  await test('Market Closed Suppression: Suppresses live popups/toasts when market is closed', () => {
+    // Mock market closed
+    global.isMarketOpenMock = () => false;
+    try {
+      AlertEngine.clearHistory();
+
+      // High conviction setup outside market hours
+      AlertEngine.checkHighConvictionSetup('INFY.NS', {
+        signal: 'BUY STOCK',
+        confidence: 90,
+        currentPrice: 1800,
+        patterns: [{ name: 'Bullish Engulfing', type: 'bullish' }],
+      });
+
+      // Alert history should NOT have received a high-conviction setup notification
+      assert.strictEqual(AlertEngine.getHistory().length, 0, 'No high-conviction alert should fire when market is closed');
+
+      // Signal state should still be recorded for the UI watchlist table, but no notification dispatched
+      AlertEngine.processSignalUpdate('INFY.NS', {
+        signal: 'BUY STOCK',
+        action: 'BUY STOCK',
+        confidence: 85,
+        tradeSetup: {
+          entryPrice: 1800.00,
+          currentPrice: 1800.00,
+          target1: 1836.00,
+          target2: 1863.00,
+          stopLoss: 1773.00,
+        },
+      });
+
+      assert.strictEqual(AlertEngine.getHistory().length, 0, 'No live trade notification should be added to history when market is closed');
+      const state = AlertEngine.getWatchlistSignalState('INFY.NS');
+      assert(state, 'Watchlist state should still be maintained for table presentation');
+      assert.strictEqual(state.signal, 'BUY');
+    } finally {
+      delete global.isMarketOpenMock;
+    }
+  });
+
+  // 16. High-Conviction Directional Pattern Alignment
+  await test('High-Conviction Directional Alignment: Never confirms BUY with Bearish pattern', () => {
+    AlertEngine.clearHistory();
+
+    AlertEngine.checkHighConvictionSetup('HINDCOPPER.NS', {
+      signal: 'BUY STOCK',
+      confidence: 85,
+      currentPrice: 458.90,
+      patterns: [
+        { name: 'Bearish Harami', type: 'bearish' },
+        { name: 'Bullish Hammer', type: 'bullish' },
+      ],
+    });
+
+    const history = AlertEngine.getHistory();
+    assert.strictEqual(history.length, 1);
+    assert(history[0].message.includes('Bullish Hammer'), `Message should pick matching bullish pattern, got: ${history[0].message}`);
+    assert(!history[0].message.includes('Bearish Harami'), 'Message must never confirm BUY with Bearish Harami');
+  });
+
   console.log(`\n----------------------------------------------------`);
   console.log(`Alert Engine Test Results: ${passed} passed, ${failed} failed`);
   console.log(`----------------------------------------------------`);

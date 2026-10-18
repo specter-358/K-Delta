@@ -1092,13 +1092,18 @@ window.togglePasswordVisibility = togglePasswordVisibility;
 window.holdShowPassword = holdShowPassword;
 window.holdHidePassword = holdHidePassword;
 window.handleLogout = handleLogout;
-window.renderNavbarAuth = renderNavbarAuth;
-window.toggleProfileDropdown = toggleProfileDropdown;
-window.openProfileModal = openProfileModal;
-window.closeProfileModal = closeProfileModal;
-window.handleSaveProfile = handleSaveProfile;
-window.handleAvatarFileSelect = handleAvatarFileSelect;
-window.handleAvatarUrlInput = handleAvatarUrlInput;
-window.togglePasswordVisibility = togglePasswordVisibility;
-window.handleLogout = handleLogout;
+window.isMarketOpen = isMarketOpen;
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    CONFIG,
+    isMarketOpen,
+    formatISTTime,
+    getWatchlist,
+    saveWatchlist,
+    addToWatchlist,
+    removeFromWatchlist,
+  };
+}
+
 

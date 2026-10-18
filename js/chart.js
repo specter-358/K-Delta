@@ -182,6 +182,8 @@ const ChartManager = (() => {
       borderDownColor: '#f43f5e',
       wickUpColor: '#10b981',
       wickDownColor: '#f43f5e',
+      priceLineVisible: false,
+      lastValueVisible: true,
       visible: currentChartType === 'candlestick',
     });
 
@@ -630,65 +632,179 @@ const ChartManager = (() => {
     updateCombinedMarkers();
   }
 
-  /**
-   * Clear Trade Execution Lines
-   */
+  let lastTradeSetup = null;
+
   function clearTradeLevels() {
     tradePriceLines.forEach(item => {
       try {
-        if (item.series && item.line) item.series.removePriceLine(item.line);
-        else if (candleSeries) candleSeries.removePriceLine(item);
+        if (item && item.series && item.line) item.series.removePriceLine(item.line);
+        else if (item && item.line && candleSeries) candleSeries.removePriceLine(item.line);
       } catch (e) {}
     });
     tradePriceLines = [];
+    lastTradeSetup = null;
   }
 
   function addTradePriceLine(options) {
-    if (candleSeries) {
+    const targetSeries = (currentChartType === 'line' ? lineSeries : candleSeries) || candleSeries;
+    if (targetSeries) {
       try {
-        const line = candleSeries.createPriceLine(options);
-        tradePriceLines.push({ series: candleSeries, line });
+        const line = targetSeries.createPriceLine(options);
+        tradePriceLines.push({ series: targetSeries, line });
       } catch (e) {}
     }
-    if (lineSeries) {
+  }
+
+  let activeSignalPriceLine = null;
+  let lastSignalState = null;
+
+  function clearSignalPriceLine() {
+    if (activeSignalPriceLine) {
       try {
-        const line = lineSeries.createPriceLine(options);
-        tradePriceLines.push({ series: lineSeries, line });
+        if (activeSignalPriceLine.series && activeSignalPriceLine.line) {
+          activeSignalPriceLine.series.removePriceLine(activeSignalPriceLine.line);
+        }
       } catch (e) {}
+      activeSignalPriceLine = null;
     }
+  }
+
+  /**
+   * Configure Signal Price Line visibility and distinct recognition color
+   * Shows price line ONLY when there is an active signal (BUY, SELL, EXIT, OPEN_LONG).
+   * Otherwise hides the price line completely.
+   */
+  function setSignalPriceLine(signalState) {
+    clearSignalPriceLine();
+    lastSignalState = signalState;
+    if (!candleSeries && !lineSeries) return;
+
+    if (!signalState || !signalState.hasSignal) {
+      try {
+        if (candleSeries) candleSeries.applyOptions({ priceLineVisible: false });
+        if (lineSeries) lineSeries.applyOptions({ priceLineVisible: false });
+      } catch (e) {}
+      return;
+    }
+
+    // Active Signal detected:
+    // Make price line of a distinct recognizable color:
+    // BUY: Electric Sky Cyan (#00e5ff) - stands out boldly from emerald green (#10b981) candles!
+    // SELL: Vibrant Neon Coral (#ff6b35) - stands out boldly from crimson (#f43f5e) candles!
+    // EXIT: Vivid Amber Gold (#fbbf24)
+    let color = '#00e5ff';
+    let titlePrefix = 'BUY SIGNAL';
+    if (signalState.type === 'SELL') {
+      color = '#ff6b35';
+      titlePrefix = 'SELL SIGNAL';
+    } else if (signalState.type === 'EXIT') {
+      color = '#fbbf24';
+      titlePrefix = 'EXIT SIGNAL';
+    } else if (signalState.type === 'BUY') {
+      color = '#00e5ff';
+      titlePrefix = 'BUY SIGNAL';
+    }
+
+    try {
+      const opts = {
+        priceLineVisible: true,
+        priceLineColor: color,
+        priceLineWidth: 2,
+        priceLineStyle: LightweightCharts.LineStyle.Dashed,
+      };
+      if (candleSeries) candleSeries.applyOptions(opts);
+      if (lineSeries) lineSeries.applyOptions(opts);
+
+      // If targets overlay is active, setTradeLevels already draws the Entry line with its label,
+      // so avoid creating an overlapping duplicate line with title at the exact same price.
+      if (signalState.isTargetsActive) {
+        return;
+      }
+
+      // Create explicit high-contrast custom price line so it is 100% visible on canvas
+      const targetSeries = (currentChartType === 'line' ? lineSeries : candleSeries) || candleSeries;
+      const lastCandle = (currentCandles && currentCandles.length > 0) ? currentCandles[currentCandles.length - 1] : null;
+      const priceVal = (signalState.price && signalState.price > 0) ? signalState.price : (lastCandle ? lastCandle.close : null);
+
+      if (targetSeries && priceVal) {
+        const line = targetSeries.createPriceLine({
+          price: priceVal,
+          color: color,
+          lineWidth: 2,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `${titlePrefix} @ ₹${priceVal.toFixed(2)}`,
+        });
+        activeSignalPriceLine = { series: targetSeries, line };
+      }
+    } catch (e) {
+      console.warn('Error updating signal price line:', e);
+    }
+  }
+
+  /**
+   * Shift chart view to upper/focal area so the trader sees the active signal early
+   */
+  function focusSignalView() {
+    if (!chart) return;
+    try {
+      chart.priceScale('right').applyOptions({
+        scaleMargins: { top: 0.12, bottom: 0.28 },
+        autoScale: true,
+      });
+      chart.timeScale().scrollToRealTime();
+    } catch (e) {}
   }
 
   /**
    * Set Horizontal Trade Price Lines (Entry, TP1, TP2, SL)
+   * Displays full Execution Targets (Entry, Target 1, Target 2, Stop Loss) with percentages.
    */
   function setTradeLevels(setup) {
     clearTradeLevels();
     if (!candleSeries && !lineSeries) return;
+    if (!setup) return;
+
+    lastTradeSetup = setup;
 
     try {
-      let entry = setup && setup.entryPrice;
-      let target1 = setup && setup.target1;
-      let target2 = setup && setup.target2;
-      let stopLoss = setup && setup.stopLoss;
-      const isPositionOpen = setup && setup.positionStatus === 'OPEN_LONG';
-      let isBuy = setup ? (setup.type === 'BUY' || setup.type === 'BUY STOCK' || isPositionOpen || (setup.signal && setup.signal.includes('BUY'))) : true;
+      let entry = setup.entryPrice ? parseFloat(setup.entryPrice) : null;
+      let target1 = setup.target1 ? parseFloat(setup.target1) : null;
+      let target2 = setup.target2 ? parseFloat(setup.target2) : null;
+      let stopLoss = setup.stopLoss ? parseFloat(setup.stopLoss) : null;
+      const isPositionOpen = setup.positionStatus === 'OPEN_LONG';
+      const isBuy = setup.type === 'BUY' || setup.type === 'BUY STOCK' || isPositionOpen || (setup.signal && setup.signal.includes('BUY'));
+      const isSell = setup.type === 'SELL' || setup.type === 'SELL STOCK' || (setup.signal && setup.signal.includes('SELL'));
 
-      // Dynamic fallback if no specific pattern setup exists yet
-      if (!entry && currentCandles.length > 0) {
-        const lastCandle = currentCandles[currentCandles.length - 1];
-        entry = lastCandle.close;
-        const atr = Indicators.atr(currentCandles, 14);
-        const currentAtr = (atr && atr[atr.length - 1]) || (entry * 0.015);
-        target1 = +(entry + currentAtr * 1.5).toFixed(2);
-        target2 = +(entry + currentAtr * 3.0).toFixed(2);
-        stopLoss = +(entry - currentAtr * 1.0).toFixed(2);
+      // If entry is missing, derive from latest candle
+      if (!entry && currentCandles && currentCandles.length > 0) {
+        entry = parseFloat(currentCandles[currentCandles.length - 1].close);
       }
 
+      // If targets are missing, compute ATR-based levels
+      if (entry && (!target1 || !stopLoss)) {
+        const validAtr = entry * 0.015;
+        if (isSell) {
+          if (!target1) target1 = +(entry - validAtr * 1.5).toFixed(2);
+          if (!target2) target2 = +(entry - validAtr * 3.0).toFixed(2);
+          if (!stopLoss) stopLoss = +(entry + validAtr * 1.0).toFixed(2);
+        } else {
+          if (!target1) target1 = +(entry + validAtr * 1.5).toFixed(2);
+          if (!target2) target2 = +(entry + validAtr * 3.0).toFixed(2);
+          if (!stopLoss) stopLoss = +(entry - validAtr * 1.0).toFixed(2);
+        }
+      }
+
+      // Distinct color for recognition
+      const entryColor = isPositionOpen ? '#38bdf8' : (isBuy ? '#00e5ff' : (isSell ? '#ff6b35' : '#38bdf8'));
+
       if (entry) {
-        const entryTitle = isPositionOpen ? `BOUGHT @ ₹${entry.toFixed(2)}` : (isBuy ? 'BUY ENTRY' : 'SELL / EXIT');
+        const entryTitle = isPositionOpen
+          ? `BOUGHT @ ₹${entry.toFixed(2)}`
+          : (isBuy ? `BUY ENTRY: ₹${entry.toFixed(2)}` : (isSell ? `SELL ENTRY: ₹${entry.toFixed(2)}` : `ENTRY: ₹${entry.toFixed(2)}`));
         addTradePriceLine({
           price: entry,
-          color: isBuy ? '#10b981' : '#f43f5e',
+          color: entryColor,
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
@@ -697,35 +813,41 @@ const ChartManager = (() => {
       }
 
       if (target1) {
+        const pct = entry ? (((target1 - entry) / entry) * 100).toFixed(1) : null;
+        const pctStr = pct ? ` (${pct > 0 ? '+' : ''}${pct}%)` : '';
         addTradePriceLine({
           price: target1,
           color: '#10b981',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
-          title: 'TARGET 1 (TP1)',
+          title: `TARGET 1 (TP1): ₹${target1.toFixed(2)}${pctStr}`,
         });
       }
 
       if (target2) {
+        const pct = entry ? (((target2 - entry) / entry) * 100).toFixed(1) : null;
+        const pctStr = pct ? ` (${pct > 0 ? '+' : ''}${pct}%)` : '';
         addTradePriceLine({
           price: target2,
           color: '#059669',
-          lineWidth: 1,
+          lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dotted,
           axisLabelVisible: true,
-          title: 'TARGET 2 (TP2)',
+          title: `TARGET 2 (TP2): ₹${target2.toFixed(2)}${pctStr}`,
         });
       }
 
       if (stopLoss) {
+        const pct = entry ? (((stopLoss - entry) / entry) * 100).toFixed(1) : null;
+        const pctStr = pct ? ` (${pct > 0 ? '+' : ''}${pct}%)` : '';
         addTradePriceLine({
           price: stopLoss,
           color: '#f43f5e',
           lineWidth: 2,
           lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
-          title: 'STOP LOSS',
+          title: `STOP LOSS (SL): ₹${stopLoss.toFixed(2)}${pctStr}`,
         });
       }
     } catch (e) {
@@ -876,6 +998,12 @@ const ChartManager = (() => {
     }
 
     updateCombinedMarkers();
+    if (lastTradeSetup) {
+      setTradeLevels(lastTradeSetup);
+    }
+    if (lastSignalState) {
+      setSignalPriceLine(lastSignalState);
+    }
     updateChartTypeButtonUI(type);
 
     if (typeof showToast === 'function') {
@@ -960,6 +1088,8 @@ const ChartManager = (() => {
     setPatternMarkers,
     clearPatternMarkers,
     setVolumeVisibility,
+    setSignalPriceLine,
+    focusSignalView,
     setTradeLevels,
     clearTradeLevels,
     setSupportResistanceLevels,

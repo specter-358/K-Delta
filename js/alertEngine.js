@@ -41,6 +41,23 @@ const AlertEngine = (() => {
     }
   } catch (e) {}
 
+  function checkIsMarketOpen() {
+    const isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
+    if (isNode) {
+      if (typeof global !== 'undefined' && typeof global.isMarketOpenMock === 'function') {
+        return global.isMarketOpenMock();
+      }
+      return true;
+    }
+    if (typeof isMarketOpen === 'function') {
+      return isMarketOpen();
+    }
+    if (typeof window !== 'undefined' && typeof window.isMarketOpen === 'function') {
+      return window.isMarketOpen();
+    }
+    return false;
+  }
+
   function setPushEnabled(enabled) {
     isPushEnabled = !!enabled;
     try {
@@ -366,6 +383,14 @@ const AlertEngine = (() => {
    * Trigger and broadcast an alert event
    */
   function dispatchAlertTriggered(alertEvent) {
+    const isTest = !!alertEvent.isTest;
+    const marketOpen = checkIsMarketOpen();
+
+    // If market is closed and this is not an explicit test, do NOT disturb user with live chimes, toasts, or desktop notifications
+    if (!isTest && !marketOpen) {
+      return;
+    }
+
     unreadCount++;
 
     // Purge any emojis from alert content
@@ -412,6 +437,8 @@ const AlertEngine = (() => {
    * Check for High-Conviction Technical Setup (> 80% Confidence)
    */
   function checkHighConvictionSetup(symbol, prediction, companyName = '') {
+    // When market is closed, suppress live setup notifications outside market hours
+    if (!checkIsMarketOpen()) return;
     if (!prediction || prediction.confidence < 80) return;
     if (prediction.signal === 'HOLD') return;
 
@@ -422,7 +449,24 @@ const AlertEngine = (() => {
 
     cooldownMap.set(cooldownKey, now);
 
-    const primaryPattern = (prediction.patterns && prediction.patterns[0]) ? prediction.patterns[0].name : 'Multi-Indicator Confluence';
+    const isBull = prediction.signal && prediction.signal.toUpperCase().includes('BUY');
+    const isBear = prediction.signal && prediction.signal.toUpperCase().includes('SELL');
+
+    let primaryPattern = 'Multi-Indicator Confluence';
+    if (prediction.patterns && prediction.patterns.length > 0) {
+      const matchingPattern = prediction.patterns.find(p => {
+        const sig = (p.signal || p.type || '').toLowerCase();
+        if (isBull) return sig === 'bullish';
+        if (isBear) return sig === 'bearish';
+        return true;
+      });
+      if (matchingPattern) {
+        primaryPattern = matchingPattern.name;
+      } else {
+        primaryPattern = isBull ? 'Bullish Technical Confluence' : 'Bearish Technical Confluence';
+      }
+    }
+
     const title = `High Conviction (${prediction.confidence}%): ${symbol}`;
     const message = `Algorithmic ${prediction.signal} confirmed by ${primaryPattern}. Confidence score: ${prediction.confidence}%.`;
 
@@ -850,6 +894,11 @@ const AlertEngine = (() => {
     tradeSetup,
     isTest = false,
   }) {
+    // When market is closed, suppress live trade signal push notifications, chimes, and toasts
+    if (!isTest && !checkIsMarketOpen()) {
+      return;
+    }
+
     const cleanSym = symbol.replace('.NS', '').replace('.BO', '').replace('^', '');
     const timeFormatted = formatAlertISTTime(timestamp);
     const company = (typeof getCleanStockName === 'function') ? getCleanStockName(symbol) : cleanSym;
@@ -1553,6 +1602,7 @@ const AlertEngine = (() => {
     resetMovementSoundCooldown,
     setPushEnabled,
     getPushEnabled,
+    isMarketOpen: checkIsMarketOpen,
     onSignalUpdate: (callback) => {
       if (typeof callback === 'function') {
         uiListeners.add(callback);

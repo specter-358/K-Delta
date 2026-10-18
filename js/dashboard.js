@@ -48,6 +48,11 @@ let currentInterval = getSavedTimeframe() || '1day';
 let currentCandles = [];
 let currentPrediction = null;
 let currentPatterns = [];
+let currentQuote = null;
+if (typeof window !== 'undefined') {
+  window.currentQuote = currentQuote;
+  window.currentSymbol = currentSymbol;
+}
 let activeOverlays = getSavedOverlays();
 let refreshTimer = null;
 
@@ -178,6 +183,10 @@ function updateLiveTickElements(tick) {
 
   // 1. Chart Header if matching current symbol
   if (tick.symbol === currentSymbol) {
+    if (typeof currentQuote !== 'undefined' && currentQuote) {
+      currentQuote = { ...currentQuote, price: tick.price, change: tick.change, percentChange: tick.percentChange };
+      if (typeof window !== 'undefined') window.currentQuote = currentQuote;
+    }
     updateLivePriceInfo(tick);
     if (ChartManager && ChartManager.updateLiveCandle) {
       const nowMs = typeof tick.timestamp === 'number'
@@ -366,6 +375,11 @@ async function loadSymbol(symbol, isRefresh = false) {
     }
 
     currentCandles = candles || [];
+    currentQuote = quote;
+    if (typeof window !== 'undefined') {
+      window.currentQuote = quote;
+      window.currentSymbol = currentSymbol;
+    }
 
     // Render Quote Header
     renderHeader(quote);
@@ -412,6 +426,92 @@ function runAnalysisAndRender(updateMarkers = true) {
     isIntraday: isIntradayTf,
   });
 
+  // Synchronize with single source of truth: AlertEngine & Real-Time Directional Momentum
+  let alertSignal = null;
+  if (typeof AlertEngine !== 'undefined' && typeof AlertEngine.getWatchlistSignalState === 'function') {
+    alertSignal = AlertEngine.getWatchlistSignalState(currentSymbol);
+  }
+
+  const quotePct = (currentQuote && typeof currentQuote.percentChange === 'number')
+    ? currentQuote.percentChange
+    : ((currentQuote && typeof currentQuote.change === 'number' && currentQuote.price) ? ((currentQuote.change / currentQuote.price) * 100) : 0);
+
+  const isPosOpenSync = currentPrediction && currentPrediction.positionState === 'OPEN_LONG';
+  const isExitSync = !!(
+    (alertSignal && (alertSignal.signal === 'EXIT' || alertSignal.exitReason)) ||
+    (currentPrediction && (currentPrediction.exitReason || (currentPrediction.action && currentPrediction.action.toUpperCase().startsWith('EXIT'))))
+  );
+
+  const isBuySync = !isExitSync && !isPosOpenSync && (
+    (currentPrediction && currentPrediction.signal && currentPrediction.signal.toUpperCase().includes('BUY')) ||
+    (alertSignal && (alertSignal.signal === 'BUY' || (alertSignal.action && alertSignal.action.toUpperCase().includes('BUY')))) ||
+    quotePct >= 0.8
+  );
+
+  const isSellSync = !isExitSync && !isPosOpenSync && !isBuySync && (
+    (currentPrediction && currentPrediction.signal && currentPrediction.signal.toUpperCase().includes('SELL')) ||
+    (alertSignal && (alertSignal.signal === 'SELL' || (alertSignal.action && alertSignal.action.toUpperCase().includes('SELL')))) ||
+    quotePct <= -0.8
+  );
+
+  if (isBuySync && (!currentPrediction.signal || !currentPrediction.signal.toUpperCase().includes('BUY'))) {
+    currentPrediction.signal = 'BUY STOCK';
+    currentPrediction.action = 'BUY STOCK (MOMENTUM CONFLUENCE)';
+    currentPrediction.confidence = Math.max(currentPrediction.confidence || 0, 80);
+    const lastClose = currentCandles[currentCandles.length - 1].close;
+    const validAtr = (currentPrediction && currentPrediction.indicators && parseFloat(currentPrediction.indicators.atr.value) > 0)
+      ? parseFloat(currentPrediction.indicators.atr.value)
+      : (lastClose * 0.015);
+    const target1 = +(lastClose + validAtr * 1.5).toFixed(2);
+    const target2 = +(lastClose + validAtr * 3.0).toFixed(2);
+    const stopLoss = +(lastClose - validAtr * 1.0).toFixed(2);
+    const target1Pct = `+${(((target1 - lastClose) / lastClose) * 100).toFixed(1)}%`;
+    const target2Pct = `+${(((target2 - lastClose) / lastClose) * 100).toFixed(1)}%`;
+    const stopLossPct = `${(((stopLoss - lastClose) / lastClose) * 100).toFixed(1)}%`;
+    currentPrediction.tradeSetup = {
+      hasSetup: true,
+      type: 'BUY STOCK',
+      entryPrice: lastClose,
+      target1,
+      target2,
+      stopLoss,
+      target1Pct,
+      target2Pct,
+      stopLossPct,
+      riskReward: '1 : 1.5',
+      actionHeadline: `BUY STOCK — Confluence setup at ₹${lastClose.toFixed(2)}`,
+      timingAdvice: `Bullish momentum confirmed (+${quotePct.toFixed(2)}%). Target 1: ₹${target1} (${target1Pct}).`,
+    };
+  } else if (isSellSync && (!currentPrediction.signal || !currentPrediction.signal.toUpperCase().includes('SELL'))) {
+    currentPrediction.signal = 'SELL STOCK';
+    currentPrediction.action = 'SELL / SHORT (BEARISH CONFLUENCE)';
+    currentPrediction.confidence = Math.max(currentPrediction.confidence || 0, 78);
+    const lastClose = currentCandles[currentCandles.length - 1].close;
+    const validAtr = (currentPrediction && currentPrediction.indicators && parseFloat(currentPrediction.indicators.atr.value) > 0)
+      ? parseFloat(currentPrediction.indicators.atr.value)
+      : (lastClose * 0.015);
+    const target1 = +(lastClose - validAtr * 1.5).toFixed(2);
+    const target2 = +(lastClose - validAtr * 3.0).toFixed(2);
+    const stopLoss = +(lastClose + validAtr * 1.0).toFixed(2);
+    const target1Pct = `-${(((lastClose - target1) / lastClose) * 100).toFixed(1)}%`;
+    const target2Pct = `-${(((lastClose - target2) / lastClose) * 100).toFixed(1)}%`;
+    const stopLossPct = `+${(((stopLoss - lastClose) / lastClose) * 100).toFixed(1)}%`;
+    currentPrediction.tradeSetup = {
+      hasSetup: true,
+      type: 'SELL STOCK',
+      entryPrice: lastClose,
+      target1,
+      target2,
+      stopLoss,
+      target1Pct,
+      target2Pct,
+      stopLossPct,
+      riskReward: '1 : 1.5',
+      actionHeadline: `SELL STOCK — Bearish confluence setup at ₹${lastClose.toFixed(2)}`,
+      timingAdvice: `Bearish breakdown confirmed (${quotePct.toFixed(2)}%). Cover Target 1: ₹${target1} (${target1Pct}).`,
+    };
+  }
+
   // 2. Scan All Mathematical Candlestick Patterns
   currentPatterns = Patterns.scan(currentCandles);
 
@@ -442,8 +542,16 @@ function runAnalysisAndRender(updateMarkers = true) {
   renderReasoning(currentPrediction);
   renderBannerAction(currentPrediction);
 
-  // 6. Auto-fit chart time and price scales so new duration candles and indicator overlays fit full screen cleanly
-  if (window.ChartManager && typeof window.ChartManager.autoFit === 'function') {
+  // 6. Auto-fit chart or focus upper/focal area on active signal so user sees it early
+  const isPosOpenMain = currentPrediction && currentPrediction.positionState === 'OPEN_LONG';
+  const isExitMain = !!(currentPrediction && (currentPrediction.exitReason || (currentPrediction.action && currentPrediction.action.toUpperCase().startsWith('EXIT'))));
+  const isBuyMain = !isExitMain && !isPosOpenMain && (currentPrediction && currentPrediction.signal && currentPrediction.signal.toUpperCase().includes('BUY'));
+  const isSellMain = !isExitMain && !isPosOpenMain && (currentPrediction && currentPrediction.signal && currentPrediction.signal.toUpperCase().includes('SELL'));
+  const hasActiveSignalMain = isExitMain || isBuyMain || isSellMain || isPosOpenMain;
+
+  if (hasActiveSignalMain && window.ChartManager && typeof window.ChartManager.focusSignalView === 'function') {
+    window.ChartManager.focusSignalView();
+  } else if (window.ChartManager && typeof window.ChartManager.autoFit === 'function') {
     window.ChartManager.autoFit();
   }
 
@@ -511,11 +619,50 @@ function updateOverlays(prediction) {
     ChartManager.setVolumeVisibility(false);
   }
 
-  // 1. Targets
+  // Evaluate active signal state
+  const isPosOpen = prediction && prediction.positionState === 'OPEN_LONG';
+  const isExit = !!(prediction && (prediction.exitReason || (prediction.action && prediction.action.toUpperCase().startsWith('EXIT'))));
+  const isBuy = !isExit && !isPosOpen && (prediction && prediction.signal && prediction.signal.toUpperCase().includes('BUY'));
+  const isSell = !isExit && !isPosOpen && (prediction && prediction.signal && prediction.signal.toUpperCase().includes('SELL'));
+
+  const hasSignal = isExit || isBuy || isSell || isPosOpen;
+  const signalType = isExit ? 'EXIT' : (isBuy ? 'BUY' : (isSell ? 'SELL' : 'HOLD'));
+
+  // 1. Targets (Execution Targets: TP1, TP2, Stop Loss, Entry)
   if (activeOverlays.has('targets')) {
-    ChartManager.setTradeLevels(prediction ? prediction.tradeSetup : null);
+    let setupToRender = prediction ? prediction.tradeSetup : null;
+    const lastClose = (prediction && prediction.tradeSetup && prediction.tradeSetup.entryPrice)
+      || (currentQuote && currentQuote.price)
+      || (currentCandles && currentCandles.length > 0 ? currentCandles[currentCandles.length - 1].close : 100);
+    const validAtr = lastClose * 0.015;
+
+    if (!setupToRender || !setupToRender.target1) {
+      const isBull = isBuy || (!isSell && !isExit);
+      setupToRender = {
+        hasSetup: true,
+        type: isBuy ? 'BUY' : (isSell ? 'SELL' : (isExit ? 'EXIT' : 'NEUTRAL')),
+        entryPrice: lastClose,
+        target1: +(isBull ? lastClose + validAtr * 1.5 : lastClose - validAtr * 1.5).toFixed(2),
+        target2: +(isBull ? lastClose + validAtr * 3.0 : lastClose - validAtr * 3.0).toFixed(2),
+        stopLoss: +(isBull ? lastClose - validAtr * 1.0 : lastClose + validAtr * 1.0).toFixed(2),
+        positionStatus: isPosOpen ? 'OPEN_LONG' : 'NO_POSITION',
+      };
+    }
+    ChartManager.setTradeLevels(setupToRender);
   } else {
     ChartManager.clearTradeLevels();
+  }
+
+  // Configure signal price line: only show when there is an active signal with distinct color
+  if (typeof ChartManager !== 'undefined' && typeof ChartManager.setSignalPriceLine === 'function') {
+    const lastPrice = (prediction && prediction.tradeSetup && prediction.tradeSetup.entryPrice) || (currentQuote && currentQuote.price) || (currentCandles && currentCandles.length > 0 ? currentCandles[currentCandles.length - 1].close : null);
+    ChartManager.setSignalPriceLine({
+      hasSignal,
+      type: signalType,
+      price: lastPrice,
+      isPositionOpen: isPosOpen,
+      isTargetsActive: activeOverlays.has('targets'),
+    });
   }
 
   // 2. VWAP
@@ -1199,12 +1346,27 @@ function toggleOverlayFromMenu(checkbox) {
   const overlay = checkbox.dataset.overlay;
   if (!overlay) return;
 
+  const friendlyNames = {
+    targets: 'Execution Targets (TP1, TP2, Stop)',
+    patterns: 'Pattern Recognition Markers',
+    volume: 'Volume Histogram',
+    vwap: 'VWAP Overlay',
+    sma20: 'SMA 20',
+    sma50: 'SMA 50',
+    ema12: 'EMA 12',
+    ema26: 'EMA 26',
+    bb: 'Bollinger Bands',
+    sr: 'Support & Resistance',
+    trendlines: 'Algorithmic Trendlines',
+  };
+  const displayName = friendlyNames[overlay] || overlay.toUpperCase();
+
   if (checkbox.checked) {
     activeOverlays.add(overlay);
-    showToast(`${overlay.toUpperCase()} active`, 'success');
+    showToast(`${displayName} active`, 'success');
   } else {
     activeOverlays.delete(overlay);
-    showToast(`${overlay.toUpperCase()} hidden`, 'info');
+    showToast(`${displayName} hidden`, 'info');
   }
 
   saveActiveOverlays();

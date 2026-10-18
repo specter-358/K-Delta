@@ -341,6 +341,28 @@ function renderWatchlistTable() {
     );
   }
 
+  // Sort so securities with active signals (BUY, SELL, EXIT) are shifted to the upper side (top of list)
+  // so the trader can see them early!
+  const getSignalPriority = (item) => {
+    const sigState = (typeof AlertEngine !== 'undefined' && typeof AlertEngine.getWatchlistSignalState === 'function')
+      ? AlertEngine.getWatchlistSignalState(item.symbol)
+      : null;
+    const type = getWatchlistSignalType(item, sigState);
+    if (type === 'BUY') return 1;
+    if (type === 'SELL') return 2;
+    if (type === 'EXIT') return 3;
+    return 4; // HOLD
+  };
+
+  filtered.sort((a, b) => {
+    const prioA = getSignalPriority(a);
+    const prioB = getSignalPriority(b);
+    if (prioA !== prioB) return prioA - prioB;
+    const pctA = Math.abs(a.percentChange || 0);
+    const pctB = Math.abs(b.percentChange || 0);
+    return pctB - pctA;
+  });
+
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
@@ -536,21 +558,21 @@ function buildWatchlistSignalHtml(q, signalState) {
       </div>
     `;
   } else {
-    // HOLD (Consolidation / Neutral)
-    let target1 = signalState && signalState.target1 ? signalState.target1 : null;
-    let stopLoss = signalState && signalState.stopLoss ? signalState.stopLoss : null;
-    if (currentPriceNum && currentPriceNum > 0) {
-      if (!target1) target1 = +(currentPriceNum * 1.02).toFixed(2);
-      if (!stopLoss) stopLoss = +(currentPriceNum * 0.98).toFixed(2);
+    // No active signal (HOLD / Consolidation)
+    // Requirement: Only show when there is a signal, otherwise don't show anything (clean muted placeholder)
+    if (typeof currentWatchlistFilter !== 'undefined' && currentWatchlistFilter === 'HOLD') {
+      return `
+        <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="HOLD (Consolidation @ ${entryP}). Click to open in terminal.">
+          <div class="watchlist-signal-badge badge--hold">
+            <span class="signal-dot hold"></span> HOLD @ ${entryP}
+          </div>
+        </div>
+      `;
     }
-    const tpStr = target1 ? formatPrice(target1) : '—';
-    const slStr = stopLoss ? formatPrice(stopLoss) : '—';
 
     return `
-      <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="HOLD Signal @ ${entryP} | Resistance: ${tpStr} | Support: ${slStr}. Click to open in terminal.">
-        <div class="watchlist-signal-badge badge--hold">
-          <span class="signal-dot hold"></span> HOLD @ ${entryP}
-        </div>
+      <div class="watchlist-signal-cell" onclick="launchTerminal('${q.symbol}')" title="No active trade signal (Consolidation @ ${entryP}). Click to open in terminal.">
+        <span class="watchlist-no-signal" title="No active signal">—</span>
       </div>
     `;
   }
@@ -565,6 +587,8 @@ function updateWatchlistSignalCells(specificSymbol = null) {
     ? watchlistQuotes.filter(q => q.symbol === specificSymbol)
     : watchlistQuotes;
 
+  const tbody = document.getElementById('watchlist-table-body');
+
   list.forEach(q => {
     const rowId = `row-${q.symbol.replace(/[^A-Z0-9]/g, '_')}`;
     const row = document.getElementById(rowId);
@@ -575,6 +599,17 @@ function updateWatchlistSignalCells(specificSymbol = null) {
       ? AlertEngine.getWatchlistSignalState(q.symbol)
       : null;
     cell.innerHTML = buildWatchlistSignalHtml(q, signalState);
+
+    // If an active signal occurs, shift it to the upper side so trader sees it early!
+    const sigType = getWatchlistSignalType(q, signalState);
+    if (sigType === 'BUY' || sigType === 'SELL' || sigType === 'EXIT') {
+      if (tbody && tbody.firstChild !== row) {
+        tbody.insertBefore(row, tbody.firstChild);
+        row.classList.remove('row-promoted-signal');
+        void row.offsetWidth;
+        row.classList.add('row-promoted-signal');
+      }
+    }
   });
 }
 
@@ -933,6 +968,18 @@ function handleLiveTickUpdate(tick) {
         ? AlertEngine.getWatchlistSignalState(quote.symbol)
         : null;
       cells[5].innerHTML = buildWatchlistSignalHtml(quote, signalState);
+
+      // When there is any signal, shift it to the upper side so user sees it early!
+      const sigType = getWatchlistSignalType(quote, signalState);
+      if (sigType === 'BUY' || sigType === 'SELL' || sigType === 'EXIT') {
+        const tbody = document.getElementById('watchlist-table-body');
+        if (tbody && tbody.firstChild !== row) {
+          tbody.insertBefore(row, tbody.firstChild);
+          row.classList.remove('row-promoted-signal');
+          void row.offsetWidth;
+          row.classList.add('row-promoted-signal');
+        }
+      }
     }
   }
 

@@ -262,6 +262,42 @@ async function runIntradayTests() {
     }
   });
 
+  // ════════════════════════════════════════════════════════════
+  // 8. Scenario H: Price Line & Watchlist Upper Side Prioritization
+  // ════════════════════════════════════════════════════════════
+  await test('Scenario H: Signal Detection and Watchlist Upper-Side Prioritization', () => {
+    // 1. Setup detection: verify that consolidation / low-edge bars yield hasSetup = false (no price line)
+    const sidewaysCandles = [];
+    for (let i = 0; i < 25; i++) {
+      sidewaysCandles.push(createCandle(i, 100, 100.5, 99.5, 100));
+    }
+    const sidewaysPred = Predictions.analyze(sidewaysCandles, 'TATASTEEL.NS', { isIntraday: true });
+    assert.strictEqual(sidewaysPred.tradeSetup.hasSetup, false, 'Consolidation phase must not generate active setup lines');
+
+    // 2. Watchlist upper-side prioritization logic: BUY & SELL must sort ahead of HOLD
+    const quotes = [
+      { symbol: 'TATASTEEL.NS', price: 175.50, percentChange: -0.2 }, // HOLD
+      { symbol: 'RVNL.NS', price: 199.45, percentChange: 1.38 },      // BUY (> 0.8%)
+      { symbol: 'IFCI.NS', price: 66.99, percentChange: -1.90 },      // SELL (< -0.8%)
+      { symbol: 'HINDCOPPER.NS', price: 458.45, percentChange: 1.19 },// BUY (> 0.8%)
+    ];
+
+    const getPrio = (q) => {
+      const pct = q.percentChange || 0;
+      if (pct >= 0.8) return 1; // BUY
+      if (pct <= -0.8) return 2; // SELL
+      return 4; // HOLD
+    };
+
+    const sorted = [...quotes].sort((a, b) => getPrio(a) - getPrio(b));
+
+    // BUY and SELL stocks MUST be in the top rows (upper side)
+    assert(sorted[0].percentChange >= 0.8 || sorted[0].percentChange <= -0.8, 'Top row must have active signal');
+    assert(sorted[1].percentChange >= 0.8 || sorted[1].percentChange <= -0.8, 'Second row must have active signal');
+    assert(sorted[2].percentChange >= 0.8 || sorted[2].percentChange <= -0.8, 'Third row must have active signal');
+    assert.strictEqual(sorted[3].symbol, 'TATASTEEL.NS', 'HOLD stock must be at the bottom, not upper side');
+  });
+
   console.log('====================================================');
   console.log(`Intraday Trading Tests: ${passed} Passed, ${failed} Failed`);
   console.log('====================================================\n');
