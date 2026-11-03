@@ -511,6 +511,7 @@ class YahooMarketProvider extends BaseMarketProvider {
     const isClosed = !isIndianMarketOpen();
     const isDaily = normInterval === '1day' || normInterval === '1d' || normInterval === '1week' || normInterval === '1w';
     const candlesTTL = isClosed ? 300000 : (isDaily ? 60000 : 15000);
+    const cacheKey = `candles_${symbol}_${normInterval}_${count}`;
     const cached = this._getCached(cacheKey, candlesTTL);
     if (cached) return cached;
 

@@ -646,11 +646,105 @@ const Patterns = (() => {
     return null;
   }
 
+  /**
+   * Three White Soldiers (3-Candle Powerful Bullish Reversal / Continuation)
+   * Math: 3 consecutive bullish candles, each closing higher, opening within prior body, small upper shadows
+   */
+  function detectThreeWhiteSoldiers(candles, index) {
+    if (index < 2) return null;
+    const c1 = candles[index - 2];
+    const c2 = candles[index - 1];
+    const c3 = candles[index];
+
+    if (!isBullish(c1) || !isBullish(c2) || !isBullish(c3)) return null;
+
+    // Each closes progressively higher
+    if (c2.close <= c1.close || c3.close <= c2.close) return null;
+
+    // Each opens within or near prior candle's real body
+    if (c2.open < c1.open || c2.open > c1.close) return null;
+    if (c3.open < c2.open || c3.open > c2.close) return null;
+
+    // Moderate/strong bodies
+    const r1 = candleRange(c1);
+    const r2 = candleRange(c2);
+    const r3 = candleRange(c3);
+    if (bodySize(c1) / r1 < 0.4 || bodySize(c2) / r2 < 0.4 || bodySize(c3) / r3 < 0.4) return null;
+
+    // Upper shadows should not be long (wicks <= 30% of range)
+    if (upperShadow(c3) / r3 > 0.30) return null;
+
+    return {
+      name: 'Three White Soldiers',
+      type: 'multi',
+      signal: 'bullish',
+      confidence: 88,
+      timestamp: c3.time,
+      index,
+      price: c3.close,
+      explanation: 'High-conviction 3-bar bullish pattern: Three consecutive strong green candles with progressive higher closes confirm overwhelming buyer domination.',
+      rulesMatched: [
+        '3 consecutive bullish green candles',
+        'Progressive higher closes and higher highs',
+        'Open prices within prior bar bodies',
+        'Upper shadows < 30% of candle range',
+      ],
+    };
+  }
+
+  /**
+   * Three Black Crows (3-Candle Powerful Bearish Reversal / Continuation)
+   * Math: 3 consecutive bearish candles, each closing lower, opening within prior body, small lower shadows
+   */
+  function detectThreeBlackCrows(candles, index) {
+    if (index < 2) return null;
+    const c1 = candles[index - 2];
+    const c2 = candles[index - 1];
+    const c3 = candles[index];
+
+    if (!isBearish(c1) || !isBearish(c2) || !isBearish(c3)) return null;
+
+    // Each closes progressively lower
+    if (c2.close >= c1.close || c3.close >= c2.close) return null;
+
+    // Each opens within or near prior candle's real body
+    if (c2.open > c1.open || c2.open < c1.close) return null;
+    if (c3.open > c2.open || c3.open < c2.close) return null;
+
+    // Moderate/strong bodies
+    const r1 = candleRange(c1);
+    const r2 = candleRange(c2);
+    const r3 = candleRange(c3);
+    if (bodySize(c1) / r1 < 0.4 || bodySize(c2) / r2 < 0.4 || bodySize(c3) / r3 < 0.4) return null;
+
+    // Lower shadows should not be long
+    if (lowerShadow(c3) / r3 > 0.30) return null;
+
+    return {
+      name: 'Three Black Crows',
+      type: 'multi',
+      signal: 'bearish',
+      confidence: 88,
+      timestamp: c3.time,
+      index,
+      price: c3.close,
+      explanation: 'High-conviction 3-bar bearish pattern: Three consecutive strong red candles with progressive lower closes confirm severe institutional distribution.',
+      rulesMatched: [
+        '3 consecutive bearish red candles',
+        'Progressive lower closes and lower lows',
+        'Open prices within prior bar bodies',
+        'Lower shadows < 30% of candle range',
+      ],
+    };
+  }
+
   // ════════════════════════════════════════════════════════════
   // MASTER SCANNER PIPELINE
   // ════════════════════════════════════════════════════════════
 
   const DETECTORS = [
+    detectThreeWhiteSoldiers,
+    detectThreeBlackCrows,
     detectBullishEngulfing,
     detectBearishEngulfing,
     detectMorningStar,
@@ -683,7 +777,7 @@ const Patterns = (() => {
           if (result) {
             result.id = `pat_${result.name.replace(/\s+/g, '_').toLowerCase()}_${i}`;
             detected.push(result);
-            break; // Record top priority pattern for this bar
+            // Do NOT break — detect all overlapping patterns per bar for stronger confluence
           }
         } catch (e) {
           // Continue scanning next detector
@@ -729,6 +823,8 @@ const Patterns = (() => {
     detectEveningStar,
     detectHarami,
     detectTweezers,
+    detectThreeWhiteSoldiers,
+    detectThreeBlackCrows,
   };
 })();
 

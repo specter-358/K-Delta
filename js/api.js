@@ -296,7 +296,7 @@ const API = (() => {
    * @param {string} interval - e.g. '1min', '3min', '5min', '15min', '30min', '1h', '1day', '1week'
    * @param {number} outputsize - Number of candle data points
    */
-  async function fetchCandles(symbol, interval = '1day', outputsize = 120) {
+  async function fetchCandles(symbol, interval = '1day', outputsize = 250) {
     try {
       const data = await apiFetch('/api/candles', {
         symbol,

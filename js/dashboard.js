@@ -376,7 +376,7 @@ async function loadSymbol(symbol, isRefresh = false) {
   try {
     const [quote, candles] = await Promise.all([
       API.fetchQuote(currentSymbol),
-      API.fetchCandles(currentSymbol, currentInterval, 120),
+      API.fetchCandles(currentSymbol, currentInterval, 250),
     ]);
 
     if (!quote || quote.error) {

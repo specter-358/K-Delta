@@ -378,6 +378,157 @@ const Indicators = (() => {
     };
   }
 
+  /**
+   * Average Directional Index (ADX) — Measures trend strength (not direction)
+   * ADX < 20 = no trend, 20-40 = trending, 40+ = strong trend
+   */
+  function adx(candles, period = 14) {
+    if (!candles || candles.length < period * 2) return candles ? candles.map(() => null) : [];
+
+    const plusDM = [];
+    const minusDM = [];
+    const tr = [];
+
+    for (let i = 0; i < candles.length; i++) {
+      if (i === 0) {
+        plusDM.push(0);
+        minusDM.push(0);
+        tr.push(candles[0].high - candles[0].low);
+        continue;
+      }
+      const prev = candles[i - 1];
+      const curr = candles[i];
+      const upMove = curr.high - prev.high;
+      const downMove = prev.low - curr.low;
+      plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
+      minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
+      tr.push(Math.max(curr.high - curr.low, Math.abs(curr.high - prev.close), Math.abs(curr.low - prev.close)));
+    }
+
+    // Smoothed averages
+    const smoothTR = [];
+    const smoothPlusDM = [];
+    const smoothMinusDM = [];
+    const result = [];
+
+    for (let i = 0; i < period; i++) {
+      result.push(null);
+    }
+
+    let sumTR = 0, sumPDM = 0, sumMDM = 0;
+    for (let i = 0; i < period; i++) {
+      sumTR += tr[i];
+      sumPDM += plusDM[i];
+      sumMDM += minusDM[i];
+    }
+
+    let smoothedTR = sumTR;
+    let smoothedPDM = sumPDM;
+    let smoothedMDM = sumMDM;
+
+    const dxValues = [];
+
+    for (let i = period; i < candles.length; i++) {
+      if (i > period) {
+        smoothedTR = smoothedTR - (smoothedTR / period) + tr[i];
+        smoothedPDM = smoothedPDM - (smoothedPDM / period) + plusDM[i];
+        smoothedMDM = smoothedMDM - (smoothedMDM / period) + minusDM[i];
+      }
+
+      const plusDI = smoothedTR > 0 ? (smoothedPDM / smoothedTR) * 100 : 0;
+      const minusDI = smoothedTR > 0 ? (smoothedMDM / smoothedTR) * 100 : 0;
+      const diSum = plusDI + minusDI;
+      const dx = diSum > 0 ? (Math.abs(plusDI - minusDI) / diSum) * 100 : 0;
+      dxValues.push(dx);
+
+      if (dxValues.length < period) {
+        result.push(null);
+      } else if (dxValues.length === period) {
+        const adxVal = dxValues.reduce((s, v) => s + v, 0) / period;
+        result.push(parseFloat(adxVal.toFixed(2)));
+      } else {
+        const prevADX = result[result.length - 1] || dx;
+        const adxVal = (prevADX * (period - 1) + dx) / period;
+        result.push(parseFloat(adxVal.toFixed(2)));
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * On-Balance Volume (OBV) — Confirms if volume supports price direction
+   * Rising OBV + Rising Price = Strong move | Divergence = Weak move
+   */
+  function obv(candles) {
+    if (!candles || candles.length === 0) return [];
+    const result = [0];
+    for (let i = 1; i < candles.length; i++) {
+      const vol = candles[i].volume || 0;
+      if (candles[i].close > candles[i - 1].close) {
+        result.push(result[i - 1] + vol);
+      } else if (candles[i].close < candles[i - 1].close) {
+        result.push(result[i - 1] - vol);
+      } else {
+        result.push(result[i - 1]);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * RSI Divergence Detection
+   * Bullish: Price lower low + RSI higher low → Reversal UP likely (~80%)
+   * Bearish: Price higher high + RSI lower high → Reversal DOWN likely (~80%)
+   * Returns: { type: 'bullish'|'bearish'|null, strength, pricePoints, rsiPoints }
+   */
+  function rsiDivergence(candles, rsiValues, lookback = 20) {
+    if (!candles || !rsiValues || candles.length < lookback + 5) return null;
+
+    const len = candles.length;
+    const startIdx = Math.max(0, len - lookback);
+
+    // Find swing lows and swing highs in the lookback window
+    const swingLows = [];
+    const swingHighs = [];
+
+    for (let i = startIdx + 2; i < len - 2; i++) {
+      if (rsiValues[i] == null) continue;
+      // Swing low: lower than 2 bars on each side
+      if (candles[i].low <= candles[i - 1].low && candles[i].low <= candles[i - 2].low &&
+          candles[i].low <= candles[i + 1].low && candles[i].low <= candles[i + 2].low) {
+        swingLows.push({ idx: i, price: candles[i].low, rsi: rsiValues[i] });
+      }
+      // Swing high: higher than 2 bars on each side
+      if (candles[i].high >= candles[i - 1].high && candles[i].high >= candles[i - 2].high &&
+          candles[i].high >= candles[i + 1].high && candles[i].high >= candles[i + 2].high) {
+        swingHighs.push({ idx: i, price: candles[i].high, rsi: rsiValues[i] });
+      }
+    }
+
+    // Check for bullish divergence: Price lower low, RSI higher low
+    if (swingLows.length >= 2) {
+      const prev = swingLows[swingLows.length - 2];
+      const curr = swingLows[swingLows.length - 1];
+      if (curr.price < prev.price && curr.rsi > prev.rsi) {
+        const strength = Math.min(100, Math.round((prev.rsi - curr.rsi) * -3 + 70));
+        return { type: 'bullish', strength, prevSwing: prev, currSwing: curr };
+      }
+    }
+
+    // Check for bearish divergence: Price higher high, RSI lower high
+    if (swingHighs.length >= 2) {
+      const prev = swingHighs[swingHighs.length - 2];
+      const curr = swingHighs[swingHighs.length - 1];
+      if (curr.price > prev.price && curr.rsi < prev.rsi) {
+        const strength = Math.min(100, Math.round((curr.rsi - prev.rsi) * -3 + 70));
+        return { type: 'bearish', strength, prevSwing: prev, currSwing: curr };
+      }
+    }
+
+    return null;
+  }
+
   return {
     sma,
     ema,
@@ -391,6 +542,9 @@ const Indicators = (() => {
     rsiStatus,
     macdStatus,
     bbSqueeze,
+    adx,
+    obv,
+    rsiDivergence,
   };
 })();
 

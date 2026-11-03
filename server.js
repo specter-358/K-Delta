@@ -277,7 +277,7 @@ app.get('/api/candles', async (req, res, next) => {
   }
 
   const intervalParam = req.query.interval || '1day';
-  const outputsize = parseInt(req.query.outputsize, 10) || 120;
+  const outputsize = parseInt(req.query.outputsize, 10) || 250;
 
   try {
     const candles = await provider.getHistoricalCandles(rawSymbol, intervalParam, outputsize);

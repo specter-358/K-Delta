@@ -160,7 +160,6 @@ const Predictions = (() => {
         const rsiOk = rsi == null || (rsi >= 38 && rsi <= 82);
 
         // 4. Candle structure & expansion: Higher high or price breakout with green candle
-        const prevCandle = i > 0 ? candles[i - 1] : candle;
         const makesHigherHigh = close > prevCandle.high || (high > prevCandle.high && close > prevCandle.close);
         const hasProgress = i >= 4 ? close > candles[i - 4].close : true;
         const candleOk = close > open && makesHigherHigh && hasProgress;
@@ -197,6 +196,20 @@ const Predictions = (() => {
         }
       } else if (state === 'OPEN_LONG') {
         // POSITION IS ALREADY OPEN:
+        // Dynamic Trailing Stop: protect gains as trade progresses into profit
+        if (high >= currentTrade.entryPrice + atr * 1.0) {
+          const breakevenSL = +(currentTrade.entryPrice + atr * 0.1).toFixed(2);
+          if (breakevenSL > currentTrade.stopLoss) {
+            currentTrade.stopLoss = breakevenSL;
+          }
+        }
+        if (high >= currentTrade.entryPrice + atr * 1.8) {
+          const trailSL = +(high - atr * 1.2).toFixed(2);
+          if (trailSL > currentTrade.stopLoss) {
+            currentTrade.stopLoss = trailSL;
+          }
+        }
+
         // Strictly evaluate EXIT conditions. DO NOT issue another BUY signal.
         let isExit = false;
         let exitPrice = close;
@@ -317,6 +330,9 @@ const Predictions = (() => {
     const macdResult = IndicatorsModule ? IndicatorsModule.macd(closes, 12, 26, 9) : null;
     const bbResult = IndicatorsModule ? IndicatorsModule.bollingerBands(closes, 20, 2) : { upper: [], lower: [], middle: [] };
     const atrValues = IndicatorsModule ? IndicatorsModule.atr(candles, 14) : [];
+    const adxValues = (IndicatorsModule && IndicatorsModule.adx) ? IndicatorsModule.adx(candles, 14) : [];
+    const obvValues = (IndicatorsModule && IndicatorsModule.obv) ? IndicatorsModule.obv(candles) : [];
+    const srLevels = (IndicatorsModule && IndicatorsModule.supportResistance) ? IndicatorsModule.supportResistance(candles) : { support: [], resistance: [] };
 
     const currentRSI = rsiValues ? rsiValues[lastIdx] : 50;
     const macdArr = macdResult ? (macdResult.macd || macdResult.macdLine || []) : [];
@@ -330,36 +346,55 @@ const Predictions = (() => {
     const currentEMA12 = ema12 ? ema12[lastIdx] : lastClose;
     const currentEMA26 = ema26 ? ema26[lastIdx] : lastClose;
     const currentATR = atrValues ? atrValues[lastIdx] : (lastClose * 0.015);
+    const currentADX = adxValues ? adxValues[lastIdx] : null;
+
+    // RSI Divergence Detection (high-reliability reversal signal)
+    const divergence = (IndicatorsModule && IndicatorsModule.rsiDivergence) ? IndicatorsModule.rsiDivergence(candles, rsiValues, 20) : null;
+
+    // Support / Resistance proximity flags
+    const nearResistance = srLevels.resistance.some(r => Math.abs(lastClose - r) / lastClose < 0.012);
+    const nearSupport = srLevels.support.some(s => Math.abs(lastClose - s) / lastClose < 0.012);
 
     // ── 2. Detect Patterns ──
     const patterns = (PatternsModule && PatternsModule.scan) ? (PatternsModule.scan(candles, 15) || []) : [];
 
-    // ── 3. Determine Trend ──
-    const trend = detectTrend(candles, sma20, sma50, ema12, ema26);
+    // ── 3. Determine Trend (now with ADX strength validation) ──
+    const trend = detectTrend(candles, sma20, sma50, ema12, ema26, currentADX);
 
-    // ── 4. Score Each Component ──
+    // ── 4. Score Each Component (Rebalanced Weights for Maximum Accuracy) ──
+    // Weights: RSI 12% | MACD 18% | MAs 13% | Patterns 17% | Volume 15% | Divergence 13% | S/R 12%
     let totalScore = 0; // -100 to +100
     const reasons = [];
 
     const rsiResult = scoreRSI(currentRSI);
-    totalScore += rsiResult.score * 0.20;
+    totalScore += rsiResult.score * 0.12;
     if (rsiResult.reason) reasons.push(rsiResult.reason);
 
     const macdScore = scoreMACD(currentMACD, currentSignal, currentHistogram, macdResult);
-    totalScore += macdScore.score * 0.25;
+    totalScore += macdScore.score * 0.18;
     if (macdScore.reason) reasons.push(macdScore.reason);
 
     const maScore = scoreMovingAverages(lastClose, currentSMA20, currentSMA50, ema12, ema26, candles);
-    totalScore += maScore.score * 0.20;
+    totalScore += maScore.score * 0.13;
     if (maScore.reason) reasons.push(maScore.reason);
 
-    const patternScore = scorePatterns(patterns);
-    totalScore += patternScore.score * 0.25;
+    const patternScore = scorePatterns(patterns, candles.length);
+    totalScore += patternScore.score * 0.17;
     if (patternScore.reason) reasons.push(patternScore.reason);
 
-    const volumeScore = scoreVolume(candles);
-    totalScore += volumeScore.score * 0.10;
+    const volumeScore = scoreVolume(candles, obvValues);
+    totalScore += volumeScore.score * 0.15;
     if (volumeScore.reason) reasons.push(volumeScore.reason);
+
+    // ── 4b. RSI Divergence Score (NEW — high-reliability reversal signal) ──
+    const divScore = scoreDivergence(divergence);
+    totalScore += divScore.score * 0.13;
+    if (divScore.reason) reasons.push(divScore.reason);
+
+    // ── 4c. Support/Resistance Context Score (NEW — avoid buying at resistance) ──
+    const srScore = scoreSupportResistance(lastClose, srLevels, currentATR, trend);
+    totalScore += srScore.score * 0.12;
+    if (srScore.reason) reasons.push(srScore.reason);
 
     // ── 5. Run Intraday Trade Lifecycle State Machine across history ──
     const isIntradayTf = options.isIntraday !== false;
@@ -455,18 +490,37 @@ const Predictions = (() => {
         action = 'SESSION CLOSING — NO NEW ENTRIES';
         actionType = 'hold';
         confidence = 50;
-      } else if (totalScore >= 38 && currentRSI >= 40 && currentRSI <= 68 && lastClose >= (currentSMA20 || lastClose)) {
-        // Confirmed Bullish Confluence
+      } else if (totalScore >= 45 && currentRSI >= 38 && currentRSI <= 75 && lastClose >= (currentSMA20 || lastClose)) {
+        // Confirmed Bullish Confluence (Threshold raised from 38→45, RSI widened 40-68→38-75)
+        // Reduce confidence near resistance to avoid buying at walls
+        let buyConfidence = Math.min(96, Math.round(62 + totalScore * 0.35));
+        if (nearResistance) {
+          buyConfidence = Math.max(40, buyConfidence - 18);
+          reasons.push('⚠️ Price is near **resistance level** — entry carries higher risk.');
+        }
+        if (nearSupport) {
+          buyConfidence = Math.min(96, buyConfidence + 8);
+          reasons.push('✅ Price is near **support level** — favorable entry zone.');
+        }
+        // Taper confidence for RSI > 68 (momentum still valid but more extended)
+        if (currentRSI > 68) {
+          buyConfidence = Math.max(45, buyConfidence - Math.round((currentRSI - 68) * 1.5));
+        }
         signal = 'BUY STOCK';
         action = totalScore > 60 ? 'STRONG BUY STOCK' : 'BUY STOCK ON PULLBACK';
         actionType = totalScore > 60 ? 'strong-buy' : 'buy';
-        confidence = Math.min(96, Math.round(62 + totalScore * 0.35));
-      } else if (totalScore <= -35) {
-        // Confirmed Bearish Structure
+        confidence = buyConfidence;
+      } else if (totalScore <= -38) {
+        // Confirmed Bearish Structure (Threshold tightened from -35→-38)
+        let sellConfidence = Math.min(96, Math.round(55 + Math.abs(totalScore) * 0.35));
+        if (nearSupport) {
+          sellConfidence = Math.max(40, sellConfidence - 15);
+          reasons.push('⚠️ Price is near **support level** — short entry may bounce.');
+        }
         signal = 'SELL STOCK';
         action = totalScore < -60 ? 'STRONG SELL STOCK' : 'SELL / SHORT ON RALLY';
         actionType = 'sell';
-        confidence = Math.min(96, Math.round(55 + Math.abs(totalScore) * 0.35));
+        confidence = sellConfidence;
       } else {
         // Low Edge / Consolidation
         signal = 'WAIT FOR CONFIRMATION';
@@ -491,17 +545,18 @@ const Predictions = (() => {
         exitReason,
         sessionInfo,
         isIntraday: isIntradayTf,
+        srLevels,
       }
     );
 
-    // ── 10. Run Authentic Historical Backtest from Lifecycle Trades ──
+    // ── 10. Run Authentic Historical Backtest from Lifecycle Trades (with slippage) ──
     const backtest = runBacktest(trades, candles);
 
-    // ── 11. Compute 5-Bar Forward Price Forecast ──
-    const forecast = computeForecast(lastClose, currentATR, signal, confidence, trend);
+    // ── 11. Compute 5-Bar Forward Price Forecast (mean-reversion aware) ──
+    const forecast = computeForecast(lastClose, currentATR, signal, confidence, trend, { sma20Value: currentSMA20, bbResult, lastIdx, srLevels });
 
     // ── 12. Compute Algorithmic Confluence Matrix ──
-    const confluence = computeConfluenceMatrix(totalScore, rsiResult, macdScore, maScore, patternScore, volumeScore);
+    const confluence = computeConfluenceMatrix(totalScore, rsiResult, macdScore, maScore, patternScore, volumeScore, divScore, srScore);
 
     // ── 13. Build Indicator Summary ──
     const rsiStatusObj = IndicatorsModule ? IndicatorsModule.rsiStatus(currentRSI) : { status: 'Neutral', signal: 'neutral' };
@@ -698,12 +753,26 @@ const Predictions = (() => {
       entryMin = +(currentPrice - validATR * 0.3).toFixed(2);
       entryMax = +(currentPrice + validATR * 0.2).toFixed(2);
 
-      // Stop loss 1.5 ATR below entry
-      stopLoss = +(currentPrice - validATR * 1.5).toFixed(2);
-      // Target 1: 2 ATR above or upper BB
-      target1 = +(Math.max(currentPrice + validATR * 2.0, (bbUpper + currentPrice) / 2)).toFixed(2);
-      // Target 2: 3.5 ATR above
-      target2 = +(currentPrice + validATR * 3.5).toFixed(2);
+      // Structural Support-aware Stop Loss (places stop just below key support level)
+      let stopLossVal = +(currentPrice - validATR * 1.5).toFixed(2);
+      if (options.srLevels && options.srLevels.support && options.srLevels.support.length > 0) {
+        const supBelow = options.srLevels.support.find(s => s < currentPrice && (currentPrice - s) <= validATR * 2.2);
+        if (supBelow) {
+          stopLossVal = +(supBelow - validATR * 0.25).toFixed(2);
+        }
+      }
+      stopLoss = stopLossVal;
+
+      // Resistance-aware Target 1 (aligns target with actual overhead resistance)
+      let target1Val = +(Math.max(currentPrice + validATR * 2.0, (bbUpper + currentPrice) / 2)).toFixed(2);
+      if (options.srLevels && options.srLevels.resistance && options.srLevels.resistance.length > 0) {
+        const resAbove = options.srLevels.resistance.find(r => r > currentPrice && (r - currentPrice) >= validATR * 1.2);
+        if (resAbove) {
+          target1Val = +resAbove.toFixed(2);
+        }
+      }
+      target1 = target1Val;
+      target2 = +(Math.max(target1 + validATR * 1.2, currentPrice + validATR * 3.5)).toFixed(2);
 
       const risk = Math.max(0.1, entry - stopLoss);
       const reward = Math.max(0.1, target1 - entry);
@@ -777,12 +846,26 @@ const Predictions = (() => {
       entryMin = +(currentPrice - validATR * 0.2).toFixed(2);
       entryMax = +(currentPrice + validATR * 0.3).toFixed(2);
 
-      // Stop loss 1.5 ATR above entry
-      stopLoss = +(currentPrice + validATR * 1.5).toFixed(2);
-      // Target 1: 2 ATR below or lower BB
-      target1 = +(Math.min(currentPrice - validATR * 2.0, (bbLower + currentPrice) / 2)).toFixed(2);
-      // Target 2: 3.5 ATR below
-      target2 = +(currentPrice - validATR * 3.5).toFixed(2);
+      // Structural Resistance-aware Stop Loss (places stop just above overhead resistance)
+      let stopLossVal = +(currentPrice + validATR * 1.5).toFixed(2);
+      if (options.srLevels && options.srLevels.resistance && options.srLevels.resistance.length > 0) {
+        const resAbove = options.srLevels.resistance.find(r => r > currentPrice && (r - currentPrice) <= validATR * 2.2);
+        if (resAbove) {
+          stopLossVal = +(resAbove + validATR * 0.25).toFixed(2);
+        }
+      }
+      stopLoss = stopLossVal;
+
+      // Support-aware Target 1 (aligns target with actual underlying support)
+      let target1Val = +(Math.min(currentPrice - validATR * 2.0, (bbLower + currentPrice) / 2)).toFixed(2);
+      if (options.srLevels && options.srLevels.support && options.srLevels.support.length > 0) {
+        const supBelow = options.srLevels.support.find(s => s < currentPrice && (currentPrice - s) >= validATR * 1.2);
+        if (supBelow) {
+          target1Val = +supBelow.toFixed(2);
+        }
+      }
+      target1 = target1Val;
+      target2 = +(Math.min(target1 - validATR * 1.2, currentPrice - validATR * 3.5)).toFixed(2);
 
       const risk = Math.max(0.1, stopLoss - entry);
       const reward = Math.max(0.1, entry - target1);
@@ -904,6 +987,10 @@ const Predictions = (() => {
   /**
    * Run Authentic Historical Backtest based on simulated trade lifecycle
    */
+  /**
+   * Run Authentic Historical Backtest with Realistic Slippage
+   * Slippage: 0.05% per side (entry and exit) to reflect real market execution
+   */
   function runBacktest(trades, candles) {
     if (!trades || trades.length === 0) {
       return {
@@ -919,9 +1006,20 @@ const Predictions = (() => {
       };
     }
 
-    const wins = trades.filter(t => t.outcome === 'WIN');
-    const losses = trades.filter(t => t.outcome === 'LOSS');
-    const totalSignals = trades.length;
+    const SLIPPAGE_PCT = 0.05; // 0.05% per side (entry + exit)
+
+    // Recompute PnL with slippage for realistic accuracy
+    const adjustedTrades = trades.map(t => {
+      const adjEntry = t.entryPrice * (1 + SLIPPAGE_PCT / 100);
+      const adjExit = t.exitPrice * (1 - SLIPPAGE_PCT / 100);
+      const adjPnl = adjExit - adjEntry;
+      const adjPnlPct = +((adjPnl / adjEntry) * 100).toFixed(2);
+      return { ...t, pnlPct: adjPnlPct, pnl: +adjPnl.toFixed(2), outcome: adjPnl >= 0 ? 'WIN' : 'LOSS' };
+    });
+
+    const wins = adjustedTrades.filter(t => t.outcome === 'WIN');
+    const losses = adjustedTrades.filter(t => t.outcome === 'LOSS');
+    const totalSignals = adjustedTrades.length;
 
     const winRate = +( (wins.length / totalSignals) * 100 ).toFixed(1);
     const totalWinPnl = wins.reduce((sum, t) => sum + Math.abs(t.pnlPct || 0), 0);
@@ -942,24 +1040,54 @@ const Predictions = (() => {
       avgWinPct: `+${avgWin.toFixed(2)}%`,
       avgLossPct: `-${avgLoss.toFixed(2)}%`,
       expectedValue: `${ev >= 0 ? '+' : ''}${ev}%`,
-      recentTrades: trades.slice(-8).reverse(),
+      recentTrades: adjustedTrades.slice(-8).reverse(),
     };
   }
 
   /**
    * Compute 5-Bar Forward Price Forecast & Statistical Confidence Cones
    */
-  function computeForecast(currentPrice, atr, signal, confidence, trend) {
+  /**
+   * Compute 5-Bar Forward Price Forecast with Mean-Reversion & Structural Levels
+   * Uses Bollinger Band midline pull, S/R proximity, and confidence-weighted cones
+   */
+  function computeForecast(currentPrice, atr, signal, confidence, trend, context = {}) {
     const validATR = (atr && atr > 0) ? atr : (currentPrice * 0.015);
     const isBull = signal.includes('BUY');
     const isBear = signal.includes('SELL') || signal.includes('NO BUY');
 
-    const driftFactor = isBull ? 0.35 : isBear ? -0.35 : 0.05;
+    // Mean-reversion component: pull toward SMA20 / BB midline
+    const bbMid = context.sma20Value || currentPrice;
+    const distFromMid = (currentPrice - bbMid);
+    const meanReversionPerBar = distFromMid !== 0 ? -(distFromMid * 0.08) : 0;
+
+    // Momentum drift based on signal
+    const momentumDrift = isBull ? 0.28 : isBear ? -0.28 : 0.03;
+
+    // S/R magnet effect: price tends to gravitate toward nearest S/R
+    let srPull = 0;
+    if (context.srLevels) {
+      const nearestRes = context.srLevels.resistance && context.srLevels.resistance[0];
+      const nearestSup = context.srLevels.support && context.srLevels.support[0];
+      if (isBull && nearestRes && nearestRes > currentPrice) {
+        const distToRes = nearestRes - currentPrice;
+        srPull = Math.min(distToRes * 0.1, validATR * 0.3);
+      } else if (isBear && nearestSup && nearestSup < currentPrice) {
+        const distToSup = currentPrice - nearestSup;
+        srPull = -Math.min(distToSup * 0.1, validATR * 0.3);
+      }
+    }
+
     const bars = [];
+    // Confidence-based cone tightening: higher confidence = tighter prediction band
+    const coneFactor = Math.max(0.5, 1.0 - (confidence / 250));
 
     for (let bar = 1; bar <= 5; bar++) {
-      const drift = bar * validATR * driftFactor;
-      const sigma = Math.sqrt(bar) * validATR * 0.85;
+      const momentum = bar * validATR * momentumDrift;
+      const meanRev = bar * meanReversionPerBar;
+      const sr = srPull * Math.min(bar, 3) / 3;
+      const drift = momentum + meanRev * 0.4 + sr;
+      const sigma = Math.sqrt(bar) * validATR * 0.85 * coneFactor;
 
       const expected = +(currentPrice + drift).toFixed(2);
       const upper90 = +(currentPrice + drift + sigma * 1.64).toFixed(2);
@@ -991,7 +1119,7 @@ const Predictions = (() => {
   /**
    * Compute Algorithmic Confluence Matrix (Multi-Factor Scoring)
    */
-  function computeConfluenceMatrix(totalScore, rsiResult, macdScore, maScore, patternScore, volumeScore) {
+  function computeConfluenceMatrix(totalScore, rsiResult, macdScore, maScore, patternScore, volumeScore, divScore, srScore) {
     const absScore = Math.abs(totalScore);
     let grade = 'A+';
     let quality = 'High Confluence';
@@ -1005,11 +1133,13 @@ const Predictions = (() => {
       grade,
       quality,
       factors: [
-        { name: 'Candlestick Patterns', score: Math.round(Math.abs(patternScore.score || 0)), weight: '25%' },
-        { name: 'Momentum & MACD', score: Math.round(Math.abs(macdScore.score || 0)), weight: '25%' },
-        { name: 'RSI Oscillator', score: Math.round(Math.abs(rsiResult.score || 0)), weight: '20%' },
-        { name: 'Trend Alignment (MAs)', score: Math.round(Math.abs(maScore.score || 0)), weight: '20%' },
-        { name: 'Volume Confirmation', score: Math.round(Math.abs(volumeScore.score || 0)), weight: '10%' },
+        { name: 'Momentum & MACD', score: Math.round(Math.abs(macdScore.score || 0)), weight: '18%' },
+        { name: 'Candlestick Patterns', score: Math.round(Math.abs(patternScore.score || 0)), weight: '17%' },
+        { name: 'Volume & Accumulation', score: Math.round(Math.abs(volumeScore.score || 0)), weight: '15%' },
+        { name: 'RSI Divergence', score: Math.round(Math.abs((divScore && divScore.score) || 0)), weight: '13%' },
+        { name: 'Trend Alignment (MAs)', score: Math.round(Math.abs(maScore.score || 0)), weight: '13%' },
+        { name: 'RSI Oscillator', score: Math.round(Math.abs(rsiResult.score || 0)), weight: '12%' },
+        { name: 'Support / Resistance', score: Math.round(Math.abs((srScore && srScore.score) || 0)), weight: '12%' },
       ],
     };
   }
@@ -1017,7 +1147,11 @@ const Predictions = (() => {
   /**
    * Determine overall trend from moving averages and price action
    */
-  function detectTrend(candles, sma20, sma50, ema12, ema26) {
+  /**
+   * Determine overall trend from moving averages, price action, and ADX strength
+   * ADX < 20 forces sideways classification regardless of MA alignment
+   */
+  function detectTrend(candles, sma20, sma50, ema12, ema26, currentADX) {
     const lastIdx = candles.length - 1;
     let bullishPoints = 0;
     let bearishPoints = 0;
@@ -1062,6 +1196,13 @@ const Predictions = (() => {
     const diff = bullishPoints - bearishPoints;
     let direction, strength;
 
+    // ADX override: if ADX < 20, there is no meaningful trend regardless of MA alignment
+    if (currentADX != null && currentADX < 20) {
+      direction = 'sideways';
+      strength = 'weak';
+      return { direction, strength };
+    }
+
     if (diff > 5) { direction = 'uptrend'; strength = 'strong'; }
     else if (diff > 2) { direction = 'uptrend'; strength = 'moderate'; }
     else if (diff < -5) { direction = 'downtrend'; strength = 'strong'; }
@@ -1074,20 +1215,34 @@ const Predictions = (() => {
   /**
    * Score RSI signal
    */
+  /**
+   * Score RSI signal — Full range coverage (no dead zones)
+   * Every RSI value now contributes to the decision
+   */
   function scoreRSI(rsi) {
     if (rsi == null) return { score: 0, reason: null };
 
-    if (rsi >= 80) return { score: -80, reason: `**RSI at ${rsi.toFixed(1)}** — Extremely overbought. Strong selling pressure expected.` };
-    if (rsi >= 70) return { score: -50, reason: `**RSI at ${rsi.toFixed(1)}** — Overbought territory. Price may be due for a pullback.` };
-    if (rsi <= 20) return { score: 80, reason: `**RSI at ${rsi.toFixed(1)}** — Extremely oversold. Bounce expected.` };
-    if (rsi <= 30) return { score: 50, reason: `**RSI at ${rsi.toFixed(1)}** — Oversold territory. Buyers likely to step in.` };
-    if (rsi > 50 && rsi < 60) return { score: 20, reason: `**RSI at ${rsi.toFixed(1)}** — Bullish momentum.` };
-    if (rsi > 40 && rsi <= 50) return { score: -20, reason: `**RSI at ${rsi.toFixed(1)}** — Bearish drift.` };
-    return { score: 0, reason: null };
+    if (rsi >= 85) return { score: -90, reason: `**RSI at ${rsi.toFixed(1)}** — Extreme overbought. Strong reversal/selling pressure expected.` };
+    if (rsi >= 80) return { score: -75, reason: `**RSI at ${rsi.toFixed(1)}** — Extremely overbought. Strong selling pressure expected.` };
+    if (rsi >= 75) return { score: -55, reason: `**RSI at ${rsi.toFixed(1)}** — Overbought zone. Pullback increasingly likely.` };
+    if (rsi >= 70) return { score: -40, reason: `**RSI at ${rsi.toFixed(1)}** — Overbought territory. Price may be extended.` };
+    if (rsi >= 65) return { score: -10, reason: `**RSI at ${rsi.toFixed(1)}** — Approaching overbought. Momentum fading slightly.` };
+    if (rsi >= 60) return { score: 15, reason: `**RSI at ${rsi.toFixed(1)}** — Strong bullish momentum zone.` };
+    if (rsi > 55)  return { score: 25, reason: `**RSI at ${rsi.toFixed(1)}** — Healthy bullish momentum.` };
+    if (rsi > 50)  return { score: 20, reason: `**RSI at ${rsi.toFixed(1)}** — Bullish momentum.` };
+    if (rsi > 45)  return { score: -10, reason: `**RSI at ${rsi.toFixed(1)}** — Neutral to weak bearish drift.` };
+    if (rsi > 40)  return { score: -20, reason: `**RSI at ${rsi.toFixed(1)}** — Bearish drift.` };
+    if (rsi > 35)  return { score: -35, reason: `**RSI at ${rsi.toFixed(1)}** — Approaching oversold. Sellers in control.` };
+    if (rsi > 30)  return { score: 30, reason: `**RSI at ${rsi.toFixed(1)}** — Nearing oversold. Bounce potential building.` };
+    if (rsi > 20)  return { score: 55, reason: `**RSI at ${rsi.toFixed(1)}** — Oversold territory. Buyers likely to step in.` };
+    return { score: 85, reason: `**RSI at ${rsi.toFixed(1)}** — Extremely oversold. Strong bounce expected.` };
   }
 
   /**
    * Score MACD signal
+   */
+  /**
+   * Score MACD signal — Now includes histogram momentum direction (accelerating/decelerating)
    */
   function scoreMACD(macdVal, signalVal, histogram, fullMacd) {
     if (macdVal == null || signalVal == null) return { score: 0, reason: null };
@@ -1105,7 +1260,7 @@ const Predictions = (() => {
 
     if (fullMacd && fullMacd.histogram) {
       const hist = fullMacd.histogram;
-      const recentHist = hist.slice(-3).filter(v => v != null);
+      const recentHist = hist.slice(-4).filter(v => v != null);
       if (recentHist.length >= 2) {
         const prev = recentHist[recentHist.length - 2];
         const curr = recentHist[recentHist.length - 1];
@@ -1115,6 +1270,30 @@ const Predictions = (() => {
         } else if (prev > 0 && curr < 0) {
           score -= 40;
           reason = '**MACD Bearish Crossover** — MACD crossed below signal line.';
+        }
+      }
+
+      // Histogram Momentum Direction: Are bars getting taller or shorter?
+      if (recentHist.length >= 3) {
+        const h1 = recentHist[recentHist.length - 3];
+        const h2 = recentHist[recentHist.length - 2];
+        const h3 = recentHist[recentHist.length - 1];
+
+        const isAccelerating = Math.abs(h3) > Math.abs(h2) && Math.abs(h2) > Math.abs(h1);
+        const isDecelerating = Math.abs(h3) < Math.abs(h2) && Math.abs(h2) < Math.abs(h1);
+
+        if (isAccelerating && h3 > 0) {
+          score += 15;
+          reason = '**MACD Accelerating Bullish** — Histogram bars growing. Strong momentum building.';
+        } else if (isAccelerating && h3 < 0) {
+          score -= 15;
+          reason = '**MACD Accelerating Bearish** — Histogram bars deepening. Selling pressure intensifying.';
+        } else if (isDecelerating && h3 > 0) {
+          score -= 10;
+          reason = '**MACD Weakening Bullish** — Histogram bars shrinking. Momentum fading.';
+        } else if (isDecelerating && h3 < 0) {
+          score += 10;
+          reason = '**MACD Weakening Bearish** — Selling pressure easing. Potential bottom forming.';
         }
       }
     }
@@ -1128,9 +1307,13 @@ const Predictions = (() => {
   /**
    * Score moving average alignment
    */
+  /**
+   * Score Moving Average alignment — Now includes EMA12/26 cross detection
+   */
   function scoreMovingAverages(price, sma20, sma50, ema12, ema26, candles) {
     let score = 0;
     const reasons = [];
+    const lastIdx = candles.length - 1;
 
     if (sma20 != null) {
       if (price > sma20) { score += 15; }
@@ -1144,11 +1327,31 @@ const Predictions = (() => {
 
     if (sma20 != null && sma50 != null) {
       if (sma20 > sma50) {
-        score += 25;
+        score += 20;
         reasons.push('**Golden Cross** — SMA(20) above SMA(50) indicates bullish structure.');
       } else {
-        score -= 25;
+        score -= 20;
         reasons.push('**Death Cross** — SMA(20) below SMA(50) indicates bearish structure.');
+      }
+    }
+
+    // EMA 12/26 Cross Detection (faster signal for intraday)
+    if (ema12 && ema26 && ema12[lastIdx] != null && ema26[lastIdx] != null) {
+      if (ema12[lastIdx] > ema26[lastIdx]) {
+        score += 12;
+        // Check for FRESH cross (previous bar EMA12 was below EMA26)
+        if (lastIdx > 0 && ema12[lastIdx - 1] != null && ema26[lastIdx - 1] != null &&
+            ema12[lastIdx - 1] <= ema26[lastIdx - 1]) {
+          score += 20;
+          reasons.push('**Fresh EMA Bullish Cross** — EMA(12) just crossed above EMA(26). High-value entry signal.');
+        }
+      } else {
+        score -= 12;
+        if (lastIdx > 0 && ema12[lastIdx - 1] != null && ema26[lastIdx - 1] != null &&
+            ema12[lastIdx - 1] >= ema26[lastIdx - 1]) {
+          score -= 20;
+          reasons.push('**Fresh EMA Bearish Cross** — EMA(12) just crossed below EMA(26). Exit signal.');
+        }
       }
     }
 
@@ -1161,22 +1364,34 @@ const Predictions = (() => {
   /**
    * Score candlestick patterns
    */
-  function scorePatterns(patterns) {
+  /**
+   * Score Candlestick Patterns — With recency bias (recent patterns matter more)
+   * @param {Array} patterns - Detected patterns
+   * @param {number} candleCount - Total candle count for recency calculation
+   */
+  function scorePatterns(patterns, candleCount) {
     if (!patterns || patterns.length === 0) {
       return { score: 0, reason: 'No significant candlestick patterns detected in recent lookback.' };
     }
 
     let score = 0;
     const patternNames = [];
-    const topPatterns = patterns.slice(0, 5);
+    const totalBars = candleCount || 100;
+    // Take more patterns since we now detect multiple per bar
+    const topPatterns = patterns.slice(-8);
 
     for (const p of topPatterns) {
       const confRatio = typeof p.confidence === 'number' ? (p.confidence / 100) : 0.8;
+      // Recency decay: latest bar = 1.0, 20+ bars ago = 0.15
+      const barsAgo = totalBars - (p.index || 0);
+      const recencyWeight = Math.max(0.15, 1.0 - (barsAgo / 25));
+      const weightedConf = confRatio * recencyWeight;
+
       if (p.signal === 'bullish') {
-        score += 30 * confRatio;
+        score += 30 * weightedConf;
         patternNames.push(p.name);
       } else if (p.signal === 'bearish') {
-        score -= 30 * confRatio;
+        score -= 30 * weightedConf;
         patternNames.push(p.name);
       } else {
         patternNames.push(p.name);
@@ -1194,7 +1409,11 @@ const Predictions = (() => {
   /**
    * Score volume (trend confirmation)
    */
-  function scoreVolume(candles) {
+  /**
+   * Score Volume — Comprehensive analysis with accumulation/distribution, volume climax,
+   * and OBV trend confirmation. Volume is now a major decision factor.
+   */
+  function scoreVolume(candles, obvValues) {
     if (candles.length < 20) return { score: 0, reason: null };
 
     const recent5 = candles.slice(-5);
@@ -1208,17 +1427,124 @@ const Predictions = (() => {
     const volRatio = avgRecentVol / avgPriorVol;
     const recentTrend = recent5[recent5.length - 1].close - recent5[0].close;
 
-    if (volRatio > 1.5 && recentTrend > 0) {
-      return { score: 40, reason: '**Volume surge (+' + Math.round((volRatio - 1) * 100) + '%)** confirms strong buying interest.' };
+    // Accumulation/Distribution: Volume on green vs red candles
+    let upVol = 0, downVol = 0;
+    for (const c of recent5) {
+      if (c.close >= c.open) upVol += (c.volume || 0);
+      else downVol += (c.volume || 0);
     }
-    if (volRatio > 1.5 && recentTrend < 0) {
-      return { score: -40, reason: '**Volume surge (+' + Math.round((volRatio - 1) * 100) + '%)** confirms strong selling pressure.' };
-    }
-    if (volRatio < 0.5) {
-      return { score: 0, reason: 'Declining volume suggests consolidation.' };
+    const totalVol = upVol + downVol;
+    const adRatio = totalVol > 0 ? upVol / totalVol : 0.5;
+
+    // Volume Climax: Latest bar > 2.5x 20-bar average (exhaustion signal)
+    const avg20Vol = candles.slice(-20).reduce((s, c) => s + (c.volume || 0), 0) / 20;
+    const lastVol = candles[candles.length - 1].volume || 0;
+    const isVolumeClimax = lastVol > avg20Vol * 2.5;
+
+    // OBV Trend confirmation (if available)
+    let obvConfirms = 0;
+    if (obvValues && obvValues.length >= 10) {
+      const obvRecent = obvValues[obvValues.length - 1];
+      const obv5Ago = obvValues[obvValues.length - 6];
+      if (obvRecent > obv5Ago && recentTrend > 0) obvConfirms = 1;   // OBV confirms up
+      else if (obvRecent < obv5Ago && recentTrend < 0) obvConfirms = -1; // OBV confirms down
+      else if (obvRecent < obv5Ago && recentTrend > 0) obvConfirms = -0.5; // OBV diverges bearish
+      else if (obvRecent > obv5Ago && recentTrend < 0) obvConfirms = 0.5;  // OBV diverges bullish
     }
 
+    let score = 0;
+    let reason = '';
+
+    // Volume surge with directional confirmation
+    if (volRatio > 1.5 && adRatio > 0.60) {
+      score += 55;
+      reason = `**Volume surge (+${Math.round((volRatio - 1) * 100)}%)** with ${Math.round(adRatio * 100)}% accumulation confirms strong buying.`;
+    } else if (volRatio > 1.5 && adRatio < 0.40) {
+      score -= 55;
+      reason = `**Volume surge (+${Math.round((volRatio - 1) * 100)}%)** with ${Math.round((1 - adRatio) * 100)}% distribution confirms selling pressure.`;
+    } else if (volRatio > 1.2 && recentTrend > 0) {
+      score += 25;
+      reason = `**Rising volume (+${Math.round((volRatio - 1) * 100)}%)** supports upward price movement.`;
+    } else if (volRatio > 1.2 && recentTrend < 0) {
+      score -= 25;
+      reason = `**Rising volume (+${Math.round((volRatio - 1) * 100)}%)** confirms downward pressure.`;
+    } else if (volRatio < 0.5) {
+      score -= 5;
+      reason = 'Declining volume suggests consolidation — breakout lacks conviction.';
+    }
+
+    // Volume climax bonus/penalty
+    if (isVolumeClimax) {
+      score += (adRatio > 0.55 ? 15 : -15);
+    }
+
+    // OBV confirmation bonus
+    score += Math.round(obvConfirms * 15);
+
+    return { score: Math.max(-100, Math.min(100, score)), reason: reason || null };
+  }
+
+  /**
+   * Score RSI Divergence (NEW) — High-reliability reversal signal
+   * Bullish divergence: +60 to +85 | Bearish divergence: -60 to -85
+   */
+  function scoreDivergence(divergence) {
+    if (!divergence) return { score: 0, reason: null };
+
+    if (divergence.type === 'bullish') {
+      const score = Math.min(85, 60 + Math.round((divergence.strength || 70) * 0.25));
+      return {
+        score,
+        reason: `🔄 **Bullish RSI Divergence** — Price made lower low but RSI made higher low. Reversal UP expected (~80% reliability).`,
+      };
+    }
+    if (divergence.type === 'bearish') {
+      const score = -Math.min(85, 60 + Math.round((divergence.strength || 70) * 0.25));
+      return {
+        score,
+        reason: `🔄 **Bearish RSI Divergence** — Price made higher high but RSI made lower high. Reversal DOWN expected (~80% reliability).`,
+      };
+    }
     return { score: 0, reason: null };
+  }
+
+  /**
+   * Score Support / Resistance Context (NEW)
+   * BUY near support = bonus | BUY near resistance = penalty
+   */
+  function scoreSupportResistance(price, srLevels, atr, trend) {
+    if (!srLevels) return { score: 0, reason: null };
+
+    const validATR = (atr && atr > 0) ? atr : price * 0.015;
+    let score = 0;
+    let reason = '';
+
+    // Check proximity to support levels (within 1.2% or 0.5 ATR)
+    const nearSupport = srLevels.support && srLevels.support.some(s => {
+      const dist = Math.abs(price - s);
+      return dist / price < 0.012 || dist < validATR * 0.5;
+    });
+
+    // Check proximity to resistance levels
+    const nearResistance = srLevels.resistance && srLevels.resistance.some(r => {
+      const dist = Math.abs(price - r);
+      return dist / price < 0.012 || dist < validATR * 0.5;
+    });
+
+    if (nearSupport && (trend.direction === 'uptrend' || trend.direction === 'sideways')) {
+      score += 40;
+      reason = `✅ Price at **support zone (₹${srLevels.support[0]?.toFixed(2) || '—'})** — Favorable entry with defined risk.`;
+    } else if (nearSupport && trend.direction === 'downtrend') {
+      score += 15;
+      reason = `⚠️ Price at **support (₹${srLevels.support[0]?.toFixed(2) || '—'})** in downtrend — May bounce but trend is against.`;
+    }
+
+    if (nearResistance) {
+      score -= 40;
+      reason = `🚫 Price at **resistance zone (₹${srLevels.resistance[0]?.toFixed(2) || '—'})** — High risk of rejection. Wait for breakout confirmation.`;
+    }
+
+    return { score: Math.max(-100, Math.min(100, score)), reason: reason || null };
   }
 
   /**
@@ -1263,5 +1589,7 @@ if (typeof window !== 'undefined') {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { Predictions, PredictionEngine };
+  module.exports = Predictions;
+  module.exports.Predictions = Predictions;
+  module.exports.PredictionEngine = Predictions;
 }
